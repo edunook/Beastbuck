@@ -1,0 +1,220 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        background: {
+          DEFAULT: 'var(--color-background-50)',
+          0: 'var(--color-background-0)',
+          50: 'var(--color-background-50)',
+          100: 'var(--color-background-100)',
+          200: 'var(--color-background-200)',
+          300: 'var(--color-background-300)',
+          400: 'var(--color-background-400)',
+          500: 'var(--color-background-500)',
+        },
+        surface: {
+          DEFAULT: 'var(--color-surface-50)',
+          0: 'var(--color-surface-0)',
+          50: 'var(--color-surface-50)',
+          100: 'var(--color-surface-100)',
+          200: 'var(--color-surface-200)',
+          300: 'var(--color-surface-300)',
+        },
+        border: {
+          DEFAULT: 'var(--color-border-50)',
+          0: 'var(--color-border-0)',
+          50: 'var(--color-border-50)',
+          100: 'var(--color-border-100)',
+          200: 'var(--color-border-200)',
+          300: 'var(--color-border-300)',
+        },
+        text: {
+          DEFAULT: 'var(--color-text-0)',
+          50: 'var(--color-text-50)',
+          100: 'var(--color-text-100)',
+          200: 'var(--color-text-200)',
+          300: 'var(--color-text-300)',
+          400: 'var(--color-text-400)',
+          500: 'var(--color-text-500)',
+          muted: 'var(--color-text-300)',
+          soft: 'var(--color-text-200)',
+        },
+        accent: {
+          DEFAULT: 'var(--color-accent-0)',
+          50: 'var(--color-accent-50)',
+          100: 'var(--color-accent-100)',
+          200: 'var(--color-accent-200)',
+          300: 'var(--color-accent-300)',
+          alt: {
+            DEFAULT: 'var(--color-accent-alt-0)',
+            50: 'var(--color-accent-alt-50)',
+            100: 'var(--color-accent-alt-100)',
+            200: 'var(--color-accent-alt-200)',
+            300: 'var(--color-accent-alt-300)',
+          }
+        },
+        status: {
+          success: {
+            DEFAULT: 'var(--color-success-0)',
+            50: 'var(--color-success-50)',
+            100: 'var(--color-success-100)',
+            200: 'var(--color-success-200)',
+            300: 'var(--color-success-300)',
+          },
+          warning: {
+            DEFAULT: 'var(--color-warning-0)',
+            50: 'var(--color-warning-50)',
+            100: 'var(--color-warning-100)',
+            200: 'var(--color-warning-200)',
+            300: 'var(--color-warning-300)',
+          },
+          danger: {
+            DEFAULT: 'var(--color-danger-0)',
+            50: 'var(--color-danger-50)',
+            100: 'var(--color-danger-100)',
+            200: 'var(--color-danger-200)',
+            300: 'var(--color-danger-300)',
+          }
+        }
+      },
+      fontFamily: {
+        sans: 'var(--font-sans)',
+        heading: 'var(--font-heading)',
+        mono: 'var(--font-mono)',
+      },
+      // Depth System - 4 Level Elevation
+      boxShadow: {
+        'depth-1': 'var(--shadow-depth-1)',
+        'depth-2': 'var(--shadow-depth-2)',
+        'depth-3': 'var(--shadow-depth-3)',
+        'depth-4': 'var(--shadow-depth-4)',
+        'glow-sm': 'var(--shadow-glow-sm)',
+        'glow-md': 'var(--shadow-glow-md)',
+        'glow-lg': 'var(--shadow-glow-lg)',
+        'glow-purple': 'var(--shadow-glow-purple)',
+        'glow-success': 'var(--shadow-glow-success)',
+        'glow-warning': 'var(--shadow-glow-warning)',
+        'glow-danger': 'var(--shadow-glow-danger)',
+        'inner-glow': 'var(--shadow-inner-glow)',
+      },
+      // Typography Scale
+      fontSize: {
+        'xs': 'var(--font-size-xs)',
+        'sm': 'var(--font-size-sm)',
+        'base': 'var(--font-size-base)',
+        'lg': 'var(--font-size-lg)',
+        'xl': 'var(--font-size-xl)',
+        '2xl': 'var(--font-size-2xl)',
+        '3xl': 'var(--font-size-3xl)',
+        '4xl': 'var(--font-size-4xl)',
+        '5xl': 'var(--font-size-5xl)',
+        '6xl': 'var(--font-size-6xl)',
+        'hero': ['var(--font-size-5xl)', { lineHeight: 'var(--line-height-tight)', letterSpacing: 'var(--letter-spacing-tighter)', fontWeight: 'var(--font-weight-extrabold)' }],
+        'page-title': ['var(--font-size-4xl)', { lineHeight: 'var(--line-height-snug)', letterSpacing: 'var(--letter-spacing-tight)', fontWeight: 'var(--font-weight-bold)' }],
+        'section-title': ['var(--font-size-2xl)', { lineHeight: 'var(--line-height-normal)', letterSpacing: 'var(--letter-spacing-normal)', fontWeight: 'var(--font-weight-semibold)' }],
+        'card-title': ['var(--font-size-lg)', { lineHeight: 'var(--line-height-snug)', letterSpacing: 'var(--letter-spacing-normal)', fontWeight: 'var(--font-weight-semibold)' }],
+        'description': ['var(--font-size-base)', { lineHeight: 'var(--line-height-normal)', letterSpacing: 'var(--letter-spacing-normal)', fontWeight: 'var(--font-weight-normal)' }],
+        'caption': ['var(--font-size-sm)', { lineHeight: 'var(--line-height-normal)', letterSpacing: 'var(--letter-spacing-normal)', fontWeight: 'var(--font-weight-normal)' }],
+        'badge': ['var(--font-size-xs)', { lineHeight: 'var(--line-height-snug)', letterSpacing: 'var(--letter-spacing-wide)', fontWeight: 'var(--font-weight-medium)' }],
+        'metric': ['var(--font-size-3xl)', { lineHeight: 'var(--line-height-tight)', letterSpacing: 'var(--letter-spacing-tighter)', fontWeight: 'var(--font-weight-bold)' }],
+      },
+      // Border Radius
+      borderRadius: {
+        'none': 'var(--radius-none)',
+        'sm': 'var(--radius-sm)',
+        'base': 'var(--radius-base)',
+        'md': 'var(--radius-md)',
+        'lg': 'var(--radius-lg)',
+        'xl': 'var(--radius-xl)',
+        '2xl': 'var(--radius-2xl)',
+        '3xl': 'var(--radius-3xl)',
+        'full': 'var(--radius-full)',
+      },
+      // Spacing Scale
+      spacing: {
+        '0': 'var(--space-0)',
+        '1': 'var(--space-1)',
+        '2': 'var(--space-2)',
+        '3': 'var(--space-3)',
+        '4': 'var(--space-4)',
+        '5': 'var(--space-5)',
+        '6': 'var(--space-6)',
+        '8': 'var(--space-8)',
+        '10': 'var(--space-10)',
+        '12': 'var(--space-12)',
+        '16': 'var(--space-16)',
+        '20': 'var(--space-20)',
+        '24': 'var(--space-24)',
+        '32': 'var(--space-32)',
+      },
+      // Transition Timing
+      transitionTimingFunction: {
+        'fast': 'var(--transition-fast)',
+        'base': 'var(--transition-base)',
+        'slow': 'var(--transition-slow)',
+        'slower': 'var(--transition-slower)',
+        'bounce': 'var(--transition-bounce)',
+        'elastic': 'var(--transition-elastic)',
+      },
+      transitionDuration: {
+        'instant': 'var(--duration-instant)',
+        'fast': 'var(--duration-fast)',
+        'base': 'var(--duration-base)',
+        'slow': 'var(--duration-slow)',
+        'slower': 'var(--duration-slower)',
+        'slowest': 'var(--duration-slowest)',
+      },
+      // Animation Utilities
+      animation: {
+        'float': 'float 6s ease-in-out infinite',
+        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'shimmer': 'shimmer 2s linear infinite',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
+        },
+      },
+      // Z-Index Scale
+      zIndex: {
+        'dropdown': 'var(--z-dropdown)',
+        'sticky': 'var(--z-sticky)',
+        'fixed': 'var(--z-fixed)',
+        'modal-backdrop': 'var(--z-modal-backdrop)',
+        'modal': 'var(--z-modal)',
+        'popover': 'var(--z-popover)',
+        'tooltip': 'var(--z-tooltip)',
+        'notification': 'var(--z-notification)',
+      },
+      // Backdrop Blur
+      backdropBlur: {
+        'glass-sm': 'var(--glass-blur-sm)',
+        'glass-md': 'var(--glass-blur-md)',
+        'glass-lg': 'var(--glass-blur-lg)',
+        'glass-xl': 'var(--glass-blur-xl)',
+      },
+      // Premium Gradients
+      backgroundImage: {
+        'gradient-premium-1': 'var(--gradient-premium-1)',
+        'gradient-premium-2': 'var(--gradient-premium-2)',
+        'gradient-premium-3': 'var(--gradient-premium-3)',
+        'gradient-premium-4': 'var(--gradient-premium-4)',
+        'gradient-premium-5': 'var(--gradient-premium-5)',
+        'gradient-subtle-1': 'var(--gradient-subtle-1)',
+        'gradient-subtle-2': 'var(--gradient-subtle-2)',
+        'gradient-mesh-1': 'var(--gradient-mesh-1)',
+      },
+    },
+  },
+  plugins: [],
+}

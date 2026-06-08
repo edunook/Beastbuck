@@ -1,0 +1,48 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Media Storage Structure
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Team storage - restricted to team members (validated via Firestore team membership)
+    match /teams/{teamId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Use Cloud Functions for team upload validation
+    }
+
+    // Product storage - restricted to product owners
+    match /products/{productId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Use Cloud Functions for product upload validation
+    }
+
+    // Experiment storage - restricted to experiment authors
+    match /experiments/{experimentId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Use Cloud Functions for experiment upload validation
+    }
+    
+    // Skills storage - restricted to admins only
+    match /skills/{skillId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Use Cloud Functions for skill upload validation
+    }
+
+    // Default deny for anything outside the structured paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

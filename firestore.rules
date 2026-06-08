@@ -1,0 +1,1946 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------
+    // REUSABLE PERMISSION FUNCTIONS
+    // ----------------------------------------
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function getUserRole() {
+      return getUserData().role;
+    }
+    
+    function isMainCEO() {
+      return isAuthenticated() && getUserRole() == 'Main CEO';
+    }
+    
+    function isCoCEO() {
+      return isAuthenticated() && getUserRole() == 'Co-CEO';
+    }
+    
+    function isLeader() {
+      return isAuthenticated() && getUserRole() == 'Leader';
+    }
+    
+    function isMember() {
+      return isAuthenticated() && getUserData().membershipStatus == 'approved';
+    }
+
+    function isApprovedMember() {
+      return isAuthenticated() && getUserData().membershipStatus == 'approved';
+    }
+
+    // Role-based centralized checks
+    function canManageMembers() {
+      return isMainCEO() || isCoCEO();
+    }
+    
+    function canDeleteContent() {
+      return isMainCEO() || isCoCEO() || isLeader();
+    }
+    
+    function canCreateAnnouncements() {
+      return isMainCEO() || isCoCEO() || isLeader();
+    }
+
+    function canManageOrganization() {
+      return isMainCEO() || isCoCEO() || isLeader();
+    }
+
+    function canReviewTasks() {
+      return isLeader() || canManageMembers();
+    }
+
+    function isDefaultChatRoom(roomId) {
+      return roomId in [
+        'general',
+        'announcements',
+        'experiments',
+        'products',
+        'ideas',
+        'coding',
+        'science'
+      ];
+    }
+
+    function chatRoomType(roomId) {
+      return roomId == 'announcements'
+        ? 'announcement'
+        : isDefaultChatRoom(roomId)
+          ? 'public'
+          : get(/databases/$(database)/documents/chatRooms/$(roomId)).data.type;
+    }
+
+    function isAnnouncementRoom(roomId) {
+      return chatRoomType(roomId) == 'announcement';
+    }
+
+    function isPublicChatRoom(roomId) {
+      return chatRoomType(roomId) == 'public';
+    }
+
+    // ----------------------------------------
+    // USER ARCHITECTURE (Isolated & Scalable)
+    // ----------------------------------------
+    match /users/{userId} {
+      // Public profile data is readable by all authenticated members
+      allow read: if isAuthenticated();
+      
+      // Users can only create their own document
+      allow create: if isAuthenticated() && request.auth.uid == userId
+                    && (request.resource.data.role == 'User' || request.resource.data.role == 'Member' || isMainCEO());
+      
+      // Users can update safe profile fields, but cannot escalate role, XP, level, stats,
+      // achievements, or specializations.
+      allow update: if isAuthenticated() && request.auth.uid == userId 
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'displayName',
+                      'avatar',
+                      'phoneNumber',
+                      'profileCustomization'
+                    ]);
+
+      // Task reviewers can award XP and derived progress without receiving full profile-admin powers.
+      allow update: if canReviewTasks()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['xp', 'level', 'stats']);
+
+      // Member-created systems such as experiments can award narrowly scoped self XP and stats.
+      allow update: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['xp', 'level', 'stats']);
+
+      // Community systems can award reputation without granting broader profile edit powers.
+      allow update: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reputation']);
+
+      // Skill ecosystem contributions award separate skill XP without changing global XP.
+      allow update: if isAuthenticated() && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['skillXp', 'skillStats']);
+                    
+      // CEOs can update anyone
+      allow update: if canManageMembers();
+      allow delete: if isMainCEO();
+
+      // Scalable User Subcollections
+      match /notifications/{notificationId} {
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow create: if canManageMembers(); // System/CEOs send notifications
+        allow create: if isAuthenticated()
+                      && request.resource.data.actorId == request.auth.uid
+                      && request.resource.data.keys().hasOnly([
+                        'type',
+                        'title',
+                        'message',
+                        'link',
+                        'read',
+                        'createdAt',
+                        'actorId'
+                      ])
+                      && request.resource.data.type in ['MENTION', 'ANNOUNCEMENT', 'ACHIEVEMENT']
+                      && request.resource.data.read == false
+                      && request.resource.data.link is string
+                      && request.resource.data.title is string
+                      && request.resource.data.message is string;
+        allow update, delete: if isAuthenticated() && request.auth.uid == userId;
+      }
+
+      match /aiHistory/{historyId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      }
+
+      match /badges/{badgeId} {
+        allow read: if isAuthenticated();
+        allow write: if canManageMembers(); // Only awarded by system/admin
+      }
+
+      match /achievements/{achievementId} {
+        allow read: if isAuthenticated();
+        allow write: if canManageMembers();
+      }
+    }
+
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow create: if isAuthenticated()
+                    && request.auth.uid == userId
+                    && request.resource.data.keys().hasOnly([
+                      'uid',
+                      'username',
+                      'displayName',
+                      'avatar',
+                      'role',
+                      'xp',
+                      'level',
+                      'specializations',
+                      'achievements',
+                      'certificates',
+                      'inventions',
+                      'research',
+                      'projects',
+                      'portfolios',
+                      'activity',
+                      'reputation',
+                      'stats',
+                      'joinedAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.uid == request.auth.uid;
+      allow update: if isAuthenticated()
+                    && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'displayName',
+                      'avatar',
+                      'specializations',
+                      'achievements',
+                      'certificates',
+                      'inventions',
+                      'research',
+                      'projects',
+                      'portfolios',
+                      'activity',
+                      'reputation',
+                      'stats',
+                      'xp',
+                      'level',
+                      'updatedAt'
+                    ]);
+      allow update, delete: if canManageMembers();
+    }
+
+    match /membershipApplications/{applicationId} {
+      allow create: if isAuthenticated()
+                    && request.resource.data.keys().hasOnly([
+                      'applicantId',
+                      'applicantName',
+                      'applicantEmail',
+                      'motivation',
+                      'skills',
+                      'interests',
+                      'experience',
+                      'portfolioLinks',
+                      'status',
+                      'reviewedBy',
+                      'reviewNotes',
+                      'submittedAt',
+                      'reviewedAt'
+                    ])
+                    && request.resource.data.applicantId == request.auth.uid
+                    && request.resource.data.applicantName is string
+                    && request.resource.data.motivation is string
+                    && request.resource.data.status == 'pending';
+      allow read: if isAuthenticated() && (
+                      canManageMembers() || 
+                      request.auth.uid == resource.data.applicantId
+                    );
+      allow update: if canManageMembers()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'status',
+                      'reviewedBy',
+                      'reviewNotes',
+                      'reviewedAt'
+                    ])
+                    && request.resource.data.status in ['pending', 'approved', 'rejected'];
+      allow delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
+    // TEAMS & GROUPS
+    // ----------------------------------------
+    match /teams/{teamId} {
+      allow read: if isAuthenticated();
+      // Any full member can create a team
+      allow create: if isMember();
+      // Only the team leader or a CEO can update/delete
+      allow update: if isMember() && (resource.data.leaderId == request.auth.uid || canManageMembers());
+      allow delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
+    // PROFESSIONAL ORGANIZATION SYSTEM
+    // Divisions -> Departments -> Labs -> Projects
+    // ----------------------------------------
+    match /divisions/{divisionId} {
+      allow read: if isAuthenticated();
+      allow create: if canManageMembers()
+                    && request.resource.data.keys().hasOnly([
+                      'name',
+                      'description',
+                      'leadId',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.name is string
+                    && request.resource.data.description is string;
+      allow update: if canManageMembers()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'name',
+                      'description',
+                      'leadId',
+                      'archived',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageMembers();
+    }
+
+    match /organizationAnnouncements/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canManageMembers();
+    }
+
+    match /departments/{departmentId} {
+      allow read: if isAuthenticated();
+      allow create: if canManageMembers()
+                    && request.resource.data.keys().hasOnly([
+                      'name',
+                      'description',
+                      'divisionId',
+                      'leaderId',
+                      'memberCount',
+                      'goals',
+                      'milestones',
+                      'initiatives',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.name is string
+                    && request.resource.data.description is string
+                    && request.resource.data.leaderId is string
+                    && request.resource.data.memberCount is number;
+      allow update: if canManageMembers()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'name',
+                      'description',
+                      'divisionId',
+                      'leaderId',
+                      'memberCount',
+                      'archived',
+                      'goals',
+                      'milestones',
+                      'initiatives',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageMembers();
+    }
+
+    match /labs/{labId} {
+      allow read: if isAuthenticated();
+      allow create: if canManageMembers()
+                    && request.resource.data.keys().hasOnly([
+                      'name',
+                      'departmentId',
+                      'description',
+                      'leadId',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.name is string
+                    && request.resource.data.departmentId is string
+                    && request.resource.data.description is string
+                    && request.resource.data.leadId is string;
+      allow update: if canManageMembers()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'name',
+                      'departmentId',
+                      'description',
+                      'leadId',
+                      'archived',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageMembers();
+    }
+
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create: if canManageMembers()
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'departmentId',
+                      'labId',
+                      'ownerId',
+                      'memberIds',
+                      'status',
+                      'progressPercent',
+                      'startDate',
+                      'targetDate',
+                      'tasks',
+                      'files',
+                      'activity',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.description is string
+                    && request.resource.data.departmentId is string
+                    && request.resource.data.labId is string
+                    && request.resource.data.ownerId is string
+                    && request.resource.data.memberIds is list
+                    && request.resource.data.status in ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED']
+                    && request.resource.data.progressPercent is number;
+      allow update: if canManageMembers()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'departmentId',
+                      'labId',
+                      'ownerId',
+                      'memberIds',
+                      'status',
+                      'progressPercent',
+                      'startDate',
+                      'targetDate',
+                      'tasks',
+                      'files',
+                      'activity',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && resource.data.ownerId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'status',
+                      'progressPercent',
+                      'tasks',
+                      'files',
+                      'activity',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
+    // CONTENT (Products, Experiments, Skills)
+    // ----------------------------------------
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isMember()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'category',
+                      'creatorId',
+                      'creatorName',
+                      'creatorUsername',
+                      'teamMembers',
+                      'price',
+                      'status',
+                      'media',
+                      'likes',
+                      'views',
+                      'featured',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.description is string
+                    && request.resource.data.status in ['DRAFT', 'SHOWCASE', 'AVAILABLE', 'SOLD_OUT']
+                    && request.resource.data.price is number
+                    && request.resource.data.likes is list
+                    && request.resource.data.views == 0
+                    && request.resource.data.featured == false;
+      allow update: if isAuthenticated()
+                    && resource.data.creatorId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'category',
+                      'teamMembers',
+                      'price',
+                      'status',
+                      'media',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']);
+      allow update: if canDeleteContent()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['featured', 'status', 'updatedAt']);
+      allow delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || canDeleteContent());
+
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 1000;
+        allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canDeleteContent());
+      }
+    }
+
+    match /experiments/{experimentId} {
+      allow read: if true;
+      allow create: if isMember()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'category',
+                      'difficulty',
+                      'status',
+                      'authorId',
+                      'authorName',
+                      'authorUsername',
+                      'teamMembers',
+                      'media',
+                      'materials',
+                      'procedure',
+                      'results',
+                      'lessonsLearned',
+                      'likes',
+                      'views',
+                      'featured',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.description is string
+                    && request.resource.data.status in ['PLANNING', 'IN_PROGRESS', 'COMPLETED', 'FAILED']
+                    && request.resource.data.likes is list
+                    && request.resource.data.views == 0
+                    && request.resource.data.featured == false;
+      allow update: if isAuthenticated()
+                    && resource.data.authorId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'category',
+                      'difficulty',
+                      'status',
+                      'teamMembers',
+                      'media',
+                      'materials',
+                      'procedure',
+                      'results',
+                      'lessonsLearned',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']);
+      allow update: if canDeleteContent()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['featured', 'status', 'updatedAt']);
+      allow delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canDeleteContent());
+
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+                      && request.resource.data.authorId == request.auth.uid
+                      && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 1000;
+        allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canDeleteContent());
+      }
+    }
+
+    match /skills/{skillId} {
+      // Global skill categories
+      allow read: if isAuthenticated();
+      allow create: if canManageMembers()
+                    && request.resource.data.keys().hasOnly([
+                      'name',
+                      'overview',
+                      'description',
+                      'category',
+                      'badge',
+                      'featured',
+                      'createdBy',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.name is string
+                    && request.resource.data.overview is string
+                    && request.resource.data.category is string;
+      allow update: if canManageMembers();
+      allow delete: if canManageMembers();
+    }
+
+    match /specializations/{specializationId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageMembers();
+    }
+
+    match /achievements/{achievementId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageMembers();
+    }
+    
+    match /skillPosts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'skillId',
+                      'type',
+                      'title',
+                      'body',
+                      'authorId',
+                      'authorName',
+                      'featured',
+                      'likes',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.skillId is string
+                    && request.resource.data.type in ['Discussion', 'Question', 'Guide', 'Tutorial', 'Challenge', 'Resource', 'Discovery']
+                    && request.resource.data.title is string
+                    && request.resource.data.body is string
+                    && request.resource.data.likes is list;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canDeleteContent());
+    }
+
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'skillId',
+                      'type',
+                      'title',
+                      'description',
+                      'url',
+                      'authorId',
+                      'authorName',
+                      'featured',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.skillId is string
+                    && request.resource.data.type in ['book', 'PDF', 'video', 'website', 'article']
+                    && request.resource.data.title is string
+                    && request.resource.data.url is string;
+      allow update: if canDeleteContent()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['featured', 'updatedAt']);
+      allow update, delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+    }
+
+    match /skillXpLogs/{logId} {
+      allow read: if canManageMembers() || resource.data.userId == request.auth.uid;
+      allow create: if isMember()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'userId',
+                      'skillId',
+                      'amount',
+                      'reason',
+                      'sourceType',
+                      'sourceId',
+                      'actorId',
+                      'createdAt'
+                    ])
+                    && request.resource.data.skillId is string
+                    && request.resource.data.amount is number;
+      allow update, delete: if false;
+    }
+
+    match /aiKnowledge/{knowledgeId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'content',
+                      'category',
+                      'createdBy',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.content is string
+                    && request.resource.data.category is string;
+      allow update, delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
+    // AI MEMORY (Step 21)
+    // ----------------------------------------
+    match /aiMemory/{userId} {
+      // Users can only read/write their own memory
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ----------------------------------------
+    // AI CHAT SESSIONS (Step 21)
+    // ----------------------------------------
+    match /aiChatSessions/{sessionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+      }
+    }
+
+    // ----------------------------------------
+    // DIGITAL WORKSPACE & COLLABORATION OS (Step 22)
+    // ----------------------------------------
+
+    function isWorkspaceMember(workspaceId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/workspaceMembers/$(workspaceId + '_' + request.auth.uid));
+    }
+
+    function getWorkspaceRole(workspaceId) {
+      return get(/databases/$(database)/documents/workspaceMembers/$(workspaceId + '_' + request.auth.uid)).data.role;
+    }
+
+    function isWorkspaceEditorOrOwner(workspaceId) {
+      return isWorkspaceMember(workspaceId) && getWorkspaceRole(workspaceId) in ['EDITOR', 'OWNER'];
+    }
+
+    function isWorkspaceOwner(workspaceId) {
+      return isWorkspaceMember(workspaceId) && getWorkspaceRole(workspaceId) == 'OWNER';
+    }
+
+    function canReadWorkspace(workspaceId) {
+      return isAuthenticated() && (
+        isWorkspaceMember(workspaceId) || 
+        // For simplicity in Phase 1, CEO/Leaders can view any workspace
+        canManageMembers() || isLeader()
+      );
+    }
+
+    match /workspaces/{workspaceId} {
+      allow read: if canReadWorkspace(workspaceId);
+      allow create: if isAuthenticated();
+      allow update, delete: if isWorkspaceOwner(workspaceId) || canManageMembers();
+    }
+
+    match /workspaceMembers/{memberId} {
+      // memberId format should be: workspaceId_userId
+      allow read: if canReadWorkspace(memberId.split('_')[0]);
+      allow create, update, delete: if isWorkspaceOwner(memberId.split('_')[0]) || canManageMembers() || request.auth.uid == memberId.split('_')[1];
+    }
+
+    match /workspaceInvites/{inviteId} {
+      allow read: if canReadWorkspace(resource.data.workspaceId);
+      allow create: if isWorkspaceEditorOrOwner(request.resource.data.workspaceId);
+      allow update, delete: if isWorkspaceEditorOrOwner(resource.data.workspaceId);
+    }
+
+    match /documents/{docId} {
+      allow read: if isAuthenticated() && (
+        resource.data.visibility == 'PUBLIC' ||
+        resource.data.visibility == 'ORGANIZATION' ||
+        canReadWorkspace(resource.data.workspaceId) ||
+        resource.data.authorId == request.auth.uid
+      );
+      allow create: if isWorkspaceEditorOrOwner(request.resource.data.workspaceId);
+      allow update: if isWorkspaceEditorOrOwner(resource.data.workspaceId);
+      allow delete: if isWorkspaceOwner(resource.data.workspaceId) || resource.data.authorId == request.auth.uid;
+    }
+
+    match /documentVersions/{versionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+    }
+
+    match /notes/{noteId} {
+      allow read: if canReadWorkspace(resource.data.workspaceId);
+      allow create: if isWorkspaceEditorOrOwner(request.resource.data.workspaceId);
+      allow update, delete: if isWorkspaceEditorOrOwner(resource.data.workspaceId);
+    }
+
+    match /researchNotebooks/{notebookId} {
+      allow read: if canReadWorkspace(resource.data.workspaceId);
+      allow create: if isWorkspaceEditorOrOwner(request.resource.data.workspaceId);
+      allow update, delete: if isWorkspaceEditorOrOwner(resource.data.workspaceId);
+
+      match /entries/{entryId} {
+        allow read: if canReadWorkspace(get(/databases/$(database)/documents/researchNotebooks/$(notebookId)).data.workspaceId);
+        allow create, update, delete: if isWorkspaceEditorOrOwner(get(/databases/$(database)/documents/researchNotebooks/$(notebookId)).data.workspaceId);
+      }
+    }
+
+    match /whiteboards/{boardId} {
+      allow read: if canReadWorkspace(resource.data.workspaceId);
+      allow create: if isWorkspaceEditorOrOwner(request.resource.data.workspaceId);
+      allow update, delete: if isWorkspaceEditorOrOwner(resource.data.workspaceId);
+    }
+
+    match /mindMaps/{mapId} {
+      allow read: if canReadWorkspace(resource.data.workspaceId);
+      allow create: if isWorkspaceEditorOrOwner(request.resource.data.workspaceId);
+      allow update, delete: if isWorkspaceEditorOrOwner(resource.data.workspaceId);
+    }
+
+    match /workspaceActivity/{activityId} {
+      allow read: if canReadWorkspace(resource.data.workspaceId);
+      allow create: if isAuthenticated();
+    }
+
+    // ----------------------------------------
+    // TASKS SYSTEM
+    // ----------------------------------------
+    match /taskTemplates/{templateId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageMembers() || isLeader();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      // Leaders & CEOs can create tasks
+      allow create: if isLeader() || canManageMembers();
+      // Venture founders and members can create scoped venture tasks.
+      allow create: if isMember()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.ventureId is string;
+      // Creator, Assignee (for status updates), or Admin can update
+      allow update: if isAuthenticated() && (
+        resource.data.creatorId == request.auth.uid || 
+        request.auth.uid in resource.data.assigneeIds ||
+        (resource.data.type == 'GLOBAL' && isMember()) ||
+        canManageMembers()
+      );
+      allow delete: if canManageMembers() || resource.data.creatorId == request.auth.uid;
+      
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canManageMembers());
+      }
+    }
+    
+    match /taskSubmissions/{submissionId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember();
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canReviewTasks());
+    }
+
+    // ----------------------------------------
+    // COMMUNICATION
+    // ----------------------------------------
+    match /chatRooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create: if canManageMembers()
+                    && request.resource.data.keys().hasOnly([
+                      'name',
+                      'description',
+                      'type',
+                      'createdBy',
+                      'createdAt',
+                      'archived'
+                    ])
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.name is string
+                    && request.resource.data.description is string
+                    && request.resource.data.type in ['public', 'announcement']
+                    && request.resource.data.archived == false;
+      allow update: if canManageMembers()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['archived']);
+      allow delete: if canManageMembers();
+      
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isMember()
+                      && request.resource.data.senderId == request.auth.uid
+                      && request.resource.data.keys().hasOnly([
+                        'senderId',
+                        'senderName',
+                        'senderRole',
+                        'text',
+                        'createdAt',
+                        'edited',
+                        'deleted',
+                        'replyTo',
+                        'reactions',
+                        'mentions',
+                        'announcement',
+                        'pinned',
+                        'archived'
+                      ])
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 1000
+                      && request.resource.data.edited == false
+                      && request.resource.data.deleted == false
+                      && (
+                        (
+                          isPublicChatRoom(roomId)
+                          && !request.resource.data.keys().hasAny(['announcement', 'pinned', 'archived'])
+                        ) ||
+                        (
+                          isAnnouncementRoom(roomId)
+                          && canCreateAnnouncements()
+                          && request.resource.data.announcement == true
+                          && request.resource.data.pinned == false
+                          && request.resource.data.archived == false
+                        )
+                      );
+        allow update: if isAuthenticated()
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+                      && request.resource.data.reactions.keys().hasOnly([
+                        'thumbsUp',
+                        'heart',
+                        'fire',
+                        'party',
+                        'smile'
+                      ]);
+        allow update: if canManageMembers()
+                      && resource.data.announcement == true
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned', 'archived']);
+        allow delete: if isAuthenticated() && (resource.data.senderId == request.auth.uid || canDeleteContent());
+      }
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow write: if canCreateAnnouncements();
+    }
+
+    match /activityLogs/{logId} {
+      // Activity feed is generally visible to members to drive engagement
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Application code writes to audit log
+      allow update, delete: if false; // Immutable
+    }
+
+    // ----------------------------------------
+    // COMMUNITY, SOCIAL & PUBLIC ECOSYSTEM (Step 23)
+    // ----------------------------------------
+    match /communities/{communityId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.keys().hasOnly([
+                      'id',
+                      'name',
+                      'description',
+                      'category',
+                      'visibility',
+                      'createdBy',
+                      'memberCount',
+                      'postCount',
+                      'archived',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.name is string
+                    && request.resource.data.visibility in ['PUBLIC', 'PRIVATE']
+                    && request.resource.data.archived == false;
+      allow update: if isMember()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'memberCount',
+                      'postCount',
+                      'updatedAt'
+                    ]);
+      allow update, delete: if canManageMembers();
+    }
+
+    match /communityMembers/{memberId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'communityId',
+                      'userId',
+                      'username',
+                      'displayName',
+                      'role',
+                      'joinedAt'
+                    ]);
+      allow update, delete: if isAuthenticated()
+                            && (resource.data.userId == request.auth.uid || canManageMembers());
+    }
+
+    match /communityPosts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'communityId',
+                      'communityName',
+                      'title',
+                      'content',
+                      'category',
+                      'type',
+                      'authorId',
+                      'authorName',
+                      'authorUsername',
+                      'reactions',
+                      'status',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.content is string
+                    && request.resource.data.status == 'ACTIVE';
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'reactions',
+                      'updatedAt'
+                    ]);
+      allow update, delete: if isAuthenticated()
+                            && (resource.data.authorId == request.auth.uid || canDeleteContent());
+    }
+
+    match /communityComments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'postId',
+                      'communityId',
+                      'parentCommentId',
+                      'text',
+                      'authorId',
+                      'authorName',
+                      'authorUsername',
+                      'reactions',
+                      'status',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.text is string
+                    && request.resource.data.status == 'ACTIVE';
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'reactions',
+                      'updatedAt'
+                    ]);
+      allow update, delete: if isAuthenticated()
+                            && (resource.data.authorId == request.auth.uid || canDeleteContent());
+    }
+
+    match /memberFollowers/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.followerId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'followerId',
+                      'followerName',
+                      'followingId',
+                      'followingName',
+                      'createdAt'
+                    ]);
+      allow delete: if isAuthenticated()
+                    && (resource.data.followerId == request.auth.uid || canManageMembers());
+      allow update: if false;
+    }
+
+    match /memberFollowing/{id} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.followerId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'followerId',
+                      'followerName',
+                      'followingId',
+                      'followingName',
+                      'createdAt'
+                    ]);
+      allow delete: if isAuthenticated()
+                    && (resource.data.followerId == request.auth.uid || canManageMembers());
+      allow update: if false;
+    }
+
+    match /activityFeed/{activityId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.actorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'type',
+                      'category',
+                      'title',
+                      'message',
+                      'actorId',
+                      'actorName',
+                      'link',
+                      'createdAt'
+                    ]);
+      allow update, delete: if canDeleteContent();
+    }
+
+    match /reputationLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'userId',
+                      'type',
+                      'amount',
+                      'reason',
+                      'sourceId',
+                      'createdAt'
+                    ]);
+      allow update, delete: if false;
+    }
+
+    match /publicShowcases/{showcaseId} {
+      allow read: if true;
+      allow create: if isAuthenticated()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'type',
+                      'sourceId',
+                      'sourceCollection',
+                      'media',
+                      'authorId',
+                      'authorName',
+                      'authorUsername',
+                      'featured',
+                      'status',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.featured == false
+                    && request.resource.data.status == 'ACTIVE';
+      allow update, delete: if isAuthenticated()
+                            && (resource.data.authorId == request.auth.uid || canDeleteContent());
+    }
+
+    match /contentReports/{reportId} {
+      allow create: if isAuthenticated()
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'targetType',
+                      'targetId',
+                      'reason',
+                      'reporterId',
+                      'reporterName',
+                      'status',
+                      'warningIssued',
+                      'suspensionRecommended',
+                      'createdAt',
+                      'updatedAt'
+                    ]);
+      allow read, update, delete: if canDeleteContent();
+    }
+    
+    match /xpLogs/{logId} {
+      allow read: if canManageMembers() || resource.data.userId == request.auth.uid;
+      allow create: if isMember(); // Client-side systems log XP until Cloud Functions exist
+      allow update, delete: if false;
+    }
+
+    // ----------------------------------------
+    // AUDIT LOGS (Admin Command Center)
+    // ----------------------------------------
+    match /auditLogs/{logId} {
+      // Only CEO/Co-CEO can read audit logs
+      allow read: if canManageMembers();
+      // Any authenticated user can create an audit log (application code)
+      allow create: if isAuthenticated()
+                    && request.resource.data.keys().hasOnly([
+                      'type',
+                      'actorId',
+                      'targetId',
+                      'summary',
+                      'metadata',
+                      'createdAt'
+                    ])
+                    && request.resource.data.actorId is string
+                    && request.resource.data.type is string
+                    && request.resource.data.summary is string;
+      // Immutable - no updates or deletes
+      allow update, delete: if false;
+    }
+
+    // ----------------------------------------
+    // ADMIN ROLES
+    // ----------------------------------------
+    match /adminRoles/{roleId} {
+      // Any member can read roles (for UI display)
+      allow read: if isAuthenticated();
+      // Only Main CEO can manage roles
+      allow write: if isMainCEO();
+    }
+
+    // ----------------------------------------
+    // PLATFORM CONFIG (Security, Settings)
+    // ----------------------------------------
+    match /config/{configId} {
+      // CEOs can read config
+      allow read: if canManageMembers();
+      // Only Main CEO can update config
+      allow write: if isMainCEO();
+    }
+
+    // ----------------------------------------
+    // ANALYTICS SNAPSHOTS (Mission Control)
+    // ----------------------------------------
+    match /analyticsSnapshots/{snapshotId} {
+      allow read: if canManageMembers() || isLeader();
+      allow create: if canManageMembers() || isLeader();
+      allow update, delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
+    // SEASONS (Step 16)
+    // ----------------------------------------
+    match /seasons/{seasonId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // EVENTS & PARTICIPANTS (Step 16)
+    // ----------------------------------------
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /eventParticipants/{participantId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+    }
+
+    // ----------------------------------------
+    // CHALLENGES & SUBMISSIONS (Step 16)
+    // ----------------------------------------
+    match /challenges/{challengeId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /challengeSubmissions/{submissionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+    }
+
+    // ----------------------------------------
+    // CERTIFICATES (Step 17)
+    // ----------------------------------------
+    match /certificates/{certificateId} {
+      allow read: if true;
+      allow write: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // INNOVATION REGISTRY (Step 18)
+    // ----------------------------------------
+    match /researchLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /discoveries/{discoveryId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /innovationAwards/{awardId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // VENTURES, STARTUPS & INCUBATOR OS (Step 24)
+    // ----------------------------------------
+    match /ventures/{ventureId} {
+      allow read: if resource.data.visibility == 'PUBLIC' || isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.founderId == request.auth.uid
+                    && request.resource.data.title is string
+                    && request.resource.data.stage in [
+                      'IDEA',
+                      'RESEARCH',
+                      'VALIDATION',
+                      'PROTOTYPE',
+                      'DEVELOPMENT',
+                      'TESTING',
+                      'LAUNCH',
+                      'SCALING',
+                      'SUCCESSFUL',
+                      'ARCHIVED'
+                    ]
+                    && request.resource.data.status in ['PENDING_REVIEW', 'APPROVED', 'ACTIVE', 'FEATURED', 'ARCHIVED']
+                    && request.resource.data.visibility in ['PUBLIC', 'INTERNAL', 'PRIVATE'];
+      allow update: if canManageOrganization();
+      allow update: if isAuthenticated()
+                    && request.auth.uid in resource.data.memberIds
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'problem',
+                      'solution',
+                      'industry',
+                      'category',
+                      'coFounderIds',
+                      'teamIds',
+                      'memberIds',
+                      'mentorIds',
+                      'stage',
+                      'visibility',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'followerCount',
+                      'applicationCount',
+                      'updateCount',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageOrganization();
+    }
+
+    match /ventureApplications/{applicationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if canManageOrganization();
+      allow update: if isAuthenticated()
+                    && get(/databases/$(database)/documents/ventures/$(resource.data.ventureId)).data.founderId == request.auth.uid;
+      allow delete: if canManageOrganization();
+    }
+
+    match /ventureMilestones/{milestoneId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if canManageOrganization();
+      allow update: if isAuthenticated()
+                    && request.auth.uid in get(/databases/$(database)/documents/ventures/$(resource.data.ventureId)).data.memberIds;
+      allow delete: if canManageOrganization();
+    }
+
+    match /ventureUpdates/{updateId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /ventureResources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAuthenticated()
+                            && request.auth.uid in get(/databases/$(database)/documents/ventures/$(resource.data.ventureId)).data.memberIds;
+    }
+
+    match /ventureInvestments/{investmentId} {
+      allow read: if canManageOrganization();
+      allow write: if canManageOrganization();
+    }
+
+    match /ventureAchievements/{achievementId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /ventureMetrics/{metricId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /ventureFollowers/{followerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /ventureTeams/{teamId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /ventureRoadmaps/{roadmapId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /researchReviews/{reviewId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /researchTeams/{teamId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || canManageOrganization());
+    }
+
+    // ----------------------------------------
+    // ACADEMY & KNOWLEDGE BASE (Step 19)
+    // ----------------------------------------
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && (request.resource.data.instructorId == request.auth.uid || request.resource.data.creatorId == request.auth.uid)
+                    && request.resource.data.status in ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+      allow update, delete: if isAuthenticated() && (
+        resource.data.instructorId == request.auth.uid ||
+        resource.data.creatorId == request.auth.uid ||
+        request.auth.uid in resource.data.instructorIds ||
+        canManageOrganization()
+      );
+    }
+
+    match /courseModules/{moduleId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid ||
+        canManageOrganization()
+      );
+    }
+
+    match /courseLessons/{lessonId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (
+        get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid ||
+        request.auth.uid in get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.instructorIds ||
+        canManageOrganization()
+      );
+    }
+
+    match /lessonResources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || canManageOrganization());
+    }
+
+    match /lessons/{lessonId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Should check if user owns course, but simplify for now
+      allow update, delete: if isAuthenticated() || canManageOrganization();
+    }
+
+    match /learningPaths/{pathId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /courseEnrollments/{enrollmentId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow delete: if canManageOrganization();
+    }
+
+    match /courseReviews/{reviewId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+    }
+
+    match /knowledgeArticles/{articleId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /tutorials/{tutorialId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /resourceLibraries/{resourceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.uploadedBy == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.uploadedBy == request.auth.uid || canManageOrganization());
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || canManageOrganization());
+    }
+
+    match /quizAttempts/{attemptId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if canManageOrganization(); // Immutable after attempt
+    }
+
+    match /assignments/{assignmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /assignmentSubmissions/{submissionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if canManageOrganization();
+      allow delete: if canManageOrganization();
+    }
+
+    match /certifications/{certificationId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /skillTrees/{treeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /skillNodes/{nodeId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if canManageOrganization();
+    }
+
+    match /userLearning/{learningId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if canManageOrganization();
+    }
+
+    match /learningAchievements/{achievementId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /academyAnalytics/{eventId} {
+      allow read: if canManageOrganization();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // CREATOR ECONOMY, MARKETPLACE & RESOURCE EXCHANGE OS (Step 26)
+    // ----------------------------------------
+    match /marketplaceItems/{resourceId} {
+      allow read: if resource.data.visibility == 'PUBLIC' || isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.status in ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+      allow update: if isAuthenticated() && (
+        resource.data.creatorId == request.auth.uid ||
+        canManageOrganization()
+      );
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'viewCount',
+                      'downloadCount',
+                      'bookmarkCount',
+                      'rating',
+                      'reviewCount',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageOrganization() || (isAuthenticated() && resource.data.creatorId == request.auth.uid);
+    }
+
+    match /marketplaceCategories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /marketplaceCollections/{collectionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.creatorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || canManageOrganization());
+    }
+
+    match /marketplaceReviews/{reviewId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpfulVotes', 'updatedAt']);
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /marketplaceDownloads/{downloadId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.creatorId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /marketplaceBookmarks/{bookmarkId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow update: if false;
+    }
+
+    match /marketplaceReports/{reportId} {
+      allow read: if canManageOrganization();
+      allow create: if isAuthenticated() && request.resource.data.reporterId == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /creatorProfiles/{creatorId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && creatorId == request.auth.uid;
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'followers',
+                      'downloads',
+                      'resources',
+                      'collections',
+                      'reputation',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageOrganization();
+    }
+
+    match /creatorFollowers/{followId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow update: if false;
+    }
+
+    match /resourceLicenses/{licenseId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /resourceAnalytics/{eventId} {
+      allow read: if canManageOrganization();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /featuredResources/{featuredId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // AUTOMATION, WORKFLOWS & SMART OPERATIONS OS (Step 27)
+    // ----------------------------------------
+    match /automations/{automationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.executionPhase in ['HUMAN_APPROVED', 'SEMI_AUTONOMOUS', 'AI_DRIVEN']
+                    && request.resource.data.status in ['DRAFT', 'ACTIVE', 'PAUSED', 'ARCHIVED'];
+      allow update: if isAuthenticated() && (
+        resource.data.ownerId == request.auth.uid ||
+        canManageOrganization()
+      );
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'runCount',
+                      'successCount',
+                      'failureCount',
+                      'lastRunAt',
+                      'healthScore',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageOrganization() || (isAuthenticated() && resource.data.ownerId == request.auth.uid);
+    }
+
+    match /workflowTemplates/{templateId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /workflowExecutions/{executionId} {
+      allow read: if isAuthenticated() && (resource.data.actorId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.actorId == request.auth.uid;
+      allow update: if canManageOrganization();
+      allow delete: if canManageOrganization();
+    }
+
+    match /workflowLogs/{logId} {
+      allow read: if canManageOrganization();
+      allow create: if isAuthenticated() && request.resource.data.actorId == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /workflowApprovals/{approvalId} {
+      allow read: if isAuthenticated() && (resource.data.requesterId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.requesterId == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /automationTriggers/{triggerId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /automationActions/{actionId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /automationConditions/{conditionId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /scheduledJobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /automationMetrics/{metricId} {
+      allow read: if canManageOrganization();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /agentTasks/{taskId} {
+      allow read: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.createdBy == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /agentExecutions/{executionId} {
+      allow read: if isAuthenticated() && (resource.data.actorId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.actorId == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /agentMemory/{memoryId} {
+      allow read: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || canManageOrganization());
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid || canManageOrganization());
+    }
+
+    // ----------------------------------------
+    // UNIVERSE OS & UNIFIED INTELLIGENCE (Step 28)
+    // ----------------------------------------
+    match /universeProfiles/{profileId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && request.auth.uid == profileId;
+      allow delete: if canManageMembers();
+    }
+
+    match /knowledgeGraph/{graphId} {
+      allow read: if isMember();
+      allow write: if canManageOrganization();
+    }
+
+    match /knowledgeNodes/{nodeId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /knowledgeEdges/{edgeId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /unifiedSearchIndex/{entryId} {
+      allow read: if canManageOrganization();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageMembers();
+    }
+
+    match /recommendationEngine/{recId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageMembers() || resource.data.userId == request.auth.uid;
+    }
+
+    match /personalizedFeeds/{feedId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if canManageMembers();
+    }
+
+    match /ecosystemInsights/{insightId} {
+      allow read: if isMember();
+      allow write: if canManageOrganization();
+    }
+
+    match /universeAnalytics/{analyticsId} {
+      allow read: if canManageOrganization();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageMembers();
+    }
+
+    match /memberInterests/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if request.auth.uid == userId || canManageMembers();
+    }
+
+    match /memberGoals/{goalId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /memberJourney/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if canManageMembers();
+    }
+
+    match /smartCollections/{collectionId} {
+      allow read: if isMember();
+      allow write: if canManageOrganization();
+    }
+
+    match /crossSystemLinks/{linkId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // REALTIME COLLABORATION OS (Step 29)
+    // ----------------------------------------
+    match /presence/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if canManageMembers();
+    }
+
+    match /voiceRooms/{roomId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if canManageOrganization();
+    }
+
+    match /videoRooms/{roomId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if canManageOrganization();
+    }
+
+    match /meetingRooms/{meetingId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if canManageOrganization();
+    }
+
+    match /meetingNotes/{noteId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+      allow delete: if canManageOrganization();
+    }
+
+    match /meetingRecordings/{recordingId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /liveSessions/{sessionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /collaborationSessions/{sessionId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    match /sharedCursors/{cursorId} {
+      allow read: if isMember();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /workspacePresence/{presenceId} {
+      allow read: if isMember();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /screenShares/{shareId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /roomInvitations/{inviteId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /roomPermissions/{permId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /activityPresence/{activityId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update, delete: if canManageOrganization();
+    }
+
+    match /liveWhiteboards/{boardId} {
+      allow read: if isMember();
+      allow create, update: if isAuthenticated();
+      allow delete: if canManageOrganization();
+    }
+
+    match /whiteboardElements/{elementId} {
+      allow read: if isMember();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /collaborativeDocuments/{docId} {
+      allow read: if isMember();
+      allow create, update: if isAuthenticated();
+      allow delete: if canManageOrganization();
+    }
+
+    match /documentPresence/{presenceId} {
+      allow read: if isMember();
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    match /liveComments/{commentId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+    }
+
+    match /teamWarRooms/{roomId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if canManageOrganization();
+    }
+
+    match /brainstormSessions/{sessionId} {
+      allow read: if isMember();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // GLOBAL USERNAMES INDEX
+    // ----------------------------------------
+    match /usernames/{usernameId} {
+      allow get, list: if true; // Needed to check availability before signup
+      allow create: if isAuthenticated() 
+                    && request.resource.data.uid == request.auth.uid
+                    && usernameId == request.resource.data.normalizedUsername
+                    && request.resource.data.authEmail == usernameId + '@beastbuck.local';
+      // Users cannot delete or change username without admin help for now to prevent chaos
+      allow update, delete: if canManageMembers();
+    }
+  }
+}
