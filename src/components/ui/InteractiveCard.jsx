@@ -73,7 +73,6 @@ const InteractiveCard = forwardRef(({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeaveCapture={handleMouseLeave}
       {...props}
     >
       {premium && isHovered && (

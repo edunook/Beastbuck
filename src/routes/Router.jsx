@@ -27,6 +27,7 @@ const CommunityDetailPage = React.lazy(() => import('../features/community/Commu
 const ShowcasePage = React.lazy(() => import('../features/community/CommunityPages').then(module => ({ default: module.ShowcasePage })));
 const DiscoverPage = React.lazy(() => import('../features/community/CommunityPages').then(module => ({ default: module.DiscoverPage })));
 const ProfilePage = React.lazy(() => import('../features/profile/ProfilePage'));
+const ProfileEdit = React.lazy(() => import('../features/profile/ProfileEdit'));
 const LeaderboardsPage = React.lazy(() => import('../features/leaderboards/LeaderboardsPage'));
 const ExperimentsLab = React.lazy(() => import('../features/experiments/ExperimentsLab'));
 const ExperimentDetail = React.lazy(() => import('../features/experiments/ExperimentDetail'));
@@ -391,6 +392,7 @@ export default function AppRouter() {
           <Route path="/ai" element={<AIOS />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:uid" element={<ProfilePage />} />
+          <Route path="/profile/:uid/edit" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
           <Route path="/settings" element={<ModulePage type="settings" />} />
           
           {/* CEO Protected Routes inside AppShell */}
@@ -414,6 +416,7 @@ export default function AppRouter() {
               PORTFOLIOS & CERTIFICATES ROUTES (Step 17)
               ======================================== */}
           <Route path="portfolios" element={<PortfolioShowcase />} />
+          <Route path="portfolio" element={<Navigate to="/portfolios" replace />} />
           <Route path="portfolio/:username" element={<PortfolioPage />} />
           <Route path="portfolio/:username/share" element={<PortfolioShare />} />
           <Route path="verify/:certId" element={<CertificateView />} />

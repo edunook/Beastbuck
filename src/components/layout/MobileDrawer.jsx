@@ -47,6 +47,7 @@ const BOTTOM_NAV_ITEMS = [
 
 const DRAWER_NAV_ITEMS = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { name: 'Portfolio', path: '/portfolio', icon: User },
   { name: 'Tasks', path: '/tasks', icon: CheckSquare },
   { name: 'Communities', path: '/communities', icon: UsersRound },
   { name: 'Discover', path: '/discover', icon: Compass },
@@ -87,51 +88,16 @@ export default function MobileDrawer() {
 
   return (
     <>
-      {/* Bottom Navigation Bar - Always visible on mobile */}
-      <div className="fixed bottom-0 left-0 right-0 bg-surface backdrop-blur-glass-md border-t border-border z-notification md:hidden">
-        <div className="flex items-center justify-around h-16">
-          {BOTTOM_NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            if (item.isDrawerTrigger) {
-              return (
-                <button
-                  key={item.name}
-                  onClick={toggleMobileDrawer}
-                  aria-label={item.name}
-                  className="flex flex-col items-center justify-center gap-1 min-w-[44px] min-h-[44px] text-text-muted hover:text-accent transition-colors"
-                >
-                  <Icon className="w-6 h-6" aria-hidden="true" />
-                  <span className="text-badge font-medium">{item.name}</span>
-                </button>
-              );
-            }
-            return (
-              <NavLink
-                key={item.name}
-                to={item.path}
-                aria-label={item.name}
-                className={({ isActive }) => cn(
-                  "flex flex-col items-center justify-center gap-1 min-w-[44px] min-h-[44px] transition-colors",
-                  isActive ? "text-accent" : "text-text-muted hover:text-text"
-                )}
-              >
-                <Icon className="w-6 h-6" aria-hidden="true" />
-                <span className="text-badge font-medium">{item.name}</span>
-              </NavLink>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Drawer (opened via Menu button) */}
       {!isMobileDrawerOpen ? null : (
         <>
           <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-glass-sm z-modal-backdrop md:hidden transition-opacity"
+            className="fixed inset-0 bg-black/90 backdrop-blur-glass-sm md:hidden transition-opacity"
             onClick={toggleMobileDrawer}
+            style={{ zIndex: 999998 }}
           />
           
-          <div className="fixed inset-y-0 left-0 w-[280px] bg-surface border-r border-border z-modal md:hidden flex flex-col shadow-depth-3 animate-in slide-in-from-left duration-slow">
+          <div className="fixed inset-y-0 left-0 w-[280px] bg-background border-r border-border md:hidden flex flex-col shadow-depth-3 animate-in slide-in-from-left duration-slow" style={{ zIndex: 999999 }}>
             
             {/* Header */}
             <div className="h-16 flex items-center justify-between px-6 border-b border-border shrink-0">

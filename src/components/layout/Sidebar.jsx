@@ -30,6 +30,7 @@ import { cn } from '../../lib/utils';
 
 const NAV_ITEMS = [
   { name: 'Home', path: '/dashboard', icon: LayoutDashboard },
+  { name: 'Portfolio', path: '/portfolio', icon: User },
   {
     label: 'Projects',
     icon: CheckSquare,
@@ -246,7 +247,7 @@ export default function Sidebar() {
       aria-label="Main navigation"
       className={cn(
         "hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-sticky",
-        "bg-surface backdrop-blur-glass-lg border-r border-border transition-all duration-slow",
+        "bg-background border-r border-border transition-all duration-slow",
         isSidebarCollapsed ? "w-20" : "w-64"
       )}
     >

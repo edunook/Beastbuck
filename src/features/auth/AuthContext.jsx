@@ -36,12 +36,14 @@ export const AuthProvider = ({ children }) => {
             setRoleData(data);
             
             // Initialize rich presence once we have the user's profile
-            if (unsubPresence) unsubPresence();
-            unsubPresence = PresenceService.initializePresence(firebaseUser.uid, {
-              username: data.username,
-              displayName: data.displayName || data.name,
-              avatar: data.photoURL || '',
-            });
+            // Only initialize if not already initialized to avoid permission errors
+            if (!unsubPresence) {
+              unsubPresence = PresenceService.initializePresence(firebaseUser.uid, {
+                username: data.username,
+                displayName: data.displayName || data.name,
+                avatar: data.photoURL || '',
+              });
+            }
           } else {
             setRoleData(null);
           }

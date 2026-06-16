@@ -14,6 +14,7 @@ export default function VideoMeetPage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { user, roleData } = useAuth();
+  const isApprovedMember = roleData?.membershipStatus === 'approved';
   
   const [meetings, setMeetings] = useState([]);
   const [rtcManager, setRtcManager] = useState(null);
@@ -203,7 +204,7 @@ export default function VideoMeetPage() {
         title="Video Meetings"
         description="Face-to-face collaboration with your team."
         action={
-          <Button onClick={createMeeting}><Plus className="w-4 h-4 mr-2" /> New Meeting</Button>
+          isApprovedMember ? <Button onClick={createMeeting}><Plus className="w-4 h-4 mr-2" /> New Meeting</Button> : null
         }
       />
       

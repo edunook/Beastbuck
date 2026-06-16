@@ -10,19 +10,24 @@ import {
   Check,
   FlaskConical,
   FolderKanban,
+  Globe,
+  GraduationCap,
+  MapPin,
   Medal,
   Plus,
   Shield,
+  Share2,
   Sparkles,
   Star,
   UserRound,
   X,
   Zap,
   ArrowRight,
+  Edit,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { UsersService } from '../../services/firebase/users';
-import { hasPermission } from '../../services/firebase/permissions';
+import { hasPermission, PERMISSIONS } from '../../services/firebase/permissions';
 import { getLevelProgress } from '../../services/firebase/gamification';
 import { OrganizationService } from '../../services/firebase/organization';
 import { UniverseService } from '../../services/firebase/universe';
@@ -34,7 +39,6 @@ import { LoadingState } from '../../components/ui/UIElements';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import { MembershipService } from '../../services/firebase/membership';
-import { PERMISSIONS } from '../../constants/permissions';
 
 function formatDate(timestamp) {
   const date = timestamp?.toDate?.();
@@ -45,6 +49,606 @@ function formatDate(timestamp) {
     day: 'numeric',
     year: 'numeric',
   }).format(date);
+}
+
+// Theme Templates
+const THEME_TEMPLATES = [
+  {
+    id: 'default',
+    name: 'Default Dark',
+    description: 'Classic dark theme with cyan accents',
+    background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+    textColor: '#ffffff',
+    accentColor: '#00d4ff',
+  },
+  {
+    id: 'ocean',
+    name: 'Ocean Blue',
+    description: 'Deep ocean gradients with blue accents',
+    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+    textColor: '#e94560',
+    accentColor: '#00d4ff',
+  },
+  {
+    id: 'sunset',
+    name: 'Sunset Glow',
+    description: 'Warm sunset colors with purple accents',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    textColor: '#ffffff',
+    accentColor: '#f093fb',
+  },
+  {
+    id: 'forest',
+    name: 'Forest Green',
+    description: 'Natural green tones with earth accents',
+    background: 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)',
+    textColor: '#ffffff',
+    accentColor: '#a8e6cf',
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight Purple',
+    description: 'Dark purple with neon accents',
+    background: 'linear-gradient(135deg, #2d1b4e 0%, #1a1a2e 100%)',
+    textColor: '#e94560',
+    accentColor: '#ff00ff',
+  },
+  {
+    id: 'cyberpunk',
+    name: 'Cyberpunk',
+    description: 'Neon cyberpunk aesthetic',
+    background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #2d1b4e 100%)',
+    textColor: '#00ff00',
+    accentColor: '#ff00ff',
+  },
+  {
+    id: 'minimal',
+    name: 'Minimal Light',
+    description: 'Clean minimal light theme',
+    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+    textColor: '#2d3748',
+    accentColor: '#4299e1',
+  },
+  {
+    id: 'royal',
+    name: 'Royal Gold',
+    description: 'Luxurious gold and dark theme',
+    background: 'linear-gradient(135deg, #1a1a2e 0%, #4a4a4a 50%, #ffd700 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ffd700',
+  },
+  {
+    id: 'cosmic',
+    name: 'Cosmic Space',
+    description: 'Space theme with star effects',
+    background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #2d1b4e 100%)',
+    textColor: '#e94560',
+    accentColor: '#00d4ff',
+  },
+  {
+    id: 'aurora',
+    name: 'Aurora Borealis',
+    description: 'Northern lights color scheme',
+    background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+    textColor: '#ffffff',
+    accentColor: '#00ff87',
+  },
+  {
+    id: 'fire',
+    name: 'Fire & Ember',
+    description: 'Warm fire colors with orange accents',
+    background: 'linear-gradient(135deg, #1a1a2e 0%, #4a1a1a 50%, #ff6b35 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff6b35',
+  },
+  {
+    id: 'ice',
+    name: 'Ice Crystal',
+    description: 'Cool ice blue theme',
+    background: 'linear-gradient(135deg, #e0f7fa 0%, #80deea 50%, #26c6da 100%)',
+    textColor: '#006064',
+    accentColor: '#00bcd4',
+  },
+  {
+    id: 'retro',
+    name: 'Retro Wave',
+    description: '80s retro synthwave style',
+    background: 'linear-gradient(135deg, #2d1b4e 0%, #ff00ff 50%, #00ffff 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff00ff',
+  },
+  {
+    id: 'nature',
+    name: 'Nature Earth',
+    description: 'Earth tones and natural colors',
+    background: 'linear-gradient(135deg, #5d4157 0%, #a8c0ff 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff6b6b',
+  },
+  {
+    id: 'matrix',
+    name: 'Matrix Code',
+    description: 'Matrix green code theme',
+    background: 'linear-gradient(135deg, #000000 0%, #0d0d0d 50%, #1a1a1a 100%)',
+    textColor: '#00ff00',
+    accentColor: '#00ff00',
+  },
+  {
+    id: 'sunset2',
+    name: 'California Sunset',
+    description: 'Warm California sunset colors',
+    background: 'linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ffffff',
+  },
+  {
+    id: 'lavender',
+    name: 'Lavender Dreams',
+    description: 'Soft lavender purple theme',
+    background: 'linear-gradient(135deg, #e6e9f0 0%, #eef1f5 100%)',
+    textColor: '#6c5ce7',
+    accentColor: '#a29bfe',
+  },
+  {
+    id: 'cherry',
+    name: 'Cherry Blossom',
+    description: 'Pink cherry blossom theme',
+    background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff6b9d',
+  },
+  {
+    id: 'neon',
+    name: 'Neon Nights',
+    description: 'Vibrant neon colors on dark',
+    background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2a2a5e 100%)',
+    textColor: '#00ffff',
+    accentColor: '#ff00ff',
+  },
+  {
+    id: 'volcanic',
+    name: 'Volcanic Ash',
+    description: 'Dark volcanic rock theme',
+    background: 'linear-gradient(135deg, #2c3e50 0%, #4a5568 50%, #718096 100%)',
+    textColor: '#f7fafc',
+    accentColor: '#fc8181',
+  },
+  {
+    id: 'emerald',
+    name: 'Emerald City',
+    description: 'Rich emerald green theme',
+    background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)',
+    textColor: '#ecfdf5',
+    accentColor: '#34d399',
+  },
+  {
+    id: 'sapphire',
+    name: 'Sapphire Blue',
+    description: 'Deep sapphire blue theme',
+    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
+    textColor: '#eff6ff',
+    accentColor: '#60a5fa',
+  },
+  {
+    id: 'ruby',
+    name: 'Ruby Red',
+    description: 'Rich ruby red theme',
+    background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%)',
+    textColor: '#fef2f2',
+    accentColor: '#f87171',
+  },
+  {
+    id: 'amethyst',
+    name: 'Amethyst Purple',
+    description: 'Beautiful amethyst purple',
+    background: 'linear-gradient(135deg, #581c87 0%, #6b21a8 50%, #7e22ce 100%)',
+    textColor: '#faf5ff',
+    accentColor: '#c084fc',
+  },
+  {
+    id: 'golden',
+    name: 'Golden Hour',
+    description: 'Golden hour sunset theme',
+    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
+    textColor: '#fffbeb',
+    accentColor: '#fbbf24',
+  },
+  {
+    id: 'silver',
+    name: 'Silver Moon',
+    description: 'Elegant silver moon theme',
+    background: 'linear-gradient(135deg, #374151 0%, #4b5563 50%, #6b7280 100%)',
+    textColor: '#f9fafb',
+    accentColor: '#d1d5db',
+  },
+  {
+    id: 'bronze',
+    name: 'Bronze Age',
+    description: 'Classic bronze metal theme',
+    background: 'linear-gradient(135deg, #78350f 0%, #92400e 50%, #b45309 100%)',
+    textColor: '#fff7ed',
+    accentColor: '#fbbf24',
+  },
+  {
+    id: 'platinum',
+    name: 'Platinum Elite',
+    description: 'Premium platinum theme',
+    background: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)',
+    textColor: '#f3f4f6',
+    accentColor: '#e5e7eb',
+  },
+  {
+    id: 'titanium',
+    name: 'Titanium Strong',
+    description: 'Strong titanium metal theme',
+    background: 'linear-gradient(135deg, #111827 0%, #1f2937 50%, #374151 100%)',
+    textColor: '#f9fafb',
+    accentColor: '#9ca3af',
+  },
+  {
+    id: 'obsidian',
+    name: 'Obsidian Dark',
+    description: 'Deep obsidian black theme',
+    background: 'linear-gradient(135deg, #030712 0%, #111827 50%, #1f2937 100%)',
+    textColor: '#f9fafb',
+    accentColor: '#6b7280',
+  },
+  {
+    id: 'pearl',
+    name: 'Pearl White',
+    description: 'Elegant pearl white theme',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)',
+    textColor: '#1e293b',
+    accentColor: '#64748b',
+  },
+  {
+    id: 'jade',
+    name: 'Jade Stone',
+    description: 'Natural jade stone theme',
+    background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)',
+    textColor: '#ecfdf5',
+    accentColor: '#6ee7b7',
+  },
+  {
+    id: 'topaz',
+    name: 'Topaz Gem',
+    description: 'Beautiful topaz gem theme',
+    background: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 50%, #0284c7 100%)',
+    textColor: '#f0f9ff',
+    accentColor: '#38bdf8',
+  },
+  {
+    id: 'garnet',
+    name: 'Garnet Red',
+    description: 'Deep garnet red theme',
+    background: 'linear-gradient(135deg, #881337 0%, #9f1239 50%, #be123c 100%)',
+    textColor: '#fff1f2',
+    accentColor: '#fb7185',
+  },
+  {
+    id: 'aquamarine',
+    name: 'Aquamarine Sea',
+    description: 'Clear aquamarine theme',
+    background: 'linear-gradient(135deg, #0e7490 0%, #0891b2 50%, #06b6d4 100%)',
+    textColor: '#ecfeff',
+    accentColor: '#67e8f9',
+  },
+  {
+    id: 'peridot',
+    name: 'Peridot Green',
+    description: 'Vibrant peridot green',
+    background: 'linear-gradient(135deg, #3f6212 0%, #4d7c0f 50%, #65a30d 100%)',
+    textColor: '#f7fee7',
+    accentColor: '#a3e635',
+  },
+  {
+    id: 'turquoise',
+    name: 'Turquoise Stone',
+    description: 'Natural turquoise theme',
+    background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%)',
+    textColor: '#f0fdfa',
+    accentColor: '#5eead4',
+  },
+  {
+    id: 'amethyst2',
+    name: 'Amethyst Dream',
+    description: 'Dreamy amethyst purple',
+    background: 'linear-gradient(135deg, #6b21a8 0%, #7c3aed 50%, #8b5cf6 100%)',
+    textColor: '#faf5ff',
+    accentColor: '#d8b4fe',
+  },
+  {
+    id: 'citrine',
+    name: 'Citrine Yellow',
+    description: 'Bright citrine yellow',
+    background: 'linear-gradient(135deg, #ca8a04 0%, #eab308 50%, #facc15 100%)',
+    textColor: '#fefce8',
+    accentColor: '#fde047',
+  },
+  {
+    id: 'moonstone',
+    name: 'Moonstone Glow',
+    description: 'Mystical moonstone theme',
+    background: 'linear-gradient(135deg, #475569 0%, #64748b 50%, #94a3b8 100%)',
+    textColor: '#f8fafc',
+    accentColor: '#cbd5e1',
+  },
+  {
+    id: 'sunstone',
+    name: 'Sunstone Warm',
+    description: 'Warm sunstone theme',
+    background: 'linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)',
+    textColor: '#fff7ed',
+    accentColor: '#fdba74',
+  },
+  {
+    id: 'alexandrite',
+    name: 'Alexandrite Rare',
+    description: 'Rare alexandrite theme',
+    background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%)',
+    textColor: '#f5f3ff',
+    accentColor: '#a78bfa',
+  },
+  {
+    id: 'tanzanite',
+    name: 'Tanzanite Blue',
+    description: 'Rare tanzanite blue',
+    background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
+    textColor: '#eef2ff',
+    accentColor: '#818cf8',
+  },
+  {
+    id: 'morganite',
+    name: 'Morganite Pink',
+    description: 'Soft morganite pink',
+    background: 'linear-gradient(135deg, #9d174d 0%, #be185d 50%, #db2777 100%)',
+    textColor: '#fdf2f8',
+    accentColor: '#f472b6',
+  },
+  {
+    id: 'spinel',
+    name: 'Spinel Red',
+    description: 'Vibrant spinel red',
+    background: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 50%, #dc2626 100%)',
+    textColor: '#fef2f2',
+    accentColor: '#f87171',
+  },
+  {
+    id: 'zircon',
+    name: 'Zircon Blue',
+    description: 'Clear zircon blue',
+    background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)',
+    textColor: '#eff6ff',
+    accentColor: '#93c5fd',
+  },
+  {
+    id: 'kunzite',
+    name: 'Kunzite Pink',
+    description: 'Delicate kunzite pink',
+    background: 'linear-gradient(135deg, #831843 0%, #9d174d 50%, #be185d 100%)',
+    textColor: '#fdf2f8',
+    accentColor: '#f9a8d4',
+  },
+  {
+    id: 'tourmaline',
+    name: 'Tourmaline Green',
+    description: 'Rich tourmaline green',
+    background: 'linear-gradient(135deg, #064e3b 0%, #059669 50%, #10b981 100%)',
+    textColor: '#ecfdf5',
+    accentColor: '#6ee7b7',
+  },
+  {
+    id: 'opal',
+    name: 'Opal Fire',
+    description: 'Fire opal theme',
+    background: 'linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #fb923c 100%)',
+    textColor: '#fff7ed',
+    accentColor: '#fdba74',
+  },
+  {
+    id: 'jasper',
+    name: 'Jasper Stone',
+    description: 'Natural jasper theme',
+    background: 'linear-gradient(135deg, #78350f 0%, #92400e 50%, #b45309 100%)',
+    textColor: '#fff7ed',
+    accentColor: '#fbbf24',
+  },
+  {
+    id: 'agate',
+    name: 'Agate Bands',
+    description: 'Banded agate theme',
+    background: 'linear-gradient(135deg, #374151 0%, #4b5563 50%, #6b7280 100%)',
+    textColor: '#f9fafb',
+    accentColor: '#d1d5db',
+  },
+  {
+    id: 'onyx',
+    name: 'Onyx Black',
+    description: 'Classic onyx black',
+    background: 'linear-gradient(135deg, #000000 0%, #111827 50%, #1f2937 100%)',
+    textColor: '#f9fafb',
+    accentColor: '#6b7280',
+  },
+  {
+    id: 'hematite',
+    name: 'Hematite Metallic',
+    description: 'Metallic hematite',
+    background: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)',
+    textColor: '#f9fafb',
+    accentColor: '#9ca3af',
+  },
+  {
+    id: 'malachite',
+    name: 'Malachite Green',
+    description: 'Vibrant malachite',
+    background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)',
+    textColor: '#ecfdf5',
+    accentColor: '#34d399',
+  },
+  {
+    id: 'lapis',
+    name: 'Lapis Lazuli',
+    description: 'Royal lapis lazuli',
+    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
+    textColor: '#eff6ff',
+    accentColor: '#60a5fa',
+  },
+  {
+    id: 'turquoise2',
+    name: 'Turquoise Classic',
+    description: 'Classic turquoise',
+    background: 'linear-gradient(135deg, #0e7490 0%, #0891b2 50%, #0284c7 100%)',
+    textColor: '#ecfeff',
+    accentColor: '#67e8f9',
+  },
+  {
+    id: 'coral',
+    name: 'Coral Reef',
+    description: 'Vibrant coral theme',
+    background: 'linear-gradient(135deg, #be123c 0%, #e11d48 50%, #f43f5e 100%)',
+    textColor: '#fff1f2',
+    accentColor: '#fb7185',
+  },
+  {
+    id: 'amber',
+    name: 'Amber Glow',
+    description: 'Warm amber theme',
+    background: 'linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%)',
+    textColor: '#fffbeb',
+    accentColor: '#fbbf24',
+  },
+  {
+    id: 'carnelian',
+    name: 'Carnelian Red',
+    description: 'Deep carnelian red',
+    background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%)',
+    textColor: '#fef2f2',
+    accentColor: '#f87171',
+  },
+  {
+    id: 'bloodstone',
+    name: 'Bloodstone Dark',
+    description: 'Dark bloodstone theme',
+    background: 'linear-gradient(135deg, #1c1917 0%, #292524 50%, #44403c 100%)',
+    textColor: '#fafaf9',
+    accentColor: '#a8a29e',
+  },
+  {
+    id: 'sodalite',
+    name: 'Sodalite Blue',
+    description: 'Deep sodalite blue',
+    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%)',
+    textColor: '#eff6ff',
+    accentColor: '#93c5fd',
+  },
+  {
+    id: 'charoite',
+    name: 'Charoite Purple',
+    description: 'Rare charoite purple',
+    background: 'linear-gradient(135deg, #581c87 0%, #6b21a8 50%, #7c3aed 100%)',
+    textColor: '#faf5ff',
+    accentColor: '#c084fc',
+  },
+  {
+    id: 'labradorite',
+    name: 'Labradorite Flash',
+    description: 'Flashing labradorite',
+    background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%)',
+    textColor: '#f5f3ff',
+    accentColor: '#a78bfa',
+  },
+  {
+    id: 'spectrolite',
+    name: 'Spectrolite Rainbow',
+    description: 'Rainbow spectrolite',
+    background: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #db2777 100%)',
+    textColor: '#fdf4ff',
+    accentColor: '#e879f9',
+  },
+  {
+    id: 'moonstone2',
+    name: 'Rainbow Moonstone',
+    description: 'Rainbow moonstone',
+    background: 'linear-gradient(135deg, #475569 0%, #64748b 50%, #8b5cf6 100%)',
+    textColor: '#f8fafc',
+    accentColor: '#c4b5fd',
+  },
+  {
+    id: 'sunstone2',
+    name: 'Oregon Sunstone',
+    description: 'Oregon sunstone',
+    background: 'linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)',
+    textColor: '#fff7ed',
+    accentColor: '#fdba74',
+  },
+  {
+    id: 'phenakite',
+    name: 'Phenakite Clear',
+    description: 'Clear phenakite',
+    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
+    textColor: '#0c4a6e',
+    accentColor: '#0ea5e9',
+  },
+  {
+    id: 'benitoite',
+    name: 'Benitoite Blue',
+    description: 'Rare benitoite blue',
+    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
+    textColor: '#eff6ff',
+    accentColor: '#60a5fa',
+  },
+  {
+    id: 'poudretteite',
+    name: 'Poudretteite Pink',
+    description: 'Rare poudretteite pink',
+    background: 'linear-gradient(135deg, #831843 0%, #9d174d 50%, #be185d 100%)',
+    textColor: '#fdf2f8',
+    accentColor: '#f9a8d4',
+  },
+  {
+    id: 'grandidierite',
+    name: 'Grandidierite Green',
+    description: 'Rare grandidierite green',
+    background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)',
+    textColor: '#ecfdf5',
+    accentColor: '#6ee7b7',
+  },
+  {
+    id: 'taaffeite',
+    name: 'Taaffeite Purple',
+    description: 'Rare taaffeite purple',
+    background: 'linear-gradient(135deg, #581c87 0%, #6b21a8 50%, #7c3aed 100%)',
+    textColor: '#faf5ff',
+    accentColor: '#c084fc',
+  },
+  {
+    id: 'musgravite',
+    name: 'Musgravite Dark',
+    description: 'Rare musgravite dark',
+    background: 'linear-gradient(135deg, #1c1917 0%, #292524 50%, #44403c 100%)',
+    textColor: '#fafaf9',
+    accentColor: '#a8a29e',
+  },
+  {
+    id: 'jeremejevite',
+    name: 'Jeremejevite Blue',
+    description: 'Rare jeremejevite blue',
+    background: 'linear-gradient(135deg, #0e7490 0%, #0891b2 50%, #06b6d4 100%)',
+    textColor: '#ecfeff',
+    accentColor: '#67e8f9',
+  },
+  {
+    id: 'painite',
+    name: 'Painite Red',
+    description: 'Rare painite red',
+    background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%)',
+    textColor: '#fef2f2',
+    accentColor: '#f87171',
+  },
+];
+
+function getThemeById(themeId) {
+  return THEME_TEMPLATES.find(theme => theme.id === themeId) || THEME_TEMPLATES[0];
 }
 
 function formatActivityDate(timestamp) {
@@ -173,46 +777,261 @@ function MembershipCard({ userId, role }) {
   );
 }
 
-function ProfileHero({ profile, status }) {
+function CustomSectionsCard({ profile, theme }) {
+  const customSections = profile?.customSections || [];
+  
+  if (customSections.length === 0) return null;
+
+  return (
+    <Card className="border-2 animate-scale-in" style={{ borderColor: theme.accentColor, animationDelay: '0.1s' }}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg" style={{ color: theme.textColor }}>
+          <Sparkles className="h-5 w-5" style={{ color: theme.accentColor }} />
+          Custom Sections
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {customSections.map((section, index) => (
+          <div 
+            key={index}
+            className="rounded-xl border p-4 transition-all hover:scale-[1.02]"
+            style={{ 
+              borderColor: `${theme.accentColor}30`,
+              background: `${theme.accentColor}10`
+            }}
+          >
+            <h3 className="mb-2 font-bold" style={{ color: theme.textColor }}>
+              {section.title}
+            </h3>
+            <p className="text-sm opacity-80" style={{ color: theme.textColor }}>
+              {section.content}
+            </p>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function EducationInterestsCard({ profile, theme }) {
+  const education = profile?.education;
+  const interests = profile?.interests;
+  
+  if (!education && !interests) return null;
+
+  return (
+    <Card className="border-2 animate-scale-in" style={{ borderColor: theme.accentColor, animationDelay: '0.15s' }}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg" style={{ color: theme.textColor }}>
+          <GraduationCap className="h-5 w-5" style={{ color: theme.accentColor }} />
+          Education & Interests
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {education && (
+          <div>
+            <h3 className="mb-2 font-bold" style={{ color: theme.textColor }}>Education</h3>
+            <p className="text-sm opacity-80" style={{ color: theme.textColor }}>{education}</p>
+          </div>
+        )}
+        {interests && (
+          <div>
+            <h3 className="mb-2 font-bold" style={{ color: theme.textColor }}>Interests</h3>
+            <div className="flex flex-wrap gap-2">
+              {interests.split(',').map((interest, index) => (
+                <span 
+                  key={index}
+                  className="rounded-lg px-3 py-1 text-xs font-bold transition-all hover:scale-105"
+                  style={{ 
+                    background: `${theme.accentColor}20`,
+                    color: theme.accentColor,
+                    border: `1px solid ${theme.accentColor}40`
+                  }}
+                >
+                  {interest.trim()}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ShareActions({ profile, theme }) {
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareText = `Check out ${profile.displayName || profile.username}'s profile on BeastBuck!`;
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${profile.displayName || profile.username}'s Profile`,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.log('Share failed:', err);
+      }
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="flex gap-2">
+      <button
+        onClick={handleShare}
+        className="inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-bold transition-all hover:scale-105"
+        style={{ 
+          borderColor: theme.accentColor,
+          background: `${theme.accentColor}20`,
+          color: theme.accentColor 
+        }}
+      >
+        <Share2 className="h-4 w-4" />
+        Share
+      </button>
+      <button
+        onClick={handlePrint}
+        className="inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-bold transition-all hover:scale-105"
+        style={{ 
+          borderColor: theme.accentColor,
+          background: `${theme.accentColor}20`,
+          color: theme.accentColor 
+        }}
+      >
+        <Edit className="h-4 w-4" />
+        Print
+      </button>
+    </div>
+  );
+}
+
+function ProfileHero({ profile, status, isOwnProfile }) {
   const state = status?.state || 'offline';
   const presenceColor = PresenceService.getPresenceColor(state);
   const presenceLabel = PresenceService.getPresenceLabel(state);
+  const theme = getThemeById(profile?.theme);
 
   return (
-    <section className="rounded-2xl border border-border bg-surface/70 p-5 shadow-xl md:p-6">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-accent/30 bg-accent/10">
-          {profile.avatar ? (
-            <img src={profile.avatar} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-accent">
-              {getInitials(profile)}
+    <section 
+      className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-2 p-6 sm:p-8 md:p-12 shadow-2xl md:p-6 animate-scale-in"
+      style={{ 
+        background: theme.background,
+        borderColor: theme.accentColor,
+        color: theme.textColor,
+        animationDelay: '0s'
+      }}
+    >
+      <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full opacity-20 blur-3xl" style={{ background: theme.accentColor }} />
+      <div className="absolute -left-20 -bottom-20 h-40 w-40 rounded-full opacity-20 blur-3xl" style={{ background: theme.accentColor }} />
+      
+      <div className="relative flex flex-col gap-6 sm:gap-8 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-5 sm:gap-6 sm:flex-row sm:items-center md:flex-row md:items-center w-full">
+          <div className="relative h-28 w-28 sm:h-36 sm:w-36 md:h-44 md:w-44 shrink-0 overflow-hidden rounded-2xl sm:rounded-3xl border-4 shadow-2xl transition-all duration-300 hover:scale-105" style={{ borderColor: theme.accentColor }}>
+            {profile.avatar ? (
+              <img src={profile.avatar} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-4xl sm:text-5xl md:text-6xl font-black" style={{ color: theme.accentColor }}>
+                {getInitials(profile)}
+              </div>
+            )}
+            <span className={`absolute bottom-3 right-3 h-4 w-4 rounded-full border-2 ${presenceColor}`} style={{ borderColor: theme.textColor }} />
+          </div>
+
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <div className="mb-3 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <h1 className="break-words font-heading text-3xl sm:text-4xl md:text-5xl font-black">
+                {profile.displayName || profile.username || 'BeastBuck Member'}
+              </h1>
+              <span className="rounded-lg px-3 py-1.5 text-xs sm:text-sm font-bold uppercase tracking-widest shadow-lg" style={{ 
+                background: `${theme.accentColor}30`,
+                color: theme.accentColor,
+                border: `1px solid ${theme.accentColor}`
+              }}>
+                {profile.role || 'Member'}
+              </span>
             </div>
-          )}
-          <span className={`absolute bottom-2 right-2 h-4 w-4 rounded-full border-2 border-surface ${presenceColor}`} />
+            <p className="mb-3 text-base sm:text-lg font-medium opacity-90">@{profile.username || 'member'}</p>
+            
+            {profile.bio && (
+              <p className="mb-4 text-sm sm:text-base opacity-80 line-clamp-2 sm:line-clamp-3">
+                {profile.bio}
+              </p>
+            )}
+            
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-4 text-sm opacity-70 sm:justify-start">
+              <span className="inline-flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${presenceColor}`} />
+                {presenceLabel}
+                {status?.activity ? ` · ${status.activity}` : ''}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" />
+                Joined {formatDate(profile.joinedAt)}
+              </span>
+              {profile.location && (
+                <span className="inline-flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  {profile.location}
+                </span>
+              )}
+            </div>
+
+            {(profile.website || profile.company) && (
+              <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
+                {profile.website && (
+                  <a 
+                    href={profile.website} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors hover:scale-105"
+                    style={{ 
+                      background: `${theme.accentColor}20`,
+                      color: theme.accentColor,
+                      border: `1px solid ${theme.accentColor}40`
+                    }}
+                  >
+                    <Globe className="h-3.5 w-3.5" />
+                    Website
+                  </a>
+                )}
+                {profile.company && (
+                  <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all hover:scale-105" style={{ 
+                    background: `${theme.accentColor}20`,
+                    color: theme.accentColor
+                  }}>
+                    <Building2 className="h-3.5 w-3.5" />
+                    {profile.company}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <h1 className="break-words font-heading text-3xl font-bold text-white md:text-4xl">
-              {profile.displayName || profile.username || 'BeastBuck Member'}
-            </h1>
-            <span className="rounded-lg bg-accent/10 px-2.5 py-1 text-xs font-bold uppercase tracking-widest text-accent">
-              {profile.role || 'Member'}
-            </span>
-          </div>
-          <p className="mb-3 text-sm font-medium text-text-muted">@{profile.username || 'member'}</p>
-          <div className="flex flex-wrap gap-3 text-sm text-text-soft">
-            <span className="inline-flex items-center gap-2">
-              <span className={`h-2.5 w-2.5 rounded-full ${presenceColor}`} />
-              {presenceLabel}
-              {status?.activity ? ` · ${status.activity}` : ''}
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-text-muted" />
-              Joined {formatDate(profile.joinedAt)}
-            </span>
-          </div>
+        <div className="flex flex-col gap-3 shrink-0">
+          <ShareActions profile={profile} theme={theme} />
+          {isOwnProfile && (
+            <Link
+              to={`/profile/${profile.id}/edit`}
+              className="inline-flex items-center gap-2 rounded-xl border-2 px-5 py-3 text-sm sm:text-base font-bold transition-all hover:scale-105 shadow-lg"
+              style={{ 
+                borderColor: theme.accentColor,
+                background: `${theme.accentColor}30`,
+                color: theme.accentColor 
+              }}
+            >
+              <Edit className="h-4 w-4 sm:h-5 sm:w-5" />
+              Edit Profile
+            </Link>
+          )}
         </div>
       </div>
     </section>
@@ -597,6 +1416,8 @@ export default function ProfilePage() {
   const canManageMembers = hasPermission(roleData?.role, 'canManageMembers');
 
   const isOwnProfile = user?.uid === profileUid;
+  const profileTheme = useMemo(() => getThemeById(profile?.theme || 'default'), [profile?.theme]);
+
   const pageTitle = useMemo(() => {
     if (!profile) return 'Member Profile';
     return `${profile.displayName || profile.username || 'Member'}'s Profile`;
@@ -772,7 +1593,47 @@ export default function ProfilePage() {
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
-      <div className="flex flex-col gap-2">
+      <style>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.6s ease-out forwards;
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.8s ease-out forwards;
+        }
+        .animate-scale-in {
+          animation: scaleIn 0.5s ease-out forwards;
+        }
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+      <div className="flex flex-col gap-2 animate-fade-in">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">Identity</p>
         <h1 className="font-heading text-2xl font-bold text-white md:text-3xl">{pageTitle}</h1>
         <p className="text-sm text-text-muted">
@@ -786,9 +1647,13 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <ProfileHero profile={profile} status={presence} />
+      <ProfileHero profile={profile} status={presence} isOwnProfile={isOwnProfile} />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <CustomSectionsCard profile={profile} theme={profileTheme} />
+
+      <EducationInterestsCard profile={profile} theme={profileTheme} />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
         <div className="space-y-5">
           <SpecializationsCard
             profile={profile}

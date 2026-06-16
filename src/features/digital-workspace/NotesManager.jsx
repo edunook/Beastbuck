@@ -6,7 +6,8 @@ import { Plus, Search, Pin, Trash2, Loader2, X } from 'lucide-react';
 import { formatDistanceToNow } from '../../lib/dateUtils';
 
 export default function NotesManager({ workspaceId }) {
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
+  const isApprovedMember = roleData?.membershipStatus === 'approved';
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -98,14 +99,14 @@ export default function NotesManager({ workspaceId }) {
                className="w-full h-10 bg-white/5 border border-border rounded-xl pl-9 pr-4 text-sm text-white focus:ring-2 focus:ring-accent outline-none"
             />
          </div>
-         <Button onClick={() => openEditor()}><Plus className="w-4 h-4 mr-2" /> New Note</Button>
+         {isApprovedMember && <Button onClick={() => openEditor()}><Plus className="w-4 h-4 mr-2" /> New Note</Button>}
       </div>
 
       {notes.length === 0 ? (
          <div className="text-center py-16 border border-dashed border-border rounded-xl">
             <h3 className="text-lg font-bold text-white mb-2">No notes yet</h3>
             <p className="text-text-muted text-sm mb-4">Capture ideas, meeting notes, and quick thoughts.</p>
-            <Button variant="secondary" onClick={() => openEditor()}>Create Note</Button>
+            {isApprovedMember && <Button variant="secondary" onClick={() => openEditor()}>Create Note</Button>}
          </div>
       ) : (
          <div className="space-y-8">

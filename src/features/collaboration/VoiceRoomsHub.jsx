@@ -13,6 +13,7 @@ import PresenceBadge from '../../components/realtime/PresenceBadge';
 
 export default function VoiceRoomsHub() {
   const { user, roleData } = useAuth();
+  const isApprovedMember = roleData?.membershipStatus === 'approved';
   const [rooms, setRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -132,12 +133,14 @@ export default function VoiceRoomsHub() {
       )}
 
       <SectionWrapper>
-        <Card className="rounded-xl">
-          <CardContent className="flex flex-col gap-3 p-4 md:flex-row">
-            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New room name..." className="flex-1" />
-            <Button onClick={createRoom}><Plus className="mr-2 h-4 w-4" /> Create Room</Button>
-          </CardContent>
-        </Card>
+        {isApprovedMember && (
+          <Card className="rounded-xl">
+            <CardContent className="flex flex-col gap-3 p-4 md:flex-row">
+              <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="New room name..." className="flex-1" />
+              <Button onClick={createRoom}><Plus className="mr-2 h-4 w-4" /> Create Room</Button>
+            </CardContent>
+          </Card>
+        )}
       </SectionWrapper>
 
       <div className="mb-4 flex flex-wrap gap-2">

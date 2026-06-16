@@ -62,6 +62,25 @@ export const UsersService = {
     await updateDoc(docRef, data);
   },
 
+  /**
+   * Update user profile with new fields for profile editing
+   */
+  async updateUserProfile(uid, data) {
+    const docRef = doc(db, 'users', uid);
+    await updateDoc(docRef, {
+      displayName: data.displayName,
+      bio: data.bio,
+      location: data.location,
+      website: data.website,
+      company: data.company,
+      education: data.education,
+      interests: data.interests,
+      customSections: data.customSections || [],
+      theme: data.theme || 'default',
+      updatedAt: new Date()
+    });
+  },
+
   async getSpecializations() {
     const merged = new Map(SPECIALIZATIONS.map(specialization => [specialization.id, specialization]));
 
@@ -146,5 +165,17 @@ export const UsersService = {
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(user => ['Main CEO', 'Co-CEO', 'Leader', 'Member'].includes(user.role))
       .sort((a, b) => (a.displayName || a.username || '').localeCompare(b.displayName || b.username || ''));
+  },
+
+  /**
+   * Fetch all members for portfolio showcase
+   */
+  async getAllMembers() {
+    const usersRef = collection(db, 'users');
+    const querySnapshot = await getDocs(usersRef);
+    return querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(user => user.username) // Only include users with usernames
+      .sort((a, b) => (b.xp || 0) - (a.xp || 0)); // Sort by XP descending
   }
 };

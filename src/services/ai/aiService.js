@@ -58,9 +58,17 @@ async function retryWithBackoff(fn, retries = MAX_RETRIES) {
   throw new Error('Max retries exceeded');
 }
 
-function localReply({ messages, mode }) {
+function localReply({ messages, mode, knowledge = [] }) {
   const latest = messages[messages.length - 1]?.content || '';
   const label = AI_MODES[mode]?.label || AI_MODES.general.label;
+
+  // Check if user is asking about their information
+  const lowerLatest = latest.toLowerCase();
+  if (lowerLatest.includes('information about me') || lowerLatest.includes('what do you know about me') || lowerLatest.includes('my data') || lowerLatest.includes('my profile')) {
+    if (knowledge.length > 0 && knowledge[0].content) {
+      return `Based on your profile data:\n\n${knowledge[0].content.substring(0, 500)}...`;
+    }
+  }
 
   if (mode === 'learning') {
     return `Local ${label}: Here is a quick study path for "${latest}".\n\n1. Define the key idea in one sentence.\n2. Work one example.\n3. Try a 3-question quiz.\n\nQuiz:\n- What is the main concept?\n- Where would you use it?\n- What is one mistake to avoid?`;
@@ -92,12 +100,12 @@ export const AIService = {
     const systemPrompt = [
       AI_MODES[mode]?.systemPrompt || AI_MODES.general.systemPrompt,
       'Use BeastBuck organization knowledge when relevant.',
-      knowledge.length ? `Knowledge:\n${knowledge.map(item => `- ${item.title}: ${item.content}`).join('\n')}` : '',
+      knowledge.length ? `IMPORTANT: Here is the current user's profile and organizational data:\n${knowledge.map(item => item.content).join('\n\n')}` : '',
     ].filter(Boolean).join('\n\n');
 
     // If local mode, return local reply
     if (providerId === 'local') {
-      return localReply({ messages, mode });
+      return localReply({ messages, mode, knowledge });
     }
 
     // Get provider priority order
@@ -135,7 +143,7 @@ export const AIService = {
 
     // All providers failed
     console.error('[AI] All providers failed');
-    return localReply({ messages, mode });
+    return localReply({ messages, mode, knowledge });
   },
 
   async describeImage({ providerId = 'local', mode = 'general', imageName, prompt }) {

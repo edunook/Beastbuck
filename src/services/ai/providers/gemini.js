@@ -1,5 +1,5 @@
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
+const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-pro';
 const TIMEOUT_MS = 30000; // 30 second timeout
 
 function toGeminiMessages(messages) {

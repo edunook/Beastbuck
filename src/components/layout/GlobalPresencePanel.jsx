@@ -16,10 +16,10 @@ export default function GlobalPresencePanel({ isOpen, onClose }) {
       const snap = await getDocs(collection(db, 'users'));
       setUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     };
-    if (isOpen && users.length === 0) {
+    if (isOpen) {
       fetchUsers();
     }
-  }, [isOpen, users.length]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && users.length > 0) {

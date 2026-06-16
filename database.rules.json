@@ -13,6 +13,18 @@
         ".read": "auth != null",
         ".write": "auth != null && auth.uid == $uid"
       }
+    },
+    "documentPresence": {
+      "$docId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "users": {
+          "$uid": {
+            ".read": "auth != null",
+            ".write": "auth != null && auth.uid == $uid"
+          }
+        }
+      }
     }
   }
 }

@@ -25,7 +25,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import Button from '../../components/ui/Button';
 
 export default function UniverseHome() {
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
+  const isApprovedMember = roleData?.membershipStatus === 'approved';
   const { openAssistant } = useAI();
   const [data, setData] = useState(null);
   const [collections, setCollections] = useState({});
@@ -166,7 +167,7 @@ export default function UniverseHome() {
               icon={Target} 
               title="No goals yet" 
               description="Set your first goal to track your progress in the BeastBuck ecosystem."
-              action={<Link to="/universe/goals"><Button size="sm">Create a Goal</Button></Link>}
+              action={isApprovedMember ? <Link to="/universe/goals"><Button size="sm">Create a Goal</Button></Link> : null}
             />
           ) : (
             <div className="space-y-2">

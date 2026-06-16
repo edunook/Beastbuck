@@ -68,6 +68,7 @@ function speak(text) {
 export default function AIOS() {
   const navigate = useNavigate();
   const { user, roleData } = useAuth();
+  const isApprovedMember = roleData?.membershipStatus === 'approved';
   const {
     messages: globalMessages,
     sendMessage: globalSend,
@@ -290,7 +291,7 @@ export default function AIOS() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-accent" />Chat History</CardTitle>
-              <Button size="sm" onClick={createNewSession}><PlusCircle className="mr-2 h-4 w-4" />New</Button>
+              {isApprovedMember && <Button size="sm" onClick={createNewSession}><PlusCircle className="mr-2 h-4 w-4" />New</Button>}
             </div>
             <CardDescription>Revisit, continue, or delete past conversations.</CardDescription>
           </CardHeader>

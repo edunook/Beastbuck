@@ -23,7 +23,8 @@ const TasksHub = React.memo(function TasksHub() {
   const { user, roleData } = useAuth();
 
   const isLeader   = hasPermission(roleData?.role, 'canAssignTasks');
-  const canCreate  = hasPermission(roleData?.role, 'canAssignTasks');
+  const isApprovedMember = roleData?.membershipStatus === 'approved';
+  const canCreate  = isLeader || (isApprovedMember && hasPermission(roleData?.role, 'canAssignTasks'));
 
   const [tasks, setTasks]                 = useState([]);
   const [reviewTasks, setReviewTasks]     = useState([]);

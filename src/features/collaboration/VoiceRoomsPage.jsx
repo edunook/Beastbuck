@@ -15,6 +15,7 @@ export default function VoiceRoomsPage() {
   const [rtcManager, setRtcManager] = useState(null);
   const [isMuted, setIsMuted] = useState(true);
   const { user, roleData } = useAuth();
+  const isApprovedMember = roleData?.membershipStatus === 'approved';
   
   const [participants, setParticipants] = useState({});
 
@@ -100,7 +101,7 @@ export default function VoiceRoomsPage() {
         title="Voice Rooms"
         description="Jump into real-time audio channels with your team."
         action={
-          <Button onClick={createRoom}><Plus className="w-4 h-4 mr-2" /> New Room</Button>
+          isApprovedMember ? <Button onClick={createRoom}><Plus className="w-4 h-4 mr-2" /> New Room</Button> : null
         }
       />
       

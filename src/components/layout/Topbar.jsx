@@ -1,12 +1,17 @@
 import { Menu, Search, User, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useGlobalStore } from '../../store/useGlobalStore';
 import { useAuth } from '../../features/auth/AuthContext';
+import { usePresenceStore } from '../../store/usePresenceStore';
 import { Input } from '../ui/Input';
 import { NotificationBell } from './NotificationBell';
 
 export default function Topbar() {
   const { toggleMobileDrawer, togglePresencePanel } = useGlobalStore();
-  const { roleData } = useAuth();
+  const { roleData, user } = useAuth();
+  const { onlineMembers } = usePresenceStore();
+  
+  const onlineCount = Object.values(onlineMembers).filter(m => m.state !== 'offline').length;
 
   return (
     <header className="h-16 bg-surface backdrop-blur-glass-md border-b border-border sticky top-0 z-fixed flex items-center justify-between px-4 lg:px-8">
@@ -42,7 +47,11 @@ export default function Topbar() {
           title="Live Presence"
         >
           <Users className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-status-success rounded-full border border-surface"></span>
+          {onlineCount > 0 && (
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-accent text-black text-[10px] font-bold flex items-center justify-center border-2 border-surface">
+              {onlineCount}
+            </span>
+          )}
         </button>
         <NotificationBell />
         
@@ -51,7 +60,11 @@ export default function Topbar() {
             <div className="text-sm font-medium text-text leading-none">{roleData?.username || 'Operative'}</div>
             <div className="text-badge text-accent mt-1 leading-none">{roleData?.role || 'Guest'}</div>
           </div>
-          <div className="w-9 h-9 rounded-full bg-gradient-premium-1 p-[2px]">
+          <Link 
+            to={user?.uid ? `/profile/${user.uid}` : '/profile'} 
+            className="w-9 h-9 rounded-full bg-gradient-premium-1 p-[2px] hover:scale-105 transition-transform cursor-pointer"
+            title="View Profile"
+          >
             <div className="w-full h-full rounded-full bg-surface border border-border flex items-center justify-center overflow-hidden">
               {roleData?.avatar ? (
                 <img src={roleData.avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -59,7 +72,7 @@ export default function Topbar() {
                 <User className="w-5 h-5 text-text-muted" />
               )}
             </div>
-          </div>
+          </Link>
         </div>
       </div>
     </header>
