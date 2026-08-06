@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../../services/firebase/auth';
 import { Sparkles, Lock, User, ArrowRight, Eye, EyeOff, Zap } from 'lucide-react';
@@ -18,11 +18,27 @@ export default function SignIn() {
     setError(null);
 
     try {
+      console.log('Sign in attempt with username:', username);
       await AuthService.signIn(username, password);
       navigate('/dashboard');
     } catch (err) {
-      console.error(err);
-      setError(err.message || 'Failed to sign in. Please check your credentials.');
+      console.error('Sign in error:', err);
+      console.error('Error code:', err.code);
+      console.error('Error message:', err.message);
+      // Provide more specific error messages
+      if (err.code === 'auth/invalid-credential') {
+        setError('Invalid username or password. Please check your credentials and try again.');
+      } else if (err.code === 'auth/user-not-found') {
+        setError('Account not found. Please check your username or create an account.');
+      } else if (err.code === 'auth/wrong-password') {
+        setError('Incorrect password. Please try again.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setError('Too many failed attempts. Please wait a few minutes before trying again.');
+      } else if (err.message?.includes('Too many failed login attempts')) {
+        setError(err.message);
+      } else {
+        setError(err.message || 'Failed to sign in. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -194,7 +210,7 @@ export default function SignIn() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
           10% { opacity: 1; }

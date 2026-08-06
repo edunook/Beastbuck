@@ -10,15 +10,22 @@ import {
   RefreshCw,
   Users,
   Wifi,
-  Shield } from 'lucide-react';
+  Shield,
+  Lock,
+  Unlock,
+  AlertTriangle } from 'lucide-react';
 import { AdminService } from '../../services/firebase/admin';
 import { AdminMetric, AdminPanel, StatusBadge, LoadingRows } from './adminUtils';
 import { formatDistanceToNow } from '../../lib/dateUtils';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [platformLocked, setPlatformLocked] = useState(false);
+  const [lockReason, setLockReason] = useState('');
 
   const load = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -67,22 +74,71 @@ export default function AdminDashboard() {
     return icons[type] || '📌';
   };
 
+  const togglePlatformLock = () => {
+    if (platformLocked) {
+      setPlatformLocked(false);
+      setLockReason('');
+    } else {
+      const reason = prompt('Enter reason for platform lock:');
+      if (reason) {
+        setLockReason(reason);
+        setPlatformLocked(true);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Platform Lock Alert */}
+      {platformLocked && (
+        <Card className="border-red-500/50 bg-red-500/10">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Lock className="h-5 w-5 text-red-400" />
+                <div>
+                  <p className="font-bold text-white">Platform Locked</p>
+                  <p className="text-sm text-text-muted">{lockReason}</p>
+                </div>
+              </div>
+              <Button
+                onClick={togglePlatformLock}
+                size="sm"
+                variant="destructive"
+              >
+                <Unlock className="h-4 w-4 mr-2" />
+                Unlock Platform
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Metrics Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-heading text-section-title font-bold text-white">Platform Overview</h2>
           <p className="text-caption text-text-muted">Live stats across all BeastBuck systems</p>
         </div>
-        <button
-          onClick={() => load(true)}
-          disabled={refreshing}
-          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-caption font-bold text-text-soft transition-all hover:bg-white/10 hover:text-white hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={togglePlatformLock}
+            size="sm"
+            variant={platformLocked ? "destructive" : "secondary"}
+            className={platformLocked ? "bg-red-600 hover:bg-red-700" : ""}
+          >
+            {platformLocked ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
+            {platformLocked ? 'Unlock' : 'Lock Platform'}
+          </Button>
+          <button
+            onClick={() => load(true)}
+            disabled={refreshing}
+            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-caption font-bold text-text-soft transition-all hover:bg-white/10 hover:text-white hover:-translate-y-0.5 active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Metrics Grid */}
@@ -157,16 +213,14 @@ export default function AdminDashboard() {
       {/* System Status */}
       <AdminPanel title="System Health" icon={Shield}>
         <div className="grid gap-3 sm:grid-cols-3">
-          {[
-            { label: 'Firebase Auth', status: 'Operational', color: 'success' },
-            { label: 'Firestore DB', status: 'Operational', color: 'success' },
-            { label: 'Realtime DB', status: 'Operational', color: 'success' },
-          ].map(({ label, status, color }) => (
+          {data?.systemHealth ? data.systemHealth.map(({ label, status, color }) => (
             <div key={label} className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 transition-all duration-200 hover:bg-white/[0.04] hover:border-white/15">
               <span className="text-caption text-text-soft">{label}</span>
               <StatusBadge variant={color}>{status}</StatusBadge>
             </div>
-          ))}
+          )) : (
+            <div className="col-span-3 text-center text-sm text-text-muted">System health data not available</div>
+          )}
         </div>
       </AdminPanel>
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Archive, ArrowLeft, BarChart3, Eye, FileText, Heart, MessageSquare, Package, Pencil, Star, Trash2, Users, X, FolderKanban } from 'lucide-react';
+import { Archive, ArrowLeft, BarChart3, Eye, FileText, Heart, MessageSquare, Package, Pencil, Star, Trash2, Users, X, FolderKanban, Sparkles } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { PageContainer, SectionWrapper } from '../../components/layout/LayoutWrappers';
 import { LoadingState } from '../../components/ui/UIElements';
@@ -10,6 +10,7 @@ import { hasPermission } from '../../services/firebase/permissions';
 import { PRODUCT_CATEGORIES, PRODUCT_STATUSES, ProductsService } from '../../services/firebase/products';
 import { UsersService } from '../../services/firebase/users';
 import { isCloudinaryConfigured, uploadProductMedia } from '../../services/cloudinary/uploads';
+import { AIContextPanel } from '../ai/AIContextPanel';
 
 function formatPrice(price) {
   return Number(price || 0) === 0 ? 'Free' : `$${Number(price || 0).toFixed(2)}`;
@@ -75,6 +76,10 @@ export default function ProductDetail() {
             status: nextProduct.status || 'DRAFT',
             teamMembers: nextProduct.teamMembers || [],
             media: nextProduct.media || [],
+            features: nextProduct.features || '',
+            technicalDetails: nextProduct.technicalDetails || '',
+            usageInstructions: nextProduct.usageInstructions || '',
+            warrantyInfo: nextProduct.warrantyInfo || '',
           });
         }
         setLoading(false);
@@ -268,7 +273,35 @@ export default function ProductDetail() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="text-lg">Gallery</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg">Features & Specifications</CardTitle></CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-sm leading-7 text-text-soft">{product.features || 'No features specified yet.'}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Technical Details</CardTitle></CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-sm leading-7 text-text-soft">{product.technicalDetails || 'No technical details provided yet.'}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Usage Instructions</CardTitle></CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-sm leading-7 text-text-soft">{product.usageInstructions || 'No usage instructions provided yet.'}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Warranty & Support</CardTitle></CardHeader>
+            <CardContent>
+              <p className="whitespace-pre-wrap text-sm leading-7 text-text-soft">{product.warrantyInfo || 'No warranty information provided yet.'}</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Media Gallery</CardTitle></CardHeader>
             <CardContent>
               {!product.media?.length ? (
                 <p className="text-sm text-text-muted">No media uploaded yet.</p>
@@ -343,6 +376,31 @@ export default function ProductDetail() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Sparkles className="h-5 w-5 text-accent" />AI Assistant</CardTitle></CardHeader>
+            <CardContent>
+              <AIContextPanel
+                buttons={[
+                  {
+                    label: 'Summarize Product',
+                    prompt: `Summarize this product:\n\nTitle: ${product?.title}\n\nDescription: ${product?.description}\n\nCategory: ${product?.category}\n\nPrice: ${formatPrice(product?.price)}\n\nStatus: ${product?.status}`,
+                    mode: 'research',
+                  },
+                  {
+                    label: 'Market Analysis',
+                    prompt: `Analyze the market potential of this product:\n\nTitle: ${product?.title}\n\nDescription: ${product?.description}\n\nCategory: ${product?.category}\n\nPrice: ${formatPrice(product?.price)}\n\nProvide insights on target audience, competition, and pricing strategy.`,
+                    mode: 'research',
+                  },
+                  {
+                    label: 'Improvement Suggestions',
+                    prompt: `Suggest improvements for this product:\n\nTitle: ${product?.title}\n\nDescription: ${product?.description}\n\nWhat features, marketing, or pricing strategies could make this product more successful?`,
+                    mode: 'learning',
+                  },
+                ]}
+              />
+            </CardContent>
+          </Card>
+
           {isOwner && (
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Pencil className="h-5 w-5 text-accent" />Owner Tools</CardTitle></CardHeader>
@@ -356,22 +414,73 @@ export default function ProductDetail() {
         <SectionWrapper title="Edit Product" className="mt-6">
           <form onSubmit={saveEdits} className="space-y-4 rounded-2xl border border-border bg-surface p-4 md:p-5">
             <div className="grid gap-3 md:grid-cols-2">
-              <input value={editForm.title} onChange={(event) => updateEditField('title', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent" required />
-              <input type="number" min="0" step="0.01" value={editForm.price} onChange={(event) => updateEditField('price', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent" />
-              <select value={editForm.category} onChange={(event) => updateEditField('category', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-                {PRODUCT_CATEGORIES.map(category => <option key={category}>{category}</option>)}
-              </select>
-              <select value={editForm.status} onChange={(event) => updateEditField('status', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-                {PRODUCT_STATUSES.filter(status => status !== 'ARCHIVED').map(status => <option key={status}>{status}</option>)}
-              </select>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Title <span className="text-status-danger">*</span></label>
+                <input value={editForm.title} onChange={(event) => updateEditField('title', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent" required maxLength={100} />
+                <div className="mt-1 text-[10px] text-text-muted text-right">{editForm.title.length}/100</div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Price</label>
+                <input type="number" min="0" step="0.01" value={editForm.price} onChange={(event) => updateEditField('price', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Category</label>
+                <select value={editForm.category} onChange={(event) => updateEditField('category', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
+                  {PRODUCT_CATEGORIES.map(category => <option key={category}>{category}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Status</label>
+                <select value={editForm.status} onChange={(event) => updateEditField('status', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
+                  {PRODUCT_STATUSES.filter(status => status !== 'ARCHIVED').map(status => <option key={status}>{status}</option>)}
+                </select>
+              </div>
             </div>
-            <textarea value={editForm.description} onChange={(event) => updateEditField('description', event.target.value)} rows={5} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent" />
-            <label className="block">
-              <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-text-muted">Team Members</span>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Description <span className="text-status-danger">*</span></label>
+              <textarea value={editForm.description} onChange={(event) => updateEditField('description', event.target.value)} rows={5} maxLength={500} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent" />
+              <div className="mt-1 text-[10px] text-text-muted text-right">{editForm.description.length}/500</div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Features & Specifications</label>
+              <textarea value={editForm.features} onChange={(event) => updateEditField('features', event.target.value)} rows={4} maxLength={1000} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent" />
+              <div className="mt-1 text-[10px] text-text-muted text-right">{editForm.features.length}/1000</div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Technical Details</label>
+              <textarea value={editForm.technicalDetails} onChange={(event) => updateEditField('technicalDetails', event.target.value)} rows={4} maxLength={1000} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent" />
+              <div className="mt-1 text-[10px] text-text-muted text-right">{editForm.technicalDetails.length}/1000</div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Usage Instructions</label>
+              <textarea value={editForm.usageInstructions} onChange={(event) => updateEditField('usageInstructions', event.target.value)} rows={4} maxLength={1000} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent" />
+              <div className="mt-1 text-[10px] text-text-muted text-right">{editForm.usageInstructions.length}/1000</div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Warranty & Support</label>
+              <textarea value={editForm.warrantyInfo} onChange={(event) => updateEditField('warrantyInfo', event.target.value)} rows={4} maxLength={1000} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent" />
+              <div className="mt-1 text-[10px] text-text-muted text-right">{editForm.warrantyInfo.length}/1000</div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Team Members</label>
+              <p className="mb-2 text-[10px] text-text-muted">Hold Ctrl/Cmd to select multiple members</p>
               <select multiple value={editForm.teamMembers} onChange={(event) => updateEditField('teamMembers', [...event.target.selectedOptions].map(option => option.value))} className="min-h-28 w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
                 {members.map(member => <option key={member.id} value={member.id}>{member.displayName || member.username}</option>)}
               </select>
-            </label>
+              {editForm.teamMembers.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {editForm.teamMembers.map(uid => {
+                    const member = members.find(m => m.id === uid);
+                    return member ? (
+                      <span key={uid} className="flex items-center gap-1 rounded-full bg-accent/10 px-2 py-1 text-xs text-accent">
+                        {member.displayName || member.username}
+                        <button type="button" onClick={() => updateEditField('teamMembers', editForm.teamMembers.filter(id => id !== uid))} className="hover:text-status-danger">×</button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
             <div className="rounded-xl border border-border bg-black/20 p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm font-bold text-white">Media</p>

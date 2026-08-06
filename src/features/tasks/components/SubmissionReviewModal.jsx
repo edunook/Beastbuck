@@ -58,13 +58,13 @@ export function SubmissionReviewModal({ task, onClose, onReviewed }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto bg-surface border border-yellow-400/20 rounded-2xl shadow-2xl custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="relative w-full max-w-xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-surface border border-yellow-400/20 rounded-2xl shadow-2xl custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-200">
 
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-border/50 p-5 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-border/50 p-4 sm:p-5 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
@@ -77,7 +77,7 @@ export function SubmissionReviewModal({ task, onClose, onReviewed }) {
           </button>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="p-4 sm:p-5 space-y-5">
 
           {loading ? (
             <div className="flex items-center justify-center py-12 gap-3 text-text-muted">

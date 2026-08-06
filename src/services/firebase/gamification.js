@@ -32,6 +32,14 @@ export const XP_REWARD_TYPES = {
 
 export const LEVEL_XP = 500;
 
+export function calculateStreakXP(streakDay = 1) {
+  const day = Math.max(1, Math.floor(streakDay || 1));
+  if (day <= 10) {
+    return day * 10;
+  }
+  return 100;
+}
+
 export function calculateLevel(xp = 0) {
   return Math.max(1, Math.floor(Number(xp || 0) / LEVEL_XP) + 1);
 }
@@ -107,39 +115,43 @@ export const GamificationService = {
     const xpLogRef = doc(collection(db, 'xpLogs'));
     const activityRef = doc(collection(db, 'activityLogs'));
 
-    await runTransaction(db, async (transaction) => {
-      const userSnap = await transaction.get(userRef);
-      const currentXP = userSnap.exists() ? Number(userSnap.data().xp || 0) : 0;
-      const nextXP = currentXP + safeAmount;
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userSnap = await transaction.get(userRef);
+        const currentXP = userSnap.exists() ? Number(userSnap.data().xp || 0) : 0;
+        const nextXP = currentXP + safeAmount;
 
-      transaction.update(userRef, {
-        xp: nextXP,
-        level: calculateLevel(nextXP),
-        ...(sourceType === XP_REWARD_TYPES.EXPERIMENT ? { 'stats.experimentsCount': increment(1) } : {}),
-        ...(sourceType === XP_REWARD_TYPES.PRODUCT ? { 'stats.productsCount': increment(1) } : {}),
-      });
+        transaction.update(userRef, {
+          xp: nextXP,
+          level: calculateLevel(nextXP),
+          ...(sourceType === XP_REWARD_TYPES.EXPERIMENT ? { 'stats.experimentsCount': increment(1) } : {}),
+          ...(sourceType === XP_REWARD_TYPES.PRODUCT ? { 'stats.productsCount': increment(1) } : {}),
+        });
 
-      transaction.set(xpLogRef, {
-        userId: uid,
-        amount: safeAmount,
-        reason,
-        sourceType,
-        sourceId,
-        actorId,
-        metadata,
-        createdAt: serverTimestamp(),
-        timestamp: serverTimestamp(),
-      });
+        transaction.set(xpLogRef, {
+          userId: uid,
+          amount: safeAmount,
+          reason,
+          sourceType,
+          sourceId,
+          actorId,
+          metadata,
+          createdAt: serverTimestamp(),
+          timestamp: serverTimestamp(),
+        });
 
-      transaction.set(activityRef, {
-        type: 'XP_AWARDED',
-        title: 'XP Awarded',
-        description: `${safeAmount} XP awarded: ${reason}`,
-        userId: uid,
-        metadata: { sourceType, sourceId, amount: safeAmount, actorId, ...metadata },
-        timestamp: serverTimestamp(),
+        transaction.set(activityRef, {
+          type: 'XP_AWARDED',
+          title: 'XP Awarded',
+          description: `${safeAmount} XP awarded: ${reason}`,
+          userId: uid,
+          metadata: { sourceType, sourceId, amount: safeAmount, actorId, ...metadata },
+          timestamp: serverTimestamp(),
+        });
       });
-    });
+    } catch (err) {
+      console.warn('awardXP transaction failed/skipped:', err.message);
+    }
   },
 
   async grantAchievement({ uid, achievementId, actorId }) {
@@ -235,7 +247,7 @@ export const GamificationService = {
       });
     });
 
-    if (achievement.badge) {
+if (achievement.badge) {
       try {
         const { CertificateService } = await import('./certificates');
         await CertificateService.issueCertificate({
@@ -246,7 +258,7 @@ export const GamificationService = {
           actorId,
         });
       } catch (err) {
-        console.error('Failed to auto-issue certificate:', err);
+        console.error('Auto-Issue Certificate failed:', err);
       }
     }
   },
@@ -255,7 +267,7 @@ export const GamificationService = {
     await updateDoc(doc(db, 'users', uid), {
       specializations: arrayUnion(badgeId),
     });
-    
+     
     try {
       const { CertificateService } = await import('./certificates');
       await CertificateService.issueCertificate({
@@ -266,7 +278,7 @@ export const GamificationService = {
         actorId: 'SYSTEM',
       });
     } catch (err) {
-      console.error('Failed to auto-issue certificate for badge:', err);
+      console.error('Auto-Issue Certificate for Badge failed:', err);
     }
   },
 
@@ -291,7 +303,6 @@ export const GamificationService = {
       knowledge: 'stats.knowledgeScore',
     };
     const orderField = fieldMap[type] || fieldMap.xp;
-    // We try to order by the field, if it doesn't exist, it might fail but that's standard Firestore behavior.
     const snap = await getDocs(query(collection(db, 'users'), orderBy(orderField, 'desc'), limit(maxCount)));
 
     return snap.docs.map((userDoc, index) => ({
@@ -333,5 +344,280 @@ export const GamificationService = {
       id: logDoc.id,
       ...logDoc.data(),
     }));
+  },
+
+  async getUserStats(uid) {
+    const userSnap = await getDoc(doc(db, 'users', uid));
+    if (!userSnap.exists()) return null;
+    
+    const data = userSnap.data();
+    return {
+      xp: data.xp || 0,
+      level: data.level || 1,
+      streak: data.stats?.streak || 0,
+      lastStreakClaim: data.stats?.lastStreakClaim,
+      completedMissions: data.stats?.completedMissions || {},
+    };
+  },
+
+  async getRecentlyAccessed(uid) {
+    const snap = await getDocs(query(
+      collection(db, 'users', uid, 'recentActivity'),
+      orderBy('lastOpened', 'desc'),
+      limit(5),
+    ));
+
+    return snap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+      };
+    });
+  },
+
+  async getDailyDiscoveries() {
+    const snap = await getDocs(query(
+      collection(db, 'dailyDiscoveries'),
+      where('date', '==', new Date().toDateString()),
+      limit(10),
+    ));
+
+    if (!snap.empty) {
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    return [];
+  },
+
+  async getTrendingAcrossPlatform() {
+    const snap = await getDocs(query(collection(db, 'trending'), limit(10)));
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  async getFriendsActivity() {
+    const snap = await getDocs(query(
+      collection(db, 'activityLogs'),
+      orderBy('timestamp', 'desc'),
+      limit(10),
+    ));
+
+    if (snap.empty) {
+      const sampleActivities = [
+        { id: 1, emoji: '🎉', user: 'Aryan', action: 'completed a challenge', item: 'Robotics Challenge' },
+        { id: 2, emoji: '🏆', user: 'Emma', action: 'reached level', item: 'Level 20' },
+        { id: 3, emoji: '🎬', user: 'Noah', action: 'uploaded a video', item: 'FunFlix showcase' },
+        { id: 4, emoji: '🤖', user: 'Sophia', action: 'created a new AI', item: 'Study Assistant' },
+      ];
+      return sampleActivities;
+    }
+
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  async canClaimDailyReward(uid) {
+    const userSnap = await getDoc(doc(db, 'users', uid));
+    if (!userSnap.exists()) return false;
+
+    const data = userSnap.data();
+    // Non-members cannot claim daily rewards or earn XP
+    if (data.membershipStatus !== 'approved' && data.role !== 'Main CEO' && data.role !== 'Co-CEO') {
+      return false;
+    }
+
+    const lastClaim = data.stats?.lastStreakClaim?.toDate?.();
+    if (!lastClaim) return true;
+
+    return lastClaim.toDateString() !== new Date().toDateString();
+  },
+
+  async claimDailyReward(uid) {
+    const userRef = doc(db, 'users', uid);
+    const userSnap = await getDoc(userRef);
+    if (!userSnap.exists()) return;
+
+    const data = userSnap.data();
+    // Non-members cannot claim daily rewards or earn XP
+    if (data.membershipStatus !== 'approved' && data.role !== 'Main CEO' && data.role !== 'Co-CEO') {
+      throw new Error('Only approved BeastBuck members can claim rewards and earn XP.');
+    }
+    const lastClaim = data.stats?.lastStreakClaim?.toDate?.();
+    const today = new Date();
+    const isConsecutive = lastClaim &&
+      (today.getTime() - lastClaim.getTime()) < 48 * 60 * 60 * 1000;
+
+    const currentStreak = data.stats?.streak || 0;
+    const newStreak = isConsecutive ? currentStreak + 1 : 1;
+    const streakXP = calculateStreakXP(newStreak);
+
+    const todayStr = today.toDateString();
+    const existingHistory = Array.isArray(data.stats?.streakHistory) ? data.stats.streakHistory : [];
+    const alreadyClaimedToday = existingHistory.some(date => date === todayStr);
+
+    if (alreadyClaimedToday) return;
+
+    const newHistory = [...existingHistory, todayStr].slice(-14);
+
+    await updateDoc(userRef, {
+      xp: increment(streakXP),
+      'stats.streak': newStreak,
+      'stats.lastStreakClaim': serverTimestamp(),
+      'stats.streakHistory': newHistory,
+      level: calculateLevel((data.xp || 0) + streakXP),
+    });
+  },
+
+  async getStreakHistory(uid) {
+    const userSnap = await getDoc(doc(db, 'users', uid));
+    if (!userSnap.exists()) return [];
+
+    const data = userSnap.data();
+    return data.stats?.streakHistory || [];
+  },
+
+  async getUserDailyMissions(uid) {
+    const snap = await getDocs(query(
+      collection(db, 'users', uid, 'dailyMissions'),
+      orderBy('createdAt', 'desc'),
+    ));
+
+    return snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  },
+
+  async getDailyHighlights() {
+    const snap = await getDocs(query(
+      collection(db, 'dailyHighlights'),
+      where('date', '==', new Date().toDateString()),
+      limit(8),
+    ));
+
+    if (!snap.empty) {
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    return [];
+  },
+
+  async getTopLeaderboard(maxCount = 3) {
+    const snap = await getDocs(query(
+      collection(db, 'users'),
+      orderBy('xp', 'desc'),
+      limit(maxCount),
+    ));
+
+    return snap.docs.map((userDoc, index) => ({
+      id: userDoc.id,
+      ...userDoc.data(),
+      rank: index + 1,
+    }));
+  },
+
+  async getUserProjects(uid) {
+    const snap = await getDocs(query(
+      collection(db, 'projects'),
+      where('members', 'array-contains', uid),
+      limit(5),
+    ));
+
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  async getActiveExperiments(uid) {
+    const snap = await getDocs(query(
+      collection(db, 'experiments'),
+      where('assignedTo', '==', uid),
+      limit(5),
+    ));
+
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  async getLearningJourney(uid) {
+    const snap = await getDocs(query(
+      collection(db, 'users', uid, 'learningJourney'),
+      orderBy('updatedAt', 'desc'),
+      limit(1),
+    ));
+
+    if (!snap.empty) {
+      return { id: snap.docs[0].id, ...snap.docs[0].data() };
+    }
+
+    return null;
+  },
+
+  async getNotifications(uid, maxCount = 5) {
+    const snap = await getDocs(query(
+      collection(db, 'users', uid, 'notifications'),
+      orderBy('createdAt', 'desc'),
+      limit(maxCount),
+    ));
+
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  async getMySquad(uid) {
+    const userSnap = await getDoc(doc(db, 'users', uid));
+    if (!userSnap.exists()) return [];
+
+    const userData = userSnap.data();
+    const teamIds = userData.teamIds || [];
+    
+    if (teamIds.length === 0) {
+      const orgSnap = await getDoc(doc(db, 'organizations', userData.organizationId || 'default'));
+      const orgData = orgSnap.exists() ? orgSnap.data() : {};
+      const orgMembers = orgData.memberIds || [];
+      const memberSnap = await getDocs(query(
+        collection(db, 'users'),
+        where('__name__', 'in', orgMembers.slice(0, 10)),
+        limit(8),
+      ));
+      
+      return memberSnap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    }
+
+    const squadSnap = await getDocs(query(
+      collection(db, 'users'),
+      where('__name__', 'in', teamIds.slice(0, 10)),
+      limit(10),
+    ));
+
+    return squadSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  },
+
+  async getCreativeEnergy(uid) {
+    const userSnap = await getDoc(doc(db, 'users', uid));
+    if (!userSnap.exists()) return { energy: 0 };
+
+    const data = userSnap.data();
+    const stats = data.stats || {};
+    
+    const energy = Math.min(100, Math.max(0,
+      (stats.achievementsEarned || 0) * 5 +
+      (stats.experimentsCount || 0) * 3 +
+      (stats.productsCount || 0) * 3 +
+      (stats.streak || 0) * 2,
+    ));
+
+    return { energy };
+  },
+
+  async getPersonalGoals(uid) {
+    const snap = await getDocs(query(
+      collection(db, 'users', uid, 'goals'),
+      orderBy('createdAt', 'desc'),
+      limit(5),
+    ));
+
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
 };

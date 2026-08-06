@@ -1,5 +1,6 @@
 import { db } from './config';
-import { collection, addDoc, getDoc, getDocs, query, where, updateDoc, doc, deleteDoc, orderBy, limit } from 'firebase/firestore';
+import { collection, addDoc, getDoc, getDocs, query, where, updateDoc, doc, deleteDoc, limit } from 'firebase/firestore';
+import errorHandler from '../../utils/errorHandler';
 
 const THEMES_COLLECTION = 'themes';
 
@@ -8,17 +9,12 @@ export const ThemesService = {
    * Create a new custom theme
    */
   async createTheme(themeData) {
-    try {
-      const docRef = await addDoc(collection(db, THEMES_COLLECTION), {
-        ...themeData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      return { id: docRef.id, ...themeData };
-    } catch (error) {
-      // Silently fail - theme won't be saved to Firestore without proper rules
-      throw error; // Re-throw to allow fallback in UI
-    }
+    const docRef = await addDoc(collection(db, THEMES_COLLECTION), {
+      ...themeData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return { id: docRef.id, ...themeData };
   },
 
   /**
@@ -33,7 +29,7 @@ export const ThemesService = {
       }
       return null;
     } catch (error) {
-      console.error('Error getting theme:', error);
+      errorHandler.error(error, 'Get Theme', { themeId });
       throw error;
     }
   },
@@ -49,11 +45,9 @@ export const ThemesService = {
         limit(50)
       );
       const querySnapshot = await getDocs(q);
-      console.log('Public themes query result:', querySnapshot.docs.length, 'documents');
       return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (error) {
-      console.error('Error getting public themes:', error);
-      // Silently fail - public themes won't be available without proper Firestore rules
+    } catch {
+      errorHandler.warn('Public themes query failed, using empty fallback', 'Get Public Themes');
       return [];
     }
   },
@@ -68,11 +62,9 @@ export const ThemesService = {
         where('createdBy', '==', userId)
       );
       const querySnapshot = await getDocs(q);
-      console.log('User themes query result for userId:', userId, '-', querySnapshot.docs.length, 'documents');
       return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    } catch (error) {
-      console.error('Error getting user themes:', error);
-      // Silently fail - user themes won't be available without proper Firestore rules
+    } catch {
+      errorHandler.warn('User themes query failed, using empty fallback', 'Get User Themes', { userId });
       return [];
     }
   },
@@ -89,7 +81,7 @@ export const ThemesService = {
       });
       return true;
     } catch (error) {
-      console.error('Error updating theme:', error);
+      errorHandler.error(error, 'Update Theme', { themeId });
       throw error;
     }
   },
@@ -103,7 +95,7 @@ export const ThemesService = {
       await deleteDoc(docRef);
       return true;
     } catch (error) {
-      console.error('Error deleting theme:', error);
+      errorHandler.error(error, 'Delete Theme', { themeId });
       throw error;
     }
   },

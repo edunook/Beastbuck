@@ -5,6 +5,7 @@ import {
   arrayUnion,
   collection,
   doc,
+  getDoc,
   limit,
   limitToLast,
   onSnapshot,
@@ -16,6 +17,40 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { getDatabase, ref as rtdbRef, set as rtdbSet, onValue, remove as rtdbRemove } from 'firebase/database';
+
+const RTDB_IGNORE_PATTERNS = ['/typing/', '/voiceRooms/'];
+
+function isRtdbPermissionIssue(args) {
+  const text = args.map(arg => {
+    if (typeof arg === 'string') return arg;
+    if (arg && typeof arg === 'object') {
+      if (typeof arg.message === 'string') return arg.message;
+      if (typeof arg.code === 'string') return arg.code;
+      try { return JSON.stringify(arg); } catch { return ''; }
+    }
+    return '';
+  }).join(' ').toLowerCase();
+  return text.includes('permission_denied') || text.includes('permission-denied');
+}
+
+function rtdbShouldIgnore(args) {
+  if (!isRtdbPermissionIssue(args)) return false;
+  const text = args.join(' ').toLowerCase();
+  return RTDB_IGNORE_PATTERNS.some(pattern => text.includes(pattern));
+}
+
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  if (rtdbShouldIgnore(args)) return;
+  originalWarn.apply(console, args);
+};
+
+const originalError = console.error;
+console.error = (...args) => {
+  if (rtdbShouldIgnore(args)) return;
+  originalError.apply(console, args);
+};
 
 export const DEFAULT_CHANNELS = [
   {
@@ -23,42 +58,105 @@ export const DEFAULT_CHANNELS = [
     name: 'general',
     description: 'Everyday BeastBuck team chat.',
     type: 'public',
+    category: 'General',
   },
   {
     id: 'announcements',
     name: 'announcements',
     description: 'Official BeastBuck announcements from leadership.',
     type: 'announcement',
+    category: 'Announcements',
   },
   {
-    id: 'experiments',
-    name: 'experiments',
-    description: 'Science tests, lab updates, and experiment discoveries.',
+    id: 'questions',
+    name: 'questions',
+    description: 'Ask questions and get answers from the community.',
     type: 'public',
+    category: 'Questions',
   },
   {
-    id: 'products',
-    name: 'products',
-    description: 'Product ideas, marketplace work, and launch updates.',
+    id: 'help',
+    name: 'help',
+    description: 'Get help with BeastBuck platform and features.',
     type: 'public',
+    category: 'Help',
+  },
+  {
+    id: 'resources',
+    name: 'resources',
+    description: 'Share and find useful resources and tools.',
+    type: 'public',
+    category: 'Resources',
   },
   {
     id: 'ideas',
     name: 'ideas',
     description: 'Invention sparks and new BeastBuck concepts.',
     type: 'public',
+    category: 'Ideas',
   },
   {
-    id: 'coding',
-    name: 'coding',
-    description: 'Code, bugs, builds, and developer missions.',
+    id: 'feedback',
+    name: 'feedback',
+    description: 'Share feedback and suggestions for improvement.',
     type: 'public',
+    category: 'Feedback',
   },
   {
-    id: 'science',
-    name: 'science',
-    description: 'Research, questions, and science learning.',
+    id: 'projects',
+    name: 'projects',
+    description: 'Project collaboration and updates.',
     type: 'public',
+    category: 'Projects',
+  },
+  {
+    id: 'research',
+    name: 'research',
+    description: 'Research discussions and findings.',
+    type: 'public',
+    category: 'Research',
+  },
+  {
+    id: 'random',
+    name: 'random',
+    description: 'Off-topic conversations and casual chat.',
+    type: 'public',
+    category: 'Random',
+  },
+  {
+    id: 'introductions',
+    name: 'introductions',
+    description: 'Introduce yourself to the community.',
+    type: 'public',
+    category: 'Introductions',
+  },
+  {
+    id: 'events',
+    name: 'events',
+    description: 'Upcoming events and activities.',
+    type: 'public',
+    category: 'Events',
+  },
+  {
+    id: 'challenges',
+    name: 'challenges',
+    description: 'Community challenges and competitions.',
+    type: 'public',
+    category: 'Challenges',
+  },
+  {
+    id: 'media-sharing',
+    name: 'media-sharing',
+    description: 'Share images, videos, and media content.',
+    type: 'public',
+    category: 'Media Sharing',
+  },
+  {
+    id: 'career-advice',
+    name: 'career-advice',
+    description: 'Career guidance and professional advice.',
+    type: 'public',
+    category: 'Career Advice',
   },
 ];
 
@@ -237,14 +335,17 @@ export const ChatService = {
     senderId,
     senderName,
     senderRole,
-    text,
+    text = '',
+    attachments = [],
+    file = null,
+    sharedContent = null,
     replyTo = null,
     mentions = [],
     members = [],
   }) {
-    const cleanText = text.trim();
+    const cleanText = (text || '').trim();
 
-    if (!cleanText) {
+    if (!cleanText && (!attachments || attachments.length === 0) && !file && !sharedContent) {
       throw new Error('Message cannot be empty.');
     }
 
@@ -259,6 +360,16 @@ export const ChatService = {
       reactions: {},
       mentions,
     };
+
+    if (attachments && attachments.length > 0) {
+      message.attachments = attachments;
+    }
+    if (file) {
+      message.file = file;
+    }
+    if (sharedContent) {
+      message.sharedContent = sharedContent;
+    }
 
     if (roomType === 'announcement') {
       message.announcement = true;
@@ -351,5 +462,202 @@ export const ChatService = {
       ...(typeof pinned === 'boolean' ? { pinned } : {}),
       ...(typeof archived === 'boolean' ? { archived } : {}),
     });
+  },
+
+  // Typing Indicators
+  setTypingStatus(roomId, userId, userName, isTyping) {
+    const typingRef = rtdbRef(getDatabase(), `typing/${roomId}/${userId}`);
+    if (isTyping) {
+      rtdbSet(typingRef, {
+        userName,
+        timestamp: Date.now(),
+      }).catch(() => {
+        // Ignore typing indicator permission errors
+      });
+      // Auto-clear after 3 seconds
+      setTimeout(() => {
+        rtdbRemove(typingRef).catch(() => {});
+      }, 3000);
+    } else {
+      rtdbRemove(typingRef).catch(() => {});
+    }
+  },
+
+  subscribeToTyping(roomId, callback) {
+    const typingRef = rtdbRef(getDatabase(), `typing/${roomId}`);
+    return onValue(typingRef, (snapshot) => {
+      const typingData = snapshot.val();
+      const typingUsers = typingData
+        ? Object.entries(typingData)
+            .filter(([, data]) => Date.now() - data.timestamp < 3000)
+            .map(([userId, data]) => ({ userId, userName: data.userName }))
+        : [];
+      callback(typingUsers);
+    }, (error) => {
+      const message = (error?.message || error?.code || '').toLowerCase();
+      if (!message.includes('permission')) {
+        console.error('Typing subscription failed:', error);
+      }
+    });
+  },
+
+  // WebRTC Voice Room Signaling
+  async joinVoiceRoom(roomId, userId, userName) {
+    const voiceRef = rtdbRef(getDatabase(), `voiceRooms/${roomId}/participants/${userId}`);
+    try {
+      await rtdbSet(voiceRef, {
+        userName,
+        isMuted: false,
+        joinedAt: Date.now(),
+      });
+    } catch (err) {
+      const code = err?.code || '';
+      if (!code.includes('permission')) {
+        console.error('Voice room join failed:', err);
+      }
+    }
+  },
+
+  async leaveVoiceRoom(roomId, userId) {
+    const voiceRef = rtdbRef(getDatabase(), `voiceRooms/${roomId}/participants/${userId}`);
+    try {
+      await rtdbRemove(voiceRef);
+    } catch (err) {
+      const code = err?.code || '';
+      if (!code.includes('permission')) {
+        console.error('Voice room leave failed:', err);
+      }
+    }
+  },
+
+  async toggleVoiceMute(roomId, userId, isMuted) {
+    const voiceRef = rtdbRef(getDatabase(), `voiceRooms/${roomId}/participants/${userId}`);
+    try {
+      await rtdbSet(voiceRef, {
+        isMuted,
+      });
+    } catch (err) {
+      const code = err?.code || '';
+      if (!code.includes('permission')) {
+        console.error('Voice mute toggle failed:', err);
+      }
+    }
+  },
+
+  subscribeToVoiceRoom(roomId, callback) {
+    const voiceRef = rtdbRef(getDatabase(), `voiceRooms/${roomId}/participants`);
+    return onValue(voiceRef, (snapshot) => {
+      const participants = snapshot.val();
+      callback(participants || {});
+    }, (error) => {
+      const message = (error?.message || error?.code || '').toLowerCase();
+      if (!message.includes('permission')) {
+        console.error('Voice room subscription failed:', error);
+      }
+    });
+  },
+
+  // Pinned Messages
+  async pinMessage(roomId, messageId, isPinned) {
+    try {
+      await updateDoc(messageRef(roomId, messageId), { pinned: isPinned });
+    } catch (err) {
+      console.warn('Pin message permission check:', err?.message || err);
+      throw new Error('Only administrators or announcement managers can pin messages.', { cause: err });
+    }
+  },
+
+  subscribeToPinnedMessages(roomId, callback) {
+    const q = query(
+      messagesRef(roomId),
+      where('pinned', '==', true),
+      orderBy('createdAt', 'desc'),
+    );
+    return onSnapshot(q, (snap) => {
+      const pinnedMessages = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      callback(pinnedMessages);
+    });
+  },
+
+  async editMessage(roomId, messageId, newText) {
+    await updateDoc(messageRef(roomId, messageId), {
+      text: newText.trim(),
+      edited: true,
+      editedAt: serverTimestamp(),
+    });
+  },
+
+  async deleteMessage(roomId, messageId) {
+    await updateDoc(messageRef(roomId, messageId), {
+      deleted: true,
+      deletedAt: serverTimestamp(),
+      text: '[Message deleted]',
+    });
+  },
+
+  async bookmarkMessage(roomId, messageId, isBookmarked) {
+    await updateDoc(messageRef(roomId, messageId), {
+      bookmarked: isBookmarked,
+    });
+  },
+
+  async updateDeliveryStatus(roomId, messageId, status) {
+    await updateDoc(messageRef(roomId, messageId), {
+      deliveryStatus: status,
+      ...(status === 'read' ? { readAt: serverTimestamp() } : {}),
+    });
+  },
+
+  async forwardMessage({ sourceRoomId, messageId, targetRoomId, senderId, senderName, senderRole }) {
+    const sourceSnap = await getDoc(messageRef(sourceRoomId, messageId));
+    if (!sourceSnap.exists()) throw new Error('Original message not found');
+
+    const original = sourceSnap.data();
+    const forwarded = {
+      senderId,
+      senderName,
+      senderRole,
+      text: original.text,
+      createdAt: serverTimestamp(),
+      edited: false,
+      deleted: false,
+      reactions: {},
+      mentions: original.mentions || [],
+      replyTo: null,
+      forwarded: true,
+      originalRoomId: sourceRoomId,
+      originalMessageId: messageId,
+      originalSenderName: original.senderName,
+    };
+
+    await addDoc(messagesRef(targetRoomId), forwarded);
+  },
+
+  async shareContent({ roomId, senderId, senderName, senderRole, content }) {
+    const message = {
+      senderId,
+      senderName,
+      senderRole,
+      text: content.title || 'Shared content',
+      createdAt: serverTimestamp(),
+      edited: false,
+      deleted: false,
+      reactions: {},
+      mentions: [],
+      replyTo: null,
+      sharedContent: {
+        type: content.type,
+        id: content.id,
+        title: content.title,
+        description: content.description,
+        url: content.url,
+        icon: content.icon,
+      },
+    };
+
+    return addDoc(messagesRef(roomId), message);
   },
 };

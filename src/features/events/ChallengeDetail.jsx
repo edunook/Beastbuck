@@ -34,6 +34,7 @@ export default function ChallengeDetail() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [challengeId]);
 
   const handleSubmitEntry = async (entryData) => {

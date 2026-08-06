@@ -28,39 +28,6 @@ import { ProductsService } from '../../services/firebase/products';
 import { MembershipService } from '../../services/firebase/membership';
 import { SPECIALIZATIONS } from '../../constants/specializations';
 
-const metrics = [
-  ['42', 'active members'],
-  ['18', 'pending reviews'],
-  ['124', 'tasks completed'],
-  ['9', 'open applications'],
-];
-
-const queues = [
-  {
-    title: 'Membership Applications',
-    detail: 'Review new applicants, approve members, and assign starter roles.',
-    icon: UserCog,
-  },
-  {
-    title: 'Content Moderation',
-    detail: 'Check products, experiments, profile updates, and reported comments.',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'Announcements',
-    detail: 'Publish challenges, winner updates, company news, and team reminders.',
-    icon: Bell,
-  },
-];
-
-const actions = [
-  'Promote members to LEADER or CO_CEO',
-  'Approve experiment and marketplace submissions',
-  'Award XP for missions and challenge wins',
-  'Create teams and assign team leaders',
-  'Review analytics for activity and growth',
-];
-
 export default function CEOPanel() {
   const { user } = useAuth();
   const [members, setMembers] = useState([]);
@@ -68,6 +35,7 @@ export default function CEOPanel() {
   const [experiments, setExperiments] = useState([]);
   const [products, setProducts] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [metrics, setMetrics] = useState([]);
   const [selectedMemberId, setSelectedMemberId] = useState('');
   const [bonusXP, setBonusXP] = useState(25);
   const [bonusReason, setBonusReason] = useState('CEO bonus XP');
@@ -111,6 +79,36 @@ export default function CEOPanel() {
       cancelled = true;
     };
   }, [user?.uid]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMetrics() {
+      try {
+        const allMembers = await UsersService.getAssignableMembers();
+        const allExperiments = await ExperimentsService.searchExperiments({});
+        const allApplications = await MembershipService.getApplications();
+        
+        const nextMetrics = [
+          [allMembers.length.toString(), 'active members'],
+          [allApplications.filter(a => a.status === 'pending').length.toString(), 'pending reviews'],
+          [allExperiments.filter(e => e.status === 'COMPLETED').length.toString(), 'experiments completed'],
+          [allApplications.filter(a => a.status === 'pending').length.toString(), 'open applications'],
+        ];
+        
+        if (!cancelled) setMetrics(nextMetrics);
+      } catch (err) {
+        console.error('CEO metrics failed:', err);
+        if (!cancelled) setMetrics(['0', 'active members']);
+      }
+    }
+
+    loadMetrics();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -304,19 +302,39 @@ export default function CEOPanel() {
       <SectionWrapper>
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="grid gap-4">
-            {queues.map(({ title, detail, icon: Icon }) => (
-              <Card key={title} className="rounded-lg">
-                <CardContent className="flex gap-4 p-5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white">{title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-text-muted">{detail}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            <Card className="rounded-lg">
+              <CardContent className="flex gap-4 p-5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                  <UserCog className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Membership Applications</h3>
+                  <p className="mt-1 text-sm leading-6 text-text-muted">Review new applicants, approve members, and assign starter roles.</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-lg">
+              <CardContent className="flex gap-4 p-5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Content Moderation</h3>
+                  <p className="mt-1 text-sm leading-6 text-text-muted">Check products, experiments, profile updates, and reported comments.</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="rounded-lg">
+              <CardContent className="flex gap-4 p-5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                  <Bell className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Announcements</h3>
+                  <p className="mt-1 text-sm leading-6 text-text-muted">Publish challenges, winner updates, company news, and team reminders.</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           <Card className="rounded-lg">
@@ -328,7 +346,13 @@ export default function CEOPanel() {
               <CardDescription>Core admin controls planned for MAIN_CEO and CO_CEO roles.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
-              {actions.map((action) => (
+              {[
+                'Promote members to LEADER or CO_CEO',
+                'Approve experiment and marketplace submissions',
+                'Award XP for missions and challenge wins',
+                'Create teams and assign team leaders',
+                'Review analytics for activity and growth',
+              ].map((action) => (
                 <div key={action} className="flex items-center gap-3 rounded-lg border border-border bg-black/20 p-3">
                   <CheckCircle2 className="h-5 w-5 shrink-0 text-status-success" />
                   <span className="text-sm font-semibold text-text-soft">{action}</span>

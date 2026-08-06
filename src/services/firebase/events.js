@@ -106,5 +106,18 @@ export const EventService = {
     const participantId = `${eventId}_${userId}`;
     const snap = await getDoc(doc(db, 'eventParticipants', participantId));
     return snap.exists();
+  },
+
+  async getUpcomingEvents(limitCount = 5) {
+    const now = new Date();
+    const q = query(
+      collection(db, 'events'), 
+      where('startDate', '>=', now), 
+      orderBy('startDate', 'asc'), 
+      limit(limitCount)
+    );
+    
+    const snap = await getDocs(q);
+    return docsFrom(snap);
   }
 };

@@ -11,7 +11,7 @@ export default function AIFunFlixAssistant() {
     <PageContainer>
       <div className="flex flex-col md:flex-row gap-6 h-[80vh]">
         {/* Quick Tools */}
-        <div className="w-full md:w-64 flex flex-col gap-2">
+        <div className="w-full md:w-64 lg:w-72 flex flex-col gap-2">
           <div className="bg-surface/40 border border-border rounded-xl p-4 mb-2">
             <h3 className="font-bold text-white text-sm flex items-center gap-2 mb-3"><Sparkles className="w-4 h-4 text-accent" /> AI Tools</h3>
             <div className="space-y-2">

@@ -5,7 +5,6 @@ import {
   Bot,
   BriefcaseBusiness,
   FlaskConical,
-  GraduationCap,
   Lightbulb,
   Search,
   Sparkles,
@@ -70,7 +69,7 @@ export default function UniverseHome() {
     );
   }
 
-  const { goals = [], recommendations = [], projects = [], tasks = [], enrollments = [], journey = {} } = data || {};
+  const { goals = [], recommendations = [], projects = [], tasks = [], journey = {} } = data || {};
 
   return (
     <PageContainer>

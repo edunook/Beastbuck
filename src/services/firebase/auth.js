@@ -47,9 +47,14 @@ export const AuthService = {
    * Register a new user with username reservation
    */
   async signUp(phoneNumber, password, username, avatar = '') {
-    const normalizedUsername = this.normalizeUsername(username);
+    // Input sanitization
+    const sanitizedUsername = username?.trim() || '';
+    const sanitizedPhone = phoneNumber?.trim() || '';
+    const sanitizedAvatar = avatar?.trim() || '';
+    
+    const normalizedUsername = this.normalizeUsername(sanitizedUsername);
     const usernameError = this.validateUsername(normalizedUsername);
-    const normalizedPhoneNumber = phoneNumber.trim();
+    const normalizedPhoneNumber = sanitizedPhone;
 
     if (usernameError) {
       throw new Error(usernameError);
@@ -58,6 +63,16 @@ export const AuthService = {
     if (!normalizedPhoneNumber) {
       throw new Error('Phone number is required.');
     }
+
+    // Additional security: rate limiting placeholder
+    // In a real implementation, track attempts by IP/user-agent
+    
+    // Basic rate limiting attempt (implement proper rate limiting in production)
+    const lastAttempt = localStorage.getItem('lastSignupAttempt');
+    if (lastAttempt && Date.now() - parseInt(lastAttempt) < 60000) { // 1 minute cooldown
+      throw new Error('Too many signup attempts. Please wait 1 minute before trying again.');
+    }
+    localStorage.setItem('lastSignupAttempt', Date.now().toString());
 
     const authEmail = this.getAuthEmailForUsername(normalizedUsername);
 
@@ -77,7 +92,7 @@ export const AuthService = {
 
     const user = cred.user;
 
-    await updateProfile(user, { displayName: normalizedUsername, photoURL: avatar });
+    await updateProfile(user, { displayName: normalizedUsername, photoURL: sanitizedAvatar });
 
     try {
       const batch = writeBatch(db);
@@ -99,7 +114,7 @@ export const AuthService = {
         displayName: normalizedUsername,
         authEmail,
         phoneNumber: normalizedPhoneNumber,
-        avatar,
+        avatar: sanitizedAvatar,
         role: ROLES.USER,
         membershipStatus: 'none',
         xp: 0,
@@ -121,7 +136,7 @@ export const AuthService = {
         uid: user.uid,
         username: normalizedUsername,
         displayName: normalizedUsername,
-        avatar,
+        avatar: sanitizedAvatar,
         role: ROLES.USER,
         xp: 0,
         level: 1,
@@ -157,21 +172,52 @@ export const AuthService = {
    * Firebase Auth still requires email internally, so the username index resolves it.
    */
   async signIn(username, password) {
-    const normalizedUsername = this.normalizeUsername(username);
+    // Input sanitization
+    const sanitizedUsername = username?.trim() || '';
+    const sanitizedPassword = password?.trim() || '';
+    
+    const normalizedUsername = this.normalizeUsername(sanitizedUsername);
     const usernameError = this.validateUsername(normalizedUsername);
 
     if (usernameError) {
       throw new Error(usernameError);
     }
 
+    if (!sanitizedPassword) {
+      throw new Error('Password is required.');
+    }
+
+    // Rate limiting for sign in attempts
+    const lastLoginAttempt = localStorage.getItem('lastLoginAttempt');
+    const loginAttemptCount = parseInt(localStorage.getItem('loginAttemptCount') || '0');
+    
+    if (lastLoginAttempt && Date.now() - parseInt(lastLoginAttempt) < 300000) { // 5 minutes
+      if (loginAttemptCount >= 5) {
+        throw new Error('Too many failed login attempts. Please wait 5 minutes before trying again.');
+      }
+      localStorage.setItem('loginAttemptCount', (loginAttemptCount + 1).toString());
+    } else {
+      // Reset counter after 5 minutes
+      localStorage.setItem('loginAttemptCount', '1');
+    }
+    localStorage.setItem('lastLoginAttempt', Date.now().toString());
+
     const authEmail = this.getAuthEmailForUsername(normalizedUsername);
-    return await signInWithEmailAndPassword(auth, authEmail, password);
+    console.log('Sign in attempt:', {
+      username: normalizedUsername,
+      authEmail,
+      passwordLength: sanitizedPassword?.length
+    });
+    return await signInWithEmailAndPassword(auth, authEmail, sanitizedPassword);
   },
 
   /**
    * Logout
    */
   async logOut() {
+    // Clear login attempt counters on logout
+    localStorage.removeItem('lastLoginAttempt');
+    localStorage.removeItem('loginAttemptCount');
     return await signOut(auth);
   }
 };

@@ -27,6 +27,7 @@ export default function UniverseGoals() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
 
   const createGoal = async (e) => {

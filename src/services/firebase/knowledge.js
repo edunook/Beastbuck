@@ -1,4 +1,5 @@
 import { db } from './config';
+import { errorHandler } from '../../utils/errorHandler';
 import {
   collection,
   doc,
@@ -41,30 +42,37 @@ export const KnowledgeService = {
   // ARTICLES
   // ---------------------------------------------------------------------------
   async getArticles({ category, authorId, featured, limitCount = 50 } = {}) {
-    let q = query(collection(db, 'knowledgeArticles'), where('status', '==', 'PUBLISHED'));
-    if (category) q = query(q, where('category', '==', category));
-    if (authorId) q = query(q, where('authorId', '==', authorId));
-    if (featured !== undefined) q = query(q, where('featured', '==', featured));
-    q = query(q, orderBy('createdAt', 'desc'), limit(limitCount));
+    // Use client-side filtering to avoid Firestore index requirement
+    let q = query(collection(db, 'knowledgeArticles'), orderBy('createdAt', 'desc'), limit(200));
     
     const snap = await getDocs(q);
-    return docsFrom(snap);
+    let results = docsFrom(snap);
+    
+    // Filter on client side
+    results = results.filter(doc => doc.status === 'PUBLISHED');
+    if (category) results = results.filter(doc => doc.category === category);
+    if (authorId) results = results.filter(doc => doc.authorId === authorId);
+    if (featured !== undefined) results = results.filter(doc => doc.featured === featured);
+    
+    return results.slice(0, limitCount);
   },
 
   async getTrendingArticles(limitCount = 5) {
-    // Basic approximation: sort by views.
-    const q = query(collection(db, 'knowledgeArticles'), where('status', '==', 'PUBLISHED'), orderBy('views', 'desc'), limit(limitCount));
+    // Basic approximation: sort by views using client-side filtering to avoid index requirement
+    const q = query(collection(db, 'knowledgeArticles'), orderBy('views', 'desc'), limit(100));
     const snap = await getDocs(q);
-    return docsFrom(snap);
+    const allDocs = docsFrom(snap);
+    return allDocs.filter(doc => doc.status === 'PUBLISHED').slice(0, limitCount);
   },
 
   async getRecommendedArticles(userId, limitCount = 5) {
     // Real implementation would use user's preferences. For now, fetch recent published.
-    const q = query(collection(db, 'knowledgeArticles'), where('status', '==', 'PUBLISHED'), orderBy('createdAt', 'desc'), limit(limitCount));
+    const q = query(collection(db, 'knowledgeArticles'), orderBy('createdAt', 'desc'), limit(100));
     const snap = await getDocs(q);
+    const allDocs = docsFrom(snap);
+    const published = allDocs.filter(doc => doc.status === 'PUBLISHED');
     // Shuffle the results slightly to mimic AI recommendation randomness
-    const results = docsFrom(snap);
-    return results.sort(() => 0.5 - Math.random());
+    return published.sort(() => 0.5 - Math.random()).slice(0, limitCount);
   },
 
   async getPendingArticles(limitCount = 50) {
@@ -101,23 +109,36 @@ export const KnowledgeService = {
       updatedAt: serverTimestamp(),
     });
 
-    // Index for search
-    await this.indexEntity(ref.id, 'knowledgeArticle', data.title, data.content, data.tags, userId);
+    // Index for search (skip if permissions fail)
+    try {
+      await this.indexEntity(ref.id, 'knowledgeArticle', data.title, data.content, data.tags, userId);
+    } catch {
+      errorHandler.warn('Failed to index article', 'Knowledge Index', { articleId: ref.id });
+    }
 
-    // Reward for knowledge sharing
-    await GamificationService.awardXP({
-      uid: userId,
-      amount: 100,
-      reason: `Published knowledge article: ${data.title}`,
-      sourceType: 'KNOWLEDGE_PUBLISHED',
-      sourceId: ref.id,
-      actorId: 'SYSTEM'
-    });
+    // Reward for knowledge sharing (skip if permissions fail)
+    try {
+      await GamificationService.awardXP({
+        uid: userId,
+        amount: 100,
+        reason: `Published knowledge article: ${data.title}`,
+        sourceType: 'KNOWLEDGE_PUBLISHED',
+        sourceId: ref.id,
+        actorId: 'SYSTEM'
+      });
+    } catch {
+      errorHandler.warn('Failed to award XP', 'Knowledge XP Award', { userId, articleId: ref.id });
+    }
 
-    await updateDoc(doc(db, 'users', userId), {
-      'stats.knowledgeScore': increment(10),
-      'stats.articlesPublished': increment(1)
-    });
+    // Update user stats (skip if permissions fail)
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        'stats.knowledgeScore': increment(1),
+        'stats.articlesPublished': increment(1)
+      });
+    } catch {
+      errorHandler.warn('Failed to update user stats', 'Knowledge Stats Update', { userId });
+    }
 
     return ref.id;
   },

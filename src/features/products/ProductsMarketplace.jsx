@@ -21,6 +21,10 @@ const EMPTY_FORM = {
   price: 0,
   status: 'DRAFT',
   media: [],
+  features: '',
+  technicalDetails: '',
+  usageInstructions: '',
+  warrantyInfo: '',
 };
 
 function formatPrice(price) {
@@ -73,24 +77,79 @@ function ProductForm({ members, onCancel, onSubmit, submitting }) {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <Input value={form.title} onChange={(event) => updateField('title', event.target.value)} placeholder="Product title" required />
-        <Input type="number" min="0" step="0.01" value={form.price} onChange={(event) => updateField('price', event.target.value)} placeholder="Price" />
-        <select value={form.category} onChange={(event) => updateField('category', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-          {PRODUCT_CATEGORIES.map(category => <option key={category}>{category}</option>)}
-        </select>
-        <select value={form.status} onChange={(event) => updateField('status', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-          {PRODUCT_STATUSES.filter(status => status !== 'ARCHIVED').map(status => <option key={status}>{status}</option>)}
-        </select>
+        <div>
+          <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Title <span className="text-status-danger">*</span></label>
+          <Input value={form.title} onChange={(event) => updateField('title', event.target.value)} placeholder="Product title" required maxLength={100} />
+          <div className="mt-1 text-[10px] text-text-muted text-right">{form.title.length}/100</div>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Price</label>
+          <Input type="number" min="0" step="0.01" value={form.price} onChange={(event) => updateField('price', event.target.value)} placeholder="Price" />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Category</label>
+          <select value={form.category} onChange={(event) => updateField('category', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
+            {PRODUCT_CATEGORIES.map(category => <option key={category}>{category}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Status</label>
+          <select value={form.status} onChange={(event) => updateField('status', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
+            {PRODUCT_STATUSES.filter(status => status !== 'ARCHIVED').map(status => <option key={status}>{status}</option>)}
+          </select>
+        </div>
       </div>
 
-      <textarea value={form.description} onChange={(event) => updateField('description', event.target.value)} placeholder="Product overview and details" required rows={5} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-text-muted focus:ring-2 focus:ring-accent" />
+      <div>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Description <span className="text-status-danger">*</span></label>
+        <textarea value={form.description} onChange={(event) => updateField('description', event.target.value)} placeholder="Product overview and details" required rows={5} maxLength={500} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-text-muted focus:ring-2 focus:ring-accent" />
+        <div className="mt-1 text-[10px] text-text-muted text-right">{form.description.length}/500</div>
+      </div>
 
-      <label className="block">
-        <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-text-muted">Team Members</span>
+      <div>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Features & Specifications</label>
+        <textarea value={form.features} onChange={(event) => updateField('features', event.target.value)} placeholder="Key features and specifications" rows={4} maxLength={1000} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-text-muted focus:ring-2 focus:ring-accent" />
+        <div className="mt-1 text-[10px] text-text-muted text-right">{form.features.length}/1000</div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Technical Details</label>
+        <textarea value={form.technicalDetails} onChange={(event) => updateField('technicalDetails', event.target.value)} placeholder="Technical specifications and requirements" rows={4} maxLength={1000} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-text-muted focus:ring-2 focus:ring-accent" />
+        <div className="mt-1 text-[10px] text-text-muted text-right">{form.technicalDetails.length}/1000</div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Usage Instructions</label>
+        <textarea value={form.usageInstructions} onChange={(event) => updateField('usageInstructions', event.target.value)} placeholder="How to use the product" rows={4} maxLength={1000} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-text-muted focus:ring-2 focus:ring-accent" />
+        <div className="mt-1 text-[10px] text-text-muted text-right">{form.usageInstructions.length}/1000</div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Warranty & Support</label>
+        <textarea value={form.warrantyInfo} onChange={(event) => updateField('warrantyInfo', event.target.value)} placeholder="Warranty information and support details" rows={4} maxLength={1000} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-text-muted focus:ring-2 focus:ring-accent" />
+        <div className="mt-1 text-[10px] text-text-muted text-right">{form.warrantyInfo.length}/1000</div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Team Members</label>
+        <p className="mb-2 text-[10px] text-text-muted">Hold Ctrl/Cmd to select multiple members</p>
         <select multiple value={form.teamMembers} onChange={(event) => updateField('teamMembers', [...event.target.selectedOptions].map(option => option.value))} className="min-h-28 w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
           {members.map(member => <option key={member.id} value={member.id}>{member.displayName || member.username}</option>)}
         </select>
-      </label>
+        {form.teamMembers.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {form.teamMembers.map(uid => {
+              const member = members.find(m => m.id === uid);
+              return member ? (
+                <span key={uid} className="flex items-center gap-1 rounded-full bg-accent/10 px-2 py-1 text-xs text-accent">
+                  {member.displayName || member.username}
+                  <button type="button" onClick={() => updateField('teamMembers', form.teamMembers.filter(id => id !== uid))} className="hover:text-status-danger">×</button>
+                </span>
+              ) : null;
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="rounded-xl border border-border bg-black/20 p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -134,7 +193,7 @@ function ProductCard({ product, canModerate, onArchive, onFeature }) {
 
   return (
     <Card className="rounded-lg">
-      {firstImage && <img src={firstImage.url} alt="" className="h-44 w-full object-cover" />}
+      {firstImage && <img src={firstImage.url} alt={product.title} className="h-44 w-full object-cover" />}
       <CardContent className="p-5">
         <div className="mb-3 flex flex-wrap gap-2">
           <span className="rounded-lg bg-accent/10 px-2 py-1 text-xs font-bold text-accent">{product.category}</span>
@@ -180,6 +239,9 @@ export default function ProductsMarketplace() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const canModerate = hasPermission(roleData?.role, 'canDeleteContent');
+  const isApprovedMember = roleData?.membershipStatus === 'approved';
+  const isCEO = roleData?.role === 'Main CEO' || roleData?.role === 'Co-CEO';
+  const canCreateProduct = isApprovedMember || isCEO;
 
   const creator = useMemo(() => ({
     uid: user?.uid,
@@ -224,6 +286,10 @@ export default function ProductsMarketplace() {
   }, []);
 
   const submitProduct = async (form) => {
+    if (!canCreateProduct) {
+      setError('You need an approved membership or CEO role to create products.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -253,7 +319,13 @@ export default function ProductsMarketplace() {
       <PageHeader
         title="Products Marketplace"
         description="Create, showcase, search, and review BeastBuck member products."
-        action={<Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" /> New Product</Button>}
+        action={
+          canCreateProduct ? (
+            <Button onClick={() => setShowForm(true)}><Plus className="mr-2 h-4 w-4" /> New Product</Button>
+          ) : (
+            <Button variant="secondary" disabled><Plus className="mr-2 h-4 w-4" /> New Product (Requires Approved Membership)</Button>
+          )
+        }
       />
 
       {error && <div className="mb-4 rounded-xl border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">{error}</div>}

@@ -25,6 +25,7 @@ export default function AdminInnovation() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [filter]);
 
   const handleApprove = async (id) => {

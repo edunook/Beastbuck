@@ -1,191 +1,64 @@
 import { NavLink, Link } from 'react-router-dom';
 import { useGlobalStore } from '../../store/useGlobalStore';
 import { useAuth } from '../../features/auth/AuthContext';
-import { hasPermission, PERMISSIONS } from '../../services/firebase/permissions';
+import { hasPermission } from '../../services/firebase/permissions';
+import { ROLES } from '../../constants/roles';
 import { 
   LayoutDashboard, 
-  GraduationCap,
-  CheckSquare, 
-  BookOpen, 
-  Lightbulb, 
   UsersRound,
   FolderKanban,
-  BriefcaseBusiness,
-  PackageOpen,
   Film,
   Sparkles,
-  Workflow,
-  Building2,
   Scale,
-  Radar,
-  Calendar,
   ShieldCheck,
+  Shield,
+  Bell,
   User, 
   Settings,
   ChevronLeft,
   ChevronRight,
   Star,
+  Trophy,
+  Crown,
+  Palette,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const NAV_ITEMS = [
   { name: 'Home', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Portfolio', path: '/portfolio', icon: User },
-  {
-    label: 'Projects',
-    icon: CheckSquare,
-    path: '/tasks',
-    subItems: [
-      { label: 'Tasks Hub', path: '/tasks' },
-      { label: 'Workspace', path: '/workspace' },
-      { label: 'Experiments', path: '/workspace/experiments' },
-      { label: 'Products', path: '/workspace/products' },
-    ],
-  },
-  {
-    label: 'Research',
-    icon: BookOpen,
-    path: '/knowledge',
-    subItems: [
-      { label: 'Knowledge Hub', path: '/knowledge' },
-      { label: 'Knowledge Maps', path: '/knowledge/maps' },
-      { label: 'Experts', path: '/experts' },
-      { label: 'Mentorship', path: '/mentorship' },
-      { label: 'Q&A', path: '/knowledge/requests' },
-    ],
-  },
-  {
-    label: 'Innovation',
-    icon: Lightbulb,
-    path: '/innovation/explore',
-    subItems: [
-      { label: 'Innovation Showcase', path: '/innovation/explore' },
-      { label: 'Ventures', path: '/ventures' },
-      { label: 'Incubator', path: '/incubator' },
-      { label: 'Startup Builder', path: '/venture-builder' },
-    ],
-  },
-  {
-    label: 'Community',
-    icon: UsersRound,
-    path: '/communities',
-    subItems: [
-      { label: 'Communities', path: '/communities' },
-      { label: 'Chat', path: '/chat' },
-      { label: 'Showcase', path: '/showcase' },
-      { label: 'Discover', path: '/discover' },
-    ],
-  },
+  { name: 'Portfolios', path: '/portfolio', icon: User },
+  { name: 'Creativity', path: '/creativity', icon: Palette },
+  { name: 'Challenges', path: '/challenges', icon: Trophy },
   {
     label: 'Workspace',
     icon: FolderKanban,
     path: '/workspace',
     subItems: [
-      { label: 'Workspace Hub', path: '/workspace' },
       { label: 'Skills', path: '/workspace/skills' },
       { label: 'Creative Hub', path: '/creative' },
-    ],
-  },
-  {
-    label: 'Ventures',
-    icon: BriefcaseBusiness,
-    path: '/ventures',
-    subItems: [
-      { label: 'Venture Hub', path: '/ventures' },
-      { label: 'Venture Directory', path: '/ventures/explore' },
-      { label: 'Incubator', path: '/incubator' },
-      { label: 'Startup Builder', path: '/venture-builder' },
-    ],
-  },
-  {
-    label: 'Marketplace',
-    icon: PackageOpen,
-    path: '/marketplace',
-    subItems: [
-      { label: 'Marketplace Home', path: '/marketplace' },
-      { label: 'Products & Assets', path: '/marketplace' },
-      { label: 'Services', path: '/services' },
-      { label: 'Creators Hub', path: '/creators' },
+      { label: 'Experiments', path: '/workspace/experiments' },
+      { label: 'Products', path: '/workspace/products' },
     ],
   },
   {
     label: 'FunFlix',
     icon: Film,
     path: '/funflix',
-    subItems: [
-      { label: 'FunFlix Home', path: '/funflix' },
-      { label: 'Creator Studio', path: '/funflix/studio' },
-      { label: 'My Movies', path: '/funflix/my-movies' },
-      { label: 'Challenges', path: '/funflix/challenges' },
-    ],
   },
   {
-    label: 'AI Studio',
+    label: 'My AIs',
     icon: Sparkles,
     path: '/ai-studio',
-    subItems: [
-      { label: 'AI Marketplace', path: '/ais' },
-      { label: 'Create AI', path: '/ai-studio/create' },
-      { label: 'My AIs', path: '/ai-studio' },
-      { label: 'Collections', path: '/ai-collections' },
-      { label: 'Training Center', path: '/ai-studio/training' },
-    ],
   },
   {
-    label: 'Automation',
-    icon: Workflow,
-    path: '/automation',
-    subItems: [
-      { label: 'Agent OS', path: '/automation' },
-      { label: 'Agent Builder', path: '/automation/builder' },
-      { label: 'Automation Center', path: '/automation/center' },
-      { label: 'Agent Marketplace', path: '/automation/marketplace' },
-      { label: 'Analytics', path: '/automation/analytics' },
-    ],
+    label: 'AI Marketplace',
+    icon: Sparkles,
+    path: '/ais',
   },
   {
-    label: 'Organization',
-    icon: Building2,
-    path: '/organization',
-    subItems: [
-      { label: 'Organization Hub', path: '/organization' },
-      { label: 'Collaboration', path: '/collaboration' },
-      { label: 'Voice Rooms', path: '/voice' },
-      { label: 'Meetings', path: '/meetings' },
-      { label: 'War Rooms', path: '/war-rooms' },
-    ],
-  },
-  {
-    label: 'Governance',
-    icon: Scale,
-    path: '/governance',
-    subItems: [
-      { label: 'Governance Center', path: '/governance' },
-      { label: 'Elections', path: '/governance/elections' },
-      { label: 'Verification', path: '/governance/verification' },
-      { label: 'Endorsements', path: '/governance/endorsements' },
-    ],
-  },
-  {
-    label: 'Intelligence',
-    icon: Radar,
-    path: '/intelligence',
-    subItems: [
-      { label: 'Intelligence Center', path: '/intelligence' },
-      { label: 'Ecosystem Health', path: '/intelligence/health' },
-      { label: 'Opportunity Scanner', path: '/intelligence/opportunities' },
-      { label: 'Risk Center', path: '/intelligence/risks' },
-    ],
-  },
-  {
-    label: 'Events',
-    icon: Calendar,
-    path: '/events',
-    subItems: [
-      { label: 'Events', path: '/events' },
-      { label: 'Portfolios', path: '/portfolios' },
-      { label: 'Leaderboards', path: '/leaderboards' },
-    ],
+    label: 'AI Assistant',
+    icon: Sparkles,
+    path: '/ai',
   },
 ];
 
@@ -199,6 +72,7 @@ function NavItem({ item, isSidebarCollapsed, isAdmin: itemIsAdmin = false }) {
   return (
     <NavLink
       to={item.path}
+      end
       aria-label={item.name || item.label}
       className={({ isActive }) => cn(
         "flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-base group relative min-h-[44px]",
@@ -226,27 +100,43 @@ function NavItem({ item, isSidebarCollapsed, isAdmin: itemIsAdmin = false }) {
   );
 }
 
-const MEMBER_ONLY_ITEMS = ['Organization', 'Governance', 'Intelligence'];
+const MEMBER_ONLY_ITEMS = ['Organization', 'Governance', 'Intelligence', 'Research', 'Community', 'Ventures', 'Achievements', 'AI Studio'];
+
 
 export default function Sidebar() {
   const { isSidebarCollapsed, toggleSidebar } = useGlobalStore();
   const { roleData, user } = useAuth();
   const role = roleData?.role;
-  const isAdmin = hasPermission(role, 'canAccessCeoPanel');
-  const isApprovedMember = PERMISSIONS.isApprovedMember(role);
+  
+  // Debug logging to check role value
+  console.log('Sidebar - Role:', role, 'RoleData:', roleData);
+  
+  // Case-insensitive role matching for robustness
+  const normalizedRole = role?.toLowerCase().trim();
+  const isAdmin = hasPermission(role, 'canAccessCeoPanel') || 
+                  normalizedRole === 'main ceo' || 
+                  normalizedRole === 'co-ceo' || 
+                  normalizedRole === 'co ceo';
+  
+  const isApprovedMember = roleData?.membershipStatus === 'approved' || isAdmin || 
+                          normalizedRole === 'main ceo' || 
+                          normalizedRole === 'co-ceo' || 
+                          normalizedRole === 'co ceo';
 
   const filteredNavItems = NAV_ITEMS.filter(item => {
+    // Completely hide member-only items for non-members
     if (MEMBER_ONLY_ITEMS.includes(item.label)) {
-      return isApprovedMember;
+      return isApprovedMember === true;
     }
+    // Show restricted items for all authenticated users (functionality restricted on pages)
     return true;
   });
 
   return (
-    <aside 
+    <aside
       aria-label="Main navigation"
       className={cn(
-        "hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-sticky",
+        "hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-[1500]",
         "bg-background border-r border-border transition-all duration-slow",
         isSidebarCollapsed ? "w-20" : "w-64"
       )}
@@ -291,12 +181,12 @@ export default function Sidebar() {
           </Link>
         )}
 
-        {/* Admin Command Center - only for CEO/Admin roles */}
+        {/* Executive Command Center - only for CEO/Admin roles */}
         {isAdmin && (
           <>
             <div className={cn("my-2 border-t border-border", isSidebarCollapsed ? "mx-2" : "mx-1")} />
             {!isSidebarCollapsed && (
-              <p className="px-3 pb-1 text-badge font-bold uppercase tracking-widest text-text-muted/50">Admin</p>
+              <p className="px-3 pb-1 text-badge font-bold uppercase tracking-widest text-text-muted/50">Executive</p>
             )}
             <NavItem
               item={{ name: 'Mission Control', path: '/mission-control', icon: Scale }}
@@ -304,12 +194,32 @@ export default function Sidebar() {
               isAdmin
             />
             <NavItem
-              item={{ name: 'Command Center', path: '/admin/dashboard', icon: ShieldCheck }}
+              item={{ name: 'Command Center', path: '/command-center', icon: ShieldCheck }}
               isSidebarCollapsed={isSidebarCollapsed}
               isAdmin
             />
             <NavItem
-              item={{ name: 'Memberships', path: '/admin/memberships', icon: UsersRound }}
+              item={{ name: 'Membership Center', path: '/membership-center', icon: UsersRound }}
+              isSidebarCollapsed={isSidebarCollapsed}
+              isAdmin
+            />
+            <NavItem
+              item={{ name: 'Executive AI', path: '/executive-ai', icon: Sparkles }}
+              isSidebarCollapsed={isSidebarCollapsed}
+              isAdmin
+            />
+            <NavItem
+              item={{ name: 'Executive Notifications', path: '/executive-notifications', icon: Bell }}
+              isSidebarCollapsed={isSidebarCollapsed}
+              isAdmin
+            />
+            <NavItem
+              item={{ name: 'Executive Security', path: '/executive-security', icon: Shield }}
+              isSidebarCollapsed={isSidebarCollapsed}
+              isAdmin
+            />
+            <NavItem
+              item={{ name: 'Role Management', path: '/executive-role-management', icon: Crown }}
               isSidebarCollapsed={isSidebarCollapsed}
               isAdmin
             />

@@ -1,0 +1,115 @@
+import { useState, useEffect } from 'react';
+import { Crown, Trophy, Medal, Flame, ArrowRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/Card';
+import { useAuth } from '../../auth/AuthContext';
+import { DynamicEmptyState } from '../../../components/dashboard/DynamicEmptyStates';
+import { GamificationService } from '../../../services/firebase/gamification';
+
+const PODIUM_COLORS = [
+  'from-yellow-400 to-orange-500',
+  'from-gray-300 to-gray-400',
+  'from-orange-600 to-orange-700',
+];
+
+export function LeaderboardPreviewWidget() {
+  const { user } = useAuth();
+  const [leaders, setLeaders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+
+    const loadLeaderboard = async () => {
+      try {
+        const data = await GamificationService.getTopLeaderboard(3);
+        setLeaders(data || []);
+      } catch (err) {
+        console.log('Leaderboard load failed:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLeaderboard();
+  }, [user?.uid]);
+
+  if (loading) {
+    return (
+      <Card className="h-full border border-white/10 bg-gradient-to-br from-yellow-500/5 to-orange-500/5 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-sm font-bold uppercase tracking-wider text-text-muted">Leaderboard</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 animate-pulse rounded-xl bg-white/5" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="h-full border border-white/10 bg-gradient-to-br from-yellow-500/5 to-orange-500/5 backdrop-blur-sm transition-all duration-500 hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/20">
+      <CardHeader>
+        <CardTitle className="text-sm font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
+          <Trophy className="text-yellow-400 animate-pulse" />
+          Leaderboard Arena
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {leaders.length === 0 ? (
+          <DynamicEmptyState type="generic" title="No leaders yet" subtitle="Earn XP to reach the top!" />
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-end justify-center gap-4 mb-4">
+              {leaders.slice(0, 3).map((member, index) => (
+                <div
+                  key={member.id}
+                  className={`flex flex-col items-center gap-2 ${index === 0 ? 'mb-4' : index === 1 ? 'mb-2' : ''}`}
+                  style={{ animation: `fadeInUp 0.5s ease-out ${index * 100}ms both` }}
+                >
+                  <div className={`relative h-12 w-12 rounded-full bg-gradient-to-br ${PODIUM_COLORS[index]} flex items-center justify-center shadow-lg ${index === 0 ? 'animate-bounce' : ''}`}>
+                    {index === 0 && <Crown className="absolute -top-3 text-yellow-300 text-xl animate-pulse" />}
+                    <span className="text-lg font-black text-white">{member.initials || '?'}</span>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-bold text-white truncate max-w-[60px]">{member.name || '???'}</p>
+                    <p className="text-[10px] text-text-muted font-bold">Lvl {member.level || 1}</p>
+                  </div>
+                  {index === 0 && <Medal className="text-yellow-400 text-lg animate-pulse" />}
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {leaders.map((member, index) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-3 p-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-yellow-500/50 transition-all duration-300"
+                  style={{ animation: `fadeInUp 0.5s ease-out ${index * 100}ms both` }}
+                >
+                  <span className="text-sm font-black text-yellow-400 w-6">#{index + 1}</span>
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500/20 to-cyan-500/20 flex items-center justify-center">
+                    <Flame className="text-orange-400 text-sm" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{member.name || '???'}</p>
+                    <p className="text-[10px] text-text-muted">{member.xp || 0} XP</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="w-full mt-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-yellow-300 hover:bg-yellow-500/10 transition-all duration-300 flex items-center justify-center gap-2">
+              <span>View Full Leaderboard</span>
+              <ArrowRight className="text-xs" />
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

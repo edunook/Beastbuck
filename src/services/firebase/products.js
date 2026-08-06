@@ -56,6 +56,10 @@ function normalizeProduct(data) {
     price: Number(data.price || 0),
     status: data.status || 'DRAFT',
     media: Array.isArray(data.media) ? data.media : [],
+    features: clean(data.features),
+    technicalDetails: clean(data.technicalDetails),
+    usageInstructions: clean(data.usageInstructions),
+    warrantyInfo: clean(data.warrantyInfo),
   };
 }
 

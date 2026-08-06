@@ -19,6 +19,7 @@ export function AIProvider({ children }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [mode, setMode] = useState('general');
+  const [providerId, setProviderId] = useState('groq');
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -38,6 +39,7 @@ export function AIProvider({ children }) {
       setActiveSessionId(null);
       setMessages([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -50,28 +52,46 @@ export function AIProvider({ children }) {
 
   const loadSessions = async () => {
     if (!user) return;
-    const s = await AIChatHistoryService.getSessions(user.uid);
-    setSessions(s);
-    if (s.length > 0 && !activeSessionId) {
-      setActiveSessionId(s[0].id);
+    try {
+      const s = await AIChatHistoryService.getSessions(user.uid);
+      setSessions(s);
+      if (s.length > 0 && !activeSessionId) {
+        setActiveSessionId(s[0].id);
+      }
+    } catch (err) {
+      console.log('AI chat history not accessible:', err.message);
+      setSessions([]);
     }
   };
 
   const loadMessages = async (sid) => {
-    const msgs = await AIChatHistoryService.getSessionMessages(sid);
-    setMessages(msgs);
+    try {
+      const msgs = await AIChatHistoryService.getSessionMessages(sid);
+      setMessages(msgs);
+    } catch (err) {
+      console.log('AI session messages not accessible:', err.message);
+      setMessages([]);
+    }
   };
 
   const createNewSession = async () => {
-    const sid = await AIChatHistoryService.createSession(user.uid, 'New Conversation');
-    setActiveSessionId(sid);
-    await loadSessions();
+    try {
+      const sid = await AIChatHistoryService.createSession(user.uid, 'New Conversation');
+      setActiveSessionId(sid);
+      await loadSessions();
+    } catch (err) {
+      console.log('Cannot create AI session:', err.message);
+    }
   };
 
   const deleteSession = async (sid) => {
-    await AIChatHistoryService.deleteSession(sid);
-    if (activeSessionId === sid) setActiveSessionId(null);
-    await loadSessions();
+    try {
+      await AIChatHistoryService.deleteSession(sid);
+      if (activeSessionId === sid) setActiveSessionId(null);
+      await loadSessions();
+    } catch (err) {
+      console.log('Cannot delete AI session:', err.message);
+    }
   };
 
   const openAssistant = (overrideMode = 'general', contextData = null) => {
@@ -89,19 +109,23 @@ export function AIProvider({ children }) {
 
   const sendMessage = async (text) => {
     if (!text.trim() || !activeSessionId) return;
-    
+
     // Add User message
     const userMsg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
-    await AIChatHistoryService.addMessageToSession(activeSessionId, 'user', text);
-    
+    try {
+      await AIChatHistoryService.addMessageToSession(activeSessionId, 'user', text);
+    } catch (err) {
+      console.log('Cannot save user message to history:', err.message);
+    }
+
     setLoading(true);
     try {
       // Build permission-aware context
       const systemContext = await AIContextBuilder.buildFullContext(user, roleData, pageContext);
-      
+
       const responseText = await AIService.chat({
-        providerId: 'groq', // Primary provider, will fallback to openrouter then gemini
+        providerId,
         mode,
         messages: [...messages, userMsg],
         knowledge: [{ title: 'System Permissions Context', content: systemContext }]
@@ -113,13 +137,17 @@ export function AIProvider({ children }) {
       // Add AI message
       const aiMsg = { role: 'assistant', content: plainText };
       setMessages(prev => [...prev, aiMsg]);
-      await AIChatHistoryService.addMessageToSession(activeSessionId, 'assistant', plainText);
+      try {
+        await AIChatHistoryService.addMessageToSession(activeSessionId, 'assistant', plainText);
+      } catch (err) {
+        console.log('Cannot save AI message to history:', err.message);
+      }
 
       // Stage action if one exists
       if (actions && actions.length > 0) {
         setStagedAction(actions[0]);
       }
-      
+
     } catch (err) {
       console.error(err);
       const errMsg = { role: 'assistant', content: `Error: ${err.message}` };
@@ -134,10 +162,14 @@ export function AIProvider({ children }) {
     // Execute action
     await AIActionsService.executeAction(stagedAction, pageContext);
     setStagedAction(null);
-    
+
     const msg = { role: 'assistant', content: `_Action "${stagedAction.action}" executed successfully._` };
     setMessages(prev => [...prev, msg]);
-    await AIChatHistoryService.addMessageToSession(activeSessionId, 'assistant', msg.content);
+    try {
+      await AIChatHistoryService.addMessageToSession(activeSessionId, 'assistant', msg.content);
+    } catch (err) {
+      console.log('Cannot save action message to history:', err.message);
+    }
   };
 
   const handleActionCancel = () => {
@@ -148,6 +180,8 @@ export function AIProvider({ children }) {
     isOpen,
     isMinimized,
     mode,
+    providerId,
+    setProviderId,
     sessions,
     activeSessionId,
     messages,

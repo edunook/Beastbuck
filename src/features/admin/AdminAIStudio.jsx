@@ -10,7 +10,8 @@ export default function AdminAIStudio() {
       <div className="mb-8">
         <h3 className="font-bold text-white mb-4 flex items-center gap-2"><ShieldAlert className="text-yellow-400 w-5 h-5" /> Pending Review</h3>
         <div className="rounded-2xl border border-white/10 bg-surface/40 overflow-hidden backdrop-blur-sm shadow-depth-1">
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-white/10 text-text-muted bg-black/20">
                 <th className="py-3 px-4 text-caption font-semibold">AI Name</th>
@@ -41,13 +42,15 @@ export default function AdminAIStudio() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
       <div>
         <h3 className="font-bold text-white mb-4 flex items-center gap-2"><StarIcon className="text-accent w-5 h-5" /> Featured AI Management</h3>
         <div className="rounded-2xl border border-white/10 bg-surface/40 overflow-hidden backdrop-blur-sm shadow-depth-1">
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-white/10 text-text-muted bg-black/20">
                 <th className="py-3 px-4 text-caption font-semibold">AI Name</th>
@@ -77,6 +80,7 @@ export default function AdminAIStudio() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </PageContainer>

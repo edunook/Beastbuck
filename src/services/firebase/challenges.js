@@ -9,9 +9,13 @@ import {
   orderBy,
   setDoc,
   updateDoc,
+  addDoc,
+  deleteDoc,
   serverTimestamp,
+  increment,
 } from 'firebase/firestore';
 import { GamificationService } from './gamification';
+import { CHALLENGE_STATUS, SUBMISSION_STATUS } from '../../constants/challenges';
 
 function docsFrom(snap) {
   return snap.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -149,5 +153,146 @@ export const ChallengeService = {
         console.error('Failed to issue certificate for challenge win:', err);
       }
     }
-  }
+  },
+
+  // ---------------------------------------------------------------------------
+  // COMMUNITY CHALLENGES (Multi-type system)
+  // ---------------------------------------------------------------------------
+  async createCommunityChallenge(challengeData, creator) {
+    const docRef = await addDoc(collection(db, 'communityChallenges'), {
+      ...challengeData,
+      creatorId: creator.uid,
+      creatorName: creator.name,
+      creatorUsername: creator.username,
+      status: CHALLENGE_STATUS.DRAFT,
+      participantCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return docRef.id;
+  },
+
+  async updateCommunityChallenge(challengeId, data) {
+    await updateDoc(doc(db, 'communityChallenges', challengeId), {
+      ...data,
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  async deleteCommunityChallenge(challengeId) {
+    await deleteDoc(doc(db, 'communityChallenges', challengeId));
+  },
+
+  async getCommunityChallenges(filters = {}) {
+    let q = query(collection(db, 'communityChallenges'), orderBy('createdAt', 'desc'));
+    
+    // Only use where clauses for indexed fields
+    if (filters.creatorId) {
+      q = query(collection(db, 'communityChallenges'), where('creatorId', '==', filters.creatorId), orderBy('createdAt', 'desc'));
+    }
+    if (filters.type) {
+      q = query(collection(db, 'communityChallenges'), where('type', '==', filters.type), orderBy('createdAt', 'desc'));
+    }
+
+    const snap = await getDocs(q);
+    let challenges = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Client-side filtering for status to avoid index requirement
+    if (filters.status) {
+      challenges = challenges.filter(c => c.status === filters.status);
+    }
+
+    return challenges;
+  },
+
+  async getCommunityChallenge(challengeId) {
+    const snap = await getDoc(doc(db, 'communityChallenges', challengeId));
+    return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  },
+
+  async publishChallenge(challengeId) {
+    await updateDoc(doc(db, 'communityChallenges', challengeId), {
+      status: CHALLENGE_STATUS.ACTIVE,
+      publishedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  async closeChallenge(challengeId) {
+    await updateDoc(doc(db, 'communityChallenges', challengeId), {
+      status: CHALLENGE_STATUS.CLOSED,
+      closedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  },
+
+  // ---------------------------------------------------------------------------
+  // CHALLENGE SUBMISSIONS
+  // ---------------------------------------------------------------------------
+  async submitChallengeResponse(challengeId, userId, userData, responseData) {
+    const docRef = await addDoc(collection(db, 'challengeResponses'), {
+      challengeId,
+      userId,
+      userName: userData.name,
+      userUsername: userData.username,
+      responseData,
+      status: SUBMISSION_STATUS.PENDING,
+      score: 0,
+      rank: null,
+      submittedAt: serverTimestamp(),
+      reviewedAt: null,
+    });
+
+    // Increment participant count
+    await updateDoc(doc(db, 'communityChallenges', challengeId), {
+      participantCount: increment(1),
+    });
+
+    return docRef.id;
+  },
+
+  async getChallengeResponses(challengeId) {
+    const snap = await getDocs(
+      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId), orderBy('submittedAt', 'desc'))
+    );
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  },
+
+  async getUserResponse(challengeId, userId) {
+    const snap = await getDocs(
+      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId), where('userId', '==', userId))
+    );
+    if (snap.empty) return null;
+    const doc = snap.docs[0];
+    return { id: doc.id, ...doc.data() };
+  },
+
+  async reviewResponse(responseId, reviewData) {
+    await updateDoc(doc(db, 'challengeResponses', responseId), {
+      ...reviewData,
+      status: SUBMISSION_STATUS.REVIEWED,
+      reviewedAt: serverTimestamp(),
+    });
+  },
+
+  async gradeResponse(responseId, score, rank, feedback) {
+    await updateDoc(doc(db, 'challengeResponses', responseId), {
+      score,
+      rank,
+      feedback,
+      status: score >= 70 ? SUBMISSION_STATUS.ACCEPTED : SUBMISSION_STATUS.REJECTED,
+      reviewedAt: serverTimestamp(),
+    });
+  },
+
+  async getChallengeLeaderboard(challengeId) {
+    const snap = await getDocs(
+      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId), orderBy('score', 'desc'))
+    );
+    return snap.docs.map((doc, index) => ({ 
+      id: doc.id, 
+      ...doc.data(),
+      rank: index + 1
+    }));
+  },
 };

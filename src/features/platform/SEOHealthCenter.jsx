@@ -24,7 +24,8 @@ export default function SEOHealthCenter() {
 
       <div className="rounded-2xl border border-white/10 bg-surface/40 p-6 backdrop-blur-sm shadow-depth-1">
         <h3 className="mb-4 text-section-title font-heading font-bold text-white">Route SEO Diagnostics</h3>
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-white/10 text-text-muted">
               <th className="py-2 text-caption font-semibold">Route Pattern</th>
@@ -50,6 +51,7 @@ export default function SEOHealthCenter() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </PageContainer>
   );

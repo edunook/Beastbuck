@@ -4,7 +4,7 @@ import { PageHeader, EmptyState } from '../../components/ui/UIElements';
 import { Calendar, Users, MapPin, Video, Sparkles } from 'lucide-react';
 
 export default function GlobalEventsHub() {
-  const [events, setEvents] = useState([]);
+  const [events] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

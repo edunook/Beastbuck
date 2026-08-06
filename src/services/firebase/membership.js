@@ -1,12 +1,11 @@
 import { db } from './config';
+import { errorHandler } from '../../utils/errorHandler';
 import {
   addDoc,
   collection,
   doc,
   getDoc,
   getDocs,
-  limit,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -46,8 +45,13 @@ export const MembershipService = {
       throw new Error('Name and motivation are required.');
     }
 
-    const docRef = await addDoc(collection(db, 'membershipApplications'), application);
-    return docRef.id;
+    try {
+      const docRef = await addDoc(collection(db, 'membershipApplications'), application);
+      return docRef.id;
+    } catch (err) {
+      errorHandler.error(err, 'Submit Membership Application', { userId });
+      throw err;
+    }
   },
 
   /**

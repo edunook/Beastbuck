@@ -1,4 +1,5 @@
 import { ROLES } from '../../constants/roles';
+import { errorHandler } from '../../utils/errorHandler';
 
 /**
  * Centralized Permission Validator
@@ -8,6 +9,9 @@ import { ROLES } from '../../constants/roles';
 export const hasPermission = (userRole, permissionName) => {
   if (!userRole) return false;
 
+  // Normalize role for case-insensitive matching
+  const normalizedRole = userRole?.toLowerCase().trim();
+  
   const permissionMatrix = {
     canManageMembers: [ROLES.MAIN_CEO, ROLES.CO_CEO],
     canAccessCeoPanel: [ROLES.MAIN_CEO, ROLES.CO_CEO],
@@ -28,11 +32,19 @@ export const hasPermission = (userRole, permissionName) => {
 
   const allowedRoles = permissionMatrix[permissionName];
   if (!allowedRoles) {
-    console.warn(`Permission ${permissionName} is not defined in permissionMatrix.`);
+    errorHandler.warn(`Permission ${permissionName} is not defined in permissionMatrix`, 'Permission Check', { permissionName });
     return false;
   }
 
-  return allowedRoles.includes(userRole);
+  // Check both exact match and case-insensitive match
+  const exactMatch = allowedRoles.includes(userRole);
+  const caseInsensitiveMatch = allowedRoles.some(role => 
+    role?.toLowerCase().trim() === normalizedRole
+  );
+  
+  console.log('Permission check:', { permissionName, userRole, normalizedRole, exactMatch, caseInsensitiveMatch });
+  
+  return exactMatch || caseInsensitiveMatch;
 };
 
 export const PERMISSIONS = {

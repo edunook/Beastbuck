@@ -1,4 +1,5 @@
 import { db } from '../firebase/config';
+import { errorHandler } from '../../utils/errorHandler';
 import {
   addDoc,
   arrayRemove,
@@ -35,7 +36,7 @@ export const CollaborationService = {
       q = query(collection(db, 'voiceRooms'), where('type', '==', type), limit(50));
     }
     return onSnapshot(q, (snap) => onRooms(docsFrom(snap)), (err) => {
-      console.error('Voice rooms listener failed:', err);
+      errorHandler.error(err, 'Voice Rooms Listener');
       onRooms([]);
     });
   },

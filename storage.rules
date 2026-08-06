@@ -10,34 +10,182 @@ service firebase.storage {
       return request.auth.uid == userId;
     }
 
-    // Media Storage Structure
-    match /users/{userId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && isOwner(userId);
+    function isMainCEO() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Main CEO';
     }
     
-    // Team storage - restricted to team members (validated via Firestore team membership)
+    function isCoCEO() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Co-CEO';
+    }
+    
+    function isLeader() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader';
+    }
+    
+    function isMember() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.membershipStatus == 'approved';
+    }
+
+    function canManageMembers() {
+      return isMainCEO() || isCoCEO();
+    }
+
+    function isTeamMember(teamId) {
+      return get(/databases/$(database)/documents/teams/$(teamId)).data.memberIds.contains(request.auth.uid) ||
+             get(/databases/$(database)/documents/teams/$(teamId)).data.leaderId == request.auth.uid;
+    }
+
+    function isProductOwner(productId) {
+      return get(/databases/$(database)/documents/products/$(productId)).data.creatorId == request.auth.uid;
+    }
+
+    function isExperimentAuthor(experimentId) {
+      return get(/databases/$(database)/documents/experiments/$(experimentId)).data.authorId == request.auth.uid;
+    }
+
+// User Media Storage
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Team Assets
     match /teams/{teamId}/{allPaths=**} {
+      allow read: if isAuthenticated() && isTeamMember(teamId);
+      allow write: if isAuthenticated() && (isTeamMember(teamId) || canManageMembers());
+    }
+
+    // Product Assets
+    match /products/{productId}/{allPaths=**} {
+      allow read: if isAuthenticated() && isProductOwner(productId);
+      allow write: if isAuthenticated() && (isProductOwner(productId) || canManageMembers());
+    }
+
+    // Generic Read Access for Public Content
+    match /public/{allPaths=**} {
+      allow read: if true;
+    }
+
+    // Avatar storage
+    match /avatars/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();
-      allow write: if false; // Use Cloud Functions for team upload validation
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Team storage - restricted to team members
+    match /teams/{teamId}/{allPaths=**} {
+      allow read: if isAuthenticated() && isTeamMember(teamId);
+      allow write: if isAuthenticated() && (isTeamMember(teamId) || canManageMembers());
     }
 
     // Product storage - restricted to product owners
     match /products/{productId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if false; // Use Cloud Functions for product upload validation
+      allow read: if isAuthenticated() && isProductOwner(productId);
+      allow write: if isAuthenticated() && (isProductOwner(productId) || canManageMembers());
     }
 
-    // Experiment storage - restricted to experiment authors
+// Experiment Storage
     match /experiments/{experimentId}/{allPaths=**} {
       allow read: if isAuthenticated();
-      allow write: if false; // Use Cloud Functions for experiment upload validation
+      allow write: if isAuthenticated() && (isExperimentAuthor(experimentId) || isLeader());
+    }
+    
+    // Creative Works Storage
+    match /creative/{workId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/creative_works/$(workId)).data.creatorId == request.auth.uid ||
+        isLeader()
+      );
+    }
+
+    // FunFlix Storage
+    match /funflix/{videoId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/funflix_videos/$(videoId)).data.creatorId == request.auth.uid ||
+        isLeader()
+      );
+    }
+
+    // Marketplace Storage
+    match /marketplace/{itemId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/marketplace/$(itemId)).data.creatorId == request.auth.uid ||
+        isLeader()
+      );
+    }
+
+    // Certificates Storage (Admin only)
+    match /certificates/{certificateId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if canManageMembers();
+    }
+
+    // Skills Storage (Admin only)
+    match /skills/{skillId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if canManageMembers();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
     
     // Skills storage - restricted to admins only
     match /skills/{skillId}/{allPaths=**} {
       allow read: if isAuthenticated();
-      allow write: if false; // Use Cloud Functions for skill upload validation
+      allow write: if canManageMembers();
+    }
+
+    // Creative works storage
+    match /creative/{workId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/creative_works/$(workId)).data.creatorId == request.auth.uid ||
+        isLeader()
+      );
+    }
+
+    // FunFlix storage
+    match /funflix/{videoId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/funflix_videos/$(videoId)).data.creatorId == request.auth.uid ||
+        isLeader()
+      );
+    }
+
+    // Marketplace storage
+    match /marketplace/{itemId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/marketplace/$(itemId)).data.creatorId == request.auth.uid ||
+        isLeader()
+      );
+    }
+
+    // Certificates storage
+    match /certificates/{certificateId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if canManageMembers();
+    }
+
+    // Documents storage
+    match /documents/{documentId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/documents/$(documentId)).data.createdBy == request.auth.uid ||
+        isLeader()
+      );
+    }
+
+    // Temporary uploads
+    match /temp/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
     // Default deny for anything outside the structured paths

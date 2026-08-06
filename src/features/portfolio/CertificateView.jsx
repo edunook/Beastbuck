@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ShieldCheck, Award, Calendar, CheckCircle2, XCircle, Printer } from 'lucide-react';
+import { ShieldCheck, Award, Calendar, CheckCircle2, XCircle, Printer, Share2, ExternalLink, MessageCircle } from 'lucide-react';
 import { CertificateService } from '../../services/firebase/certificates';
 import { LoadingState } from '../../components/ui/UIElements';
 import { formatDate } from '../../lib/dateUtils';
@@ -46,6 +46,37 @@ export default function CertificateView() {
   const isActive = cert.status === 'ACTIVE';
   // Use a public free QR code API for simplicity without dependencies
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(cert.publicUrl)}&color=00f0ff&bgcolor=000000`;
+
+  // Share functionality
+  const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const shareText = `I earned the "${cert.title}" certificate from BeastBuck!`;
+
+  const handleLinkedInShare = () => {
+    const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+    window.open(linkedInUrl, '_blank', 'width=600,height=400');
+  };
+
+  const handleTwitterShare = () => {
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    window.open(twitterUrl, '_blank', 'width=600,height=400');
+  };
+
+  const handleNativeShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Certificate: ${cert.title}`,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.log('Share failed:', err);
+      }
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert('Link copied to clipboard!');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background py-12 px-4 print:bg-white print:py-0 print:px-0">
@@ -123,16 +154,34 @@ export default function CertificateView() {
         </div>
 
         {/* Action Buttons (Hidden on print) */}
-        <div className="mt-8 flex justify-center gap-4 print:hidden">
+        <div className="mt-8 flex flex-wrap justify-center gap-4 print:hidden">
           <button 
             onClick={() => window.print()}
             className="flex items-center gap-2 rounded-xl bg-accent px-6 py-3 font-bold text-black transition hover:bg-accent-hover hover:scale-105"
           >
             <Printer className="h-5 w-5" /> Print or Save PDF
           </button>
+          <button
+            onClick={handleNativeShare}
+            className="flex items-center gap-2 rounded-xl border border-border bg-surface/50 px-6 py-3 font-bold text-white transition hover:bg-white/5 hover:scale-105"
+          >
+            <Share2 className="h-5 w-5 text-accent" /> Share
+          </button>
+          <button
+            onClick={handleLinkedInShare}
+            className="flex items-center gap-2 rounded-xl border border-border bg-surface/50 px-6 py-3 font-bold text-white transition hover:bg-white/5 hover:scale-105"
+          >
+            <ExternalLink className="h-5 w-5 text-[#0077b5]" /> LinkedIn
+          </button>
+          <button
+            onClick={handleTwitterShare}
+            className="flex items-center gap-2 rounded-xl border border-border bg-surface/50 px-6 py-3 font-bold text-white transition hover:bg-white/5 hover:scale-105"
+          >
+            <MessageCircle className="h-5 w-5 text-[#1da1f2]" /> Twitter
+          </button>
           <Link 
             to={cert.user?.username ? `/portfolio/${cert.user.username}` : '/'}
-            className="flex items-center gap-2 rounded-xl border border-border bg-surface/50 px-6 py-3 font-bold text-white transition hover:bg-white/5"
+            className="flex items-center gap-2 rounded-xl border border-border bg-surface/50 px-6 py-3 font-bold text-white transition hover:bg-white/5 hover:scale-105"
           >
             <ShieldCheck className="h-5 w-5 text-accent" /> View Member Portfolio
           </Link>

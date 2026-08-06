@@ -20,10 +20,10 @@ export function TaskBoard({ tasks = [], onTaskClick }) {
   };
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar h-full min-h-[600px] snap-x">
+    <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 custom-scrollbar h-full min-h-[400px] sm:min-h-[500px] md:min-h-[600px] snap-x">
       {Object.entries(columns).map(([status, statusTasks]) => (
-        <div key={status} className="flex-none w-[300px] sm:w-[320px] flex flex-col snap-start">
-          
+        <div key={status} className="flex-none w-[280px] sm:w-[300px] md:w-[320px] lg:w-[340px] flex flex-col snap-start">
+
           {/* Column Header */}
           <div className={`mb-4 pb-2 border-b-2 flex items-center justify-between ${getColumnColor(status)}`}>
             <h3 className="font-bold text-sm tracking-wider uppercase">
@@ -33,7 +33,7 @@ export function TaskBoard({ tasks = [], onTaskClick }) {
               {statusTasks.length}
             </span>
           </div>
-          
+
           {/* Column Body */}
           <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
             {statusTasks.length === 0 ? (
@@ -46,7 +46,7 @@ export function TaskBoard({ tasks = [], onTaskClick }) {
               ))
             )}
           </div>
-          
+
         </div>
       ))}
     </div>

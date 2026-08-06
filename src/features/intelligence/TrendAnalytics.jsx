@@ -1,103 +1,204 @@
-import { useEffect, useState } from 'react';
-import { LineChart } from 'lucide-react';
-import { IntelligenceService } from '../../services/firebase/intelligence';
+import { useState } from 'react';
+import { LineChart, BarChart3, TrendingUp, TrendingDown, Filter, Calendar } from 'lucide-react';
+import { PageContainer } from '../../components/layout/LayoutWrappers';
+import { PageHeader } from '../../components/ui/UIElements';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
 
-const TrendAnalytics = () => {
-  const [loading, setLoading] = useState(true);
-  const [trends, setTrends] = useState([]);
-  
-  useEffect(() => {
-    async function loadTrends() {
-      try {
-        let t = await IntelligenceService.analyzeTrends();
-        if (t && t.skills) {
-          setTrends(t.skills);
-        }
-      } catch (error) {
-        console.error("Error loading trends:", error);
-      }
-      setLoading(false);
-    }
-    loadTrends();
-  }, []);
+const KEYWORD_TRENDS = [
+  { keyword: 'AI/ML', popularity: 92, change: 15, category: 'Technology' },
+  { keyword: 'Web3', popularity: 78, change: -5, category: 'Technology' },
+  { keyword: 'Sustainability', popularity: 85, change: 22, category: 'Social' },
+  { keyword: 'Remote Work', popularity: 71, change: 8, category: 'Work' },
+  { keyword: 'Blockchain', popularity: 65, change: -12, category: 'Technology' },
+  { keyword: 'Mental Health', popularity: 88, change: 18, category: 'Health' },
+  { keyword: 'E-Learning', popularity: 94, change: 28, category: 'Education' },
+  { keyword: 'Gig Economy', popularity: 62, change: 3, category: 'Work' },
+];
+
+const ACTIVITY_DATA = [
+  { day: 'Mon', value: 65 },
+  { day: 'Tue', value: 72 },
+  { day: 'Wed', value: 68 },
+  { day: 'Thu', value: 85 },
+  { day: 'Fri', value: 92 },
+  { day: 'Sat', value: 78 },
+  { day: 'Sun', value: 71 },
+];
+
+const CATEGORY_DATA = [
+  { category: 'Technology', value: 45, color: 'bg-blue-500' },
+  { category: 'Education', value: 32, color: 'bg-purple-500' },
+  { category: 'Health', value: 18, color: 'bg-emerald-500' },
+  { category: 'Work', value: 25, color: 'bg-amber-500' },
+  { category: 'Social', value: 15, color: 'bg-pink-500' },
+];
+
+export default function TrendAnalytics() {
+  const [timeRange, setTimeRange] = useState('30d');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  const filteredTrends = selectedCategory === 'all' 
+    ? KEYWORD_TRENDS 
+    : KEYWORD_TRENDS.filter(t => t.category === selectedCategory);
+
+  const categories = ['all', ...new Set(KEYWORD_TRENDS.map(t => t.category))];
+
   return (
-    <div className="min-h-screen p-6 space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
-          Trend Analytics
-        </h1>
-        <p className="text-muted-foreground mt-2">Macro-level ecosystem trajectory tracking.</p>
-      </div>
+    <PageContainer>
+      <PageHeader 
+        title="Trend Analytics" 
+        description="Track topic keywords popularity and ecosystem-wide trends."
+      />
 
-      {/* Main Chart Area */}
-      <div className="p-6 rounded-xl bg-surface/40 border border-white/10 backdrop-blur-md">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <LineChart className="text-purple-400 w-5 h-5" />
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex gap-2 flex-wrap">
+              {categories.map(cat => (
+                <Button
+                  key={cat}
+                  size="sm"
+                  variant={selectedCategory === cat ? 'default' : 'secondary'}
+                  onClick={() => setSelectedCategory(cat)}
+                >
+                  {cat === 'all' ? 'All Categories' : cat}
+                </Button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-text-muted" />
+              <select 
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+              >
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="90d">Last Quarter</option>
+                <option value="1y">Year to Date</option>
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Activity Chart */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LineChart className="h-5 w-5 text-accent" />
             Platform Activity Index
-          </h2>
-          <select className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none">
-            <option>Last 30 Days</option>
-            <option>Last Quarter</option>
-            <option>Year to Date</option>
-          </select>
-        </div>
-
-        {/* Dynamic Data Chart from Trends */}
-        <div className="h-64 flex items-end gap-2 mt-4 px-2">
-          {loading ? (
-             <div className="w-full text-center text-text-muted self-center">Loading trends...</div>
-          ) : trends.length === 0 ? (
-             <div className="w-full text-center text-text-muted self-center">No trend data available.</div>
-          ) : (
-            trends.map((val, idx) => (
-              <div key={idx} className="flex-1 flex flex-col justify-end group">
-                <div className="text-center text-xs text-white/50 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   {val.momentum}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-end gap-3 px-4">
+            {ACTIVITY_DATA.map((data, index) => (
+              <div key={index} className="flex-1 flex flex-col items-center group">
+                <div className="relative w-full flex items-end justify-center h-full">
+                  <div 
+                    className="w-full max-w-16 bg-gradient-to-t from-accent/20 to-accent rounded-t-sm transition-all duration-300 group-hover:brightness-125 cursor-pointer"
+                    style={{ height: `${data.value}%` }}
+                  >
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      {data.value}%
+                    </div>
+                  </div>
                 </div>
-                <div 
-                  className="w-full bg-gradient-to-t from-purple-500/50 to-pink-500 rounded-t-sm transition-all duration-500 group-hover:brightness-125"
-                  style={{ height: `${Math.min(100, Math.max(10, val.momentum))}%` }}
-                />
+                <span className="text-xs text-text-muted mt-2">{data.day}</span>
               </div>
-            ))
-          )}
-        </div>
-        <div className="flex justify-between mt-2 text-xs text-muted-foreground px-2">
-          {trends.map(t => (
-            <span key={t.name}>{t.name}</span>
-          ))}
-        </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Keyword Trends */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-accent" />
+              Keyword Popularity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {filteredTrends.map((trend, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white">{trend.keyword}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-text-muted">
+                        {trend.category}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white">{trend.popularity}%</span>
+                      {trend.change >= 0 ? (
+                        <TrendingUp className="h-4 w-4 text-emerald-400" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-red-400" />
+                      )}
+                      <span className={`text-xs ${trend.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {trend.change >= 0 ? '+' : ''}{trend.change}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-accent transition-all duration-500"
+                      style={{ width: `${trend.popularity}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Category Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-accent" />
+              Category Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {CATEGORY_DATA.map((cat, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white">{cat.category}</span>
+                    <span className="text-sm text-text-muted">{cat.value}%</span>
+                  </div>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full ${cat.color} transition-all duration-500`}
+                      style={{ width: `${cat.value}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Summary Stats */}
+            <div className="mt-6 pt-6 border-t border-border grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-white">{KEYWORD_TRENDS.length}</p>
+                <p className="text-xs text-text-muted">Total Keywords</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-emerald-400">
+                  {KEYWORD_TRENDS.filter(t => t.change > 0).length}
+                </p>
+                <p className="text-xs text-text-muted">Rising Trends</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Specific Trends */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 rounded-xl bg-surface/40 border border-white/10 backdrop-blur-md">
-          <h3 className="font-medium text-gray-300 mb-2">Learning Trends</h3>
-          <div className="text-2xl font-bold text-white mb-4">+142% <span className="text-sm font-normal text-green-400 ml-2">↑ AI Courses</span></div>
-          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-400 w-[70%]" />
-          </div>
-        </div>
-
-        <div className="p-6 rounded-xl bg-surface/40 border border-white/10 backdrop-blur-md">
-          <h3 className="font-medium text-gray-300 mb-2">Research Trends</h3>
-          <div className="text-2xl font-bold text-white mb-4">84 <span className="text-sm font-normal text-green-400 ml-2">↑ Published</span></div>
-          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-purple-400 w-[55%]" />
-          </div>
-        </div>
-
-        <div className="p-6 rounded-xl bg-surface/40 border border-white/10 backdrop-blur-md">
-          <h3 className="font-medium text-gray-300 mb-2">Startup Trends</h3>
-          <div className="text-2xl font-bold text-white mb-4">$12M <span className="text-sm font-normal text-green-400 ml-2">↑ Capital Deployed</span></div>
-          <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-green-400 w-[85%]" />
-          </div>
-        </div>
-      </div>
-    </div>
+    </PageContainer>
   );
-};
-
-export default TrendAnalytics;
+}

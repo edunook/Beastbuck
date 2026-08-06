@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, Users, Activity, BarChart3, TrendingUp, Zap, HeartHandshake, BriefcaseBusiness, PackageOpen, Workflow } from 'lucide-react';
+import { RefreshCw, Users, Activity, BarChart3, TrendingUp, Zap, HeartHandshake, BriefcaseBusiness, PackageOpen, Workflow, Database, Globe, Wifi, AlertCircle, Shield, FlaskConical } from 'lucide-react';
 import { MissionControlService } from '../../services/firebase/missionControl';
 import { CommunityService } from '../../services/firebase/community';
+import { getPlatformStats, getOrganizationHealth, getActivityFeed } from '../../services/firebase/executive';
 import { useAuth } from '../auth/AuthContext';
 import { IntelligenceMetric, IntelligencePanel, LoadingRows } from './missionControlUtils';
 import { formatDistanceToNow } from '../../lib/dateUtils';
@@ -71,6 +72,9 @@ export default function MissionControlDashboard() {
   const [snapshots, setSnapshots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [platformStats, setPlatformStats] = useState(null);
+  const [orgHealth, setOrgHealth] = useState(null);
+  const [activityFeed, setActivityFeed] = useState([]);
 
   const load = async () => {
     try {
@@ -82,6 +86,16 @@ export default function MissionControlDashboard() {
         snaps = await MissionControlService.getAnalyticsSnapshots(14);
       }
       setSnapshots(snaps);
+
+      // Load executive data
+      const [stats, health, activities] = await Promise.all([
+        getPlatformStats(),
+        getOrganizationHealth(),
+        getActivityFeed(10)
+      ]);
+      setPlatformStats(stats);
+      setOrgHealth(health);
+      setActivityFeed(activities);
     } catch (err) {
       console.error('Mission Control Dashboard load failed:', err);
     } finally {
@@ -101,6 +115,18 @@ export default function MissionControlDashboard() {
           snaps = await MissionControlService.getAnalyticsSnapshots(14);
         }
         if (!cancelled) setSnapshots(snaps);
+
+        // Load executive data
+        const [stats, health, activities] = await Promise.all([
+          getPlatformStats(),
+          getOrganizationHealth(),
+          getActivityFeed(10)
+        ]);
+        if (!cancelled) {
+          setPlatformStats(stats);
+          setOrgHealth(health);
+          setActivityFeed(activities);
+        }
       } catch (err) {
         console.error('Mission Control Dashboard load failed:', err);
       } finally {
@@ -245,9 +271,97 @@ export default function MissionControlDashboard() {
         </IntelligencePanel>
       </div>
 
+      {/* Platform Statistics */}
+      {platformStats && (
+        <IntelligencePanel title="Platform Statistics" icon={Database}>
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 mt-4">
+            <IntelligenceMetric label="Total Users" value={platformStats.totalUsers} icon={Users} color="accent" />
+            <IntelligenceMetric label="Total Members" value={platformStats.totalMembers} icon={Users} color="success" />
+            <IntelligenceMetric label="Pending Memberships" value={platformStats.pendingMemberships} icon={AlertCircle} color="warning" />
+            <IntelligenceMetric label="Departments" value={platformStats.departments} icon={BriefcaseBusiness} color="purple" />
+            <IntelligenceMetric label="Teams" value={platformStats.teams} icon={Workflow} color="accent" />
+            <IntelligenceMetric label="Projects" value={platformStats.projects} icon={Activity} color="success" />
+            <IntelligenceMetric label="Research Papers" value={platformStats.researchPapers} icon={BarChart3} color="warning" />
+            <IntelligenceMetric label="Experiments" value={platformStats.experiments} icon={FlaskConical} color="purple" />
+            <IntelligenceMetric label="Products" value={platformStats.products} icon={PackageOpen} color="accent" />
+            <IntelligenceMetric label="Marketplace Listings" value={platformStats.marketplaceListings} icon={BriefcaseBusiness} color="success" />
+            <IntelligenceMetric label="AI Models" value={platformStats.aiModels} icon={Zap} color="warning" />
+            <IntelligenceMetric label="FunFlix Movies" value={platformStats.funflixMovies} icon={Activity} color="purple" />
+            <IntelligenceMetric label="Events" value={platformStats.events} icon={HeartHandshake} color="accent" />
+            <IntelligenceMetric label="Communities" value={platformStats.communities} icon={Users} color="success" />
+            <IntelligenceMetric label="Online Members" value={platformStats.onlineMembers} icon={Wifi} color="warning" />
+            <IntelligenceMetric label="Visitors" value={platformStats.visitors} icon={Globe} color="purple" />
+          </div>
+        </IntelligencePanel>
+      )}
+
+      {/* Organization Health */}
+      {orgHealth && (
+        <IntelligencePanel title="Organization Health" icon={Shield}>
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 mt-4">
+            <IntelligenceMetric label="Growth" value={`${orgHealth.growth}%`} icon={TrendingUp} color="accent" />
+            <IntelligenceMetric label="Activity" value={`${orgHealth.activity}%`} icon={Activity} color="success" />
+            <IntelligenceMetric label="Engagement" value={`${orgHealth.engagement}%`} icon={HeartHandshake} color="warning" />
+            <IntelligenceMetric label="Member Retention" value={`${orgHealth.memberRetention}%`} icon={Users} color="purple" />
+            <IntelligenceMetric label="Research Output" value={`${orgHealth.researchOutput}%`} icon={BarChart3} color="accent" />
+            <IntelligenceMetric label="Innovation Score" value={`${orgHealth.innovationScore}%`} icon={Zap} color="success" />
+            <IntelligenceMetric label="Learning Progress" value={`${orgHealth.learningProgress}%`} icon={TrendingUp} color="warning" />
+            <IntelligenceMetric label="Community Health" value={`${orgHealth.communityHealth}%`} icon={HeartHandshake} color="purple" />
+            <IntelligenceMetric label="Ecosystem Score" value={`${orgHealth.overallEcosystemScore}%`} icon={Globe} color="accent" />
+          </div>
+        </IntelligencePanel>
+      )}
+
+      {/* Real-time Activity Feed */}
+      <IntelligencePanel title="Real-time Activity Feed" icon={Activity}>
+        <div className="mt-4 space-y-2">
+          {activityFeed.length === 0 ? (
+            <p className="py-6 text-center text-sm text-text-muted">No recent activity</p>
+          ) : (
+            activityFeed.map((activity) => (
+              <div key={activity.id} className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-3 transition-all hover:bg-white/[0.04]">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-sm">
+                  {getActivityIcon(activity.type)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-white">{activity.summary || activity.type}</p>
+                  <p className="mt-0.5 truncate text-xs text-text-muted">{activity.details?.description || 'Activity recorded'}</p>
+                </div>
+                <span className="shrink-0 text-xs text-text-muted">
+                  {activity.createdAt ? formatDistanceToNow(activity.createdAt) : '—'}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </IntelligencePanel>
+
       <CommunityEcosystemMetrics />
     </div>
   );
+}
+
+function getActivityIcon(type) {
+  const icons = {
+    CEO_ASSIGNED: '👑',
+    ROLE_CHANGED: '🛡️',
+    MEMBER_UPDATED: '👤',
+    CONTENT_MODERATED: '📋',
+    SECURITY_CHANGED: '🔒',
+    ACHIEVEMENT_GRANTED: '🏆',
+    BADGE_GRANTED: '🎖️',
+    NEW_USER: '👋',
+    MEMBER_APPROVED: '✅',
+    MOVIE_UPLOADED: '🎬',
+    RESEARCH_PUBLISHED: '📄',
+    AI_CREATED: '🤖',
+    PRODUCT_PUBLISHED: '📦',
+    MARKETPLACE_LISTING: '🏪',
+    PROJECT_STARTED: '🚀',
+    EXPERIMENT_COMPLETED: '🧪',
+    SYSTEM_ALERT: '⚠️',
+  };
+  return icons[type] || '📌';
 }
 
 function CommunityEcosystemMetrics() {

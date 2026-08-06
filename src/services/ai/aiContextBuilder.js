@@ -462,7 +462,7 @@ export const AIContextBuilder = {
       }
 
       const safeMemory = memory?.preferences || memory?.interests
-        ? `Preferences: ${JSON.stringify(memory.preferences || {})}\nInterests: ${(memory.interests || []).join(', ')}\nFocus: ${(memory.currentFocus || []).join(', ')}\n`
+        ? `Preferences: ${JSON.stringify(memory.preferences || {})}\nInterests: ${(Array.isArray(memory.interests) ? memory.interests : []).join(', ')}\nFocus: ${(Array.isArray(memory.currentFocus) ? memory.currentFocus : []).join(', ')}\n`
         : memory?.data
           ? `User notes (non-sensitive): ${Object.entries(memory.data).slice(0, 8).map(([k, v]) => `${k}: ${v}`).join('; ')}\n`
           : '';
@@ -474,7 +474,7 @@ export const AIContextBuilder = {
       return [
         'BeastBuck Universe Intelligence:',
         safeMemory,
-        `Interest topics: ${(interests.topics || []).join(', ') || 'none set'}`,
+        `Interest topics: ${(Array.isArray(interests.topics) ? interests.topics : []).join(', ') || 'none set'}`,
         `Active goals: ${goalSummary || 'none'}`,
         `Journey milestones recorded: ${milestoneCount}`,
         `Top recommendations: ${recSummary || 'none'}`,
@@ -556,19 +556,9 @@ export const AIContextBuilder = {
       const coursesSnap = await getDocs(coursesQuery);
       const courses = coursesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      // Get recent research articles
-      const researchQuery = query(collection(db, 'research'), orderBy('createdAt', 'desc'), limit(10));
-      const researchSnap = await getDocs(researchQuery);
-      const research = researchSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      // Get community posts
-      const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(10));
-      const postsSnap = await getDocs(postsQuery);
-      const posts = postsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
       // Extract user data
-      const achievements = userData.achievements || [];
-      const specializations = userData.specializations || [];
+      const achievements = Array.isArray(userData.achievements) ? userData.achievements : [];
+      const specializations = Array.isArray(userData.specializations) ? userData.specializations : [];
       const xp = userData.xp || 0;
       const level = userData.level || 1;
       const bio = userData.bio || '';
@@ -577,8 +567,8 @@ export const AIContextBuilder = {
       const github = userData.github || '';
       const twitter = userData.twitter || '';
       const linkedin = userData.linkedin || '';
-      const skills = userData.skills || [];
-      const interests = userData.interests || [];
+      const skills = Array.isArray(userData.skills) ? userData.skills : [];
+      const interests = Array.isArray(userData.interests) ? userData.interests : [];
       const department = userData.department || '';
       const joinedAt = userData.createdAt ? new Date(userData.createdAt.toDate()).toLocaleDateString() : 'Unknown';
       const lastSeen = userData.lastSeen ? new Date(userData.lastSeen.toDate()).toLocaleDateString() : 'Unknown';
@@ -665,14 +655,6 @@ export const AIContextBuilder = {
 
       if (courses.length > 0) {
         context += `\nRecent Academy Courses: ${courses.slice(0, 5).map(c => c.title).join(', ')}\n`;
-      }
-
-      if (research.length > 0) {
-        context += `Recent Research: ${research.slice(0, 5).map(r => r.title).join(', ')}\n`;
-      }
-
-      if (posts.length > 0) {
-        context += `Recent Community Posts: ${posts.slice(0, 5).map(p => p.title || 'Untitled').join(', ')}\n`;
       }
 
       return context;

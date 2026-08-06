@@ -3,7 +3,7 @@ import { cn } from '../../lib/utils';
 
 export function AnimatedBackground({ variant = 'mesh', className, intensity = 'medium' }) {
   const canvasRef = useRef(null);
-  const animationRef = useRef(null);
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -106,7 +106,7 @@ export function AnimatedBackground({ variant = 'mesh', className, intensity = 'm
     <canvas
       ref={canvasRef}
       className={cn(
-        "fixed inset-0 pointer-events-none z-0",
+        "fixed inset-0 pointer-events-none z-[-1]",
         className
       )}
       style={{ opacity: variant === 'none' ? 0 : 1 }}

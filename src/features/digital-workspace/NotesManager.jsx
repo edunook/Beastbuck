@@ -27,6 +27,7 @@ export default function NotesManager({ workspaceId }) {
 
   useEffect(() => {
     loadNotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
   const loadNotes = async () => {

@@ -16,7 +16,7 @@ const Card = forwardRef(({ className, children, depth = 2, hoverable = false, pr
         "bg-surface backdrop-blur-glass-md border border-border rounded-2xl overflow-hidden transition-all duration-base",
         glass && "bg-surface-100 backdrop-blur-glass-lg border-border-100",
         depthClasses[depth],
-        hoverable && "hover:-translate-y-1 hover:border-border-100 hover:shadow-glow-sm cursor-pointer",
+        hoverable && "hover:-translate-y-1.5 hover:scale-[1.02] hover:border-border-100 hover:shadow-glow-sm cursor-pointer",
         premium && "premium-border",
         className
       )}

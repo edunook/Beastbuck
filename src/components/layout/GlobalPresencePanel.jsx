@@ -31,6 +31,7 @@ export default function GlobalPresencePanel({ isOpen, onClose }) {
       });
       return () => unsub();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, users.length]);
 
   if (!isOpen) return null;

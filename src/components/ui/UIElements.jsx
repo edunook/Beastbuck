@@ -47,3 +47,47 @@ export function LoadingState({ text = "Loading...", className }) {
     </div>
   );
 }
+
+export function SkeletonMessage({ isOwnMessage = false }) {
+  return (
+    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+      <div className={`flex max-w-[min(92%,42rem)] sm:max-w-[min(84%,42rem)] gap-2 sm:gap-3 rounded-2xl border px-3 py-2.5 sm:px-4 sm:py-3 ${
+        isOwnMessage
+          ? 'border-accent/10 bg-accent/5 flex-row-reverse'
+          : 'border-white/10 bg-white/[0.02]'
+      }`}>
+        <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white/10 animate-pulse shrink-0" />
+        <div className="min-w-0 flex-1 space-y-2">
+          {!isOwnMessage && (
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-24 rounded-full bg-white/10 animate-pulse" />
+              <div className="h-3 w-16 rounded-full bg-white/5 animate-pulse" />
+            </div>
+          )}
+          <div className={`space-y-1.5 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
+            <div className={`h-3 rounded-full bg-white/10 animate-pulse ${isOwnMessage ? 'ml-auto' : ''}`} style={{ width: '70%' }} />
+            <div className={`h-3 rounded-full bg-white/5 animate-pulse ${isOwnMessage ? 'ml-auto' : ''}`} style={{ width: '50%' }} />
+            {!isOwnMessage && (
+              <div className={`h-3 rounded-full bg-white/5 animate-pulse`} style={{ width: '60%' }} />
+            )}
+          </div>
+          <div className="flex gap-1.5 mt-2">
+            <div className="h-6 w-12 rounded-full bg-white/5 animate-pulse" />
+            <div className="h-6 w-12 rounded-full bg-white/5 animate-pulse" />
+            <div className="h-6 w-12 rounded-full bg-white/5 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonChat() {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-2 sm:p-3 md:p-4">
+      {[...Array(8)].map((_, i) => (
+        <SkeletonMessage key={i} isOwnMessage={i % 3 === 0} />
+      ))}
+    </div>
+  );
+}

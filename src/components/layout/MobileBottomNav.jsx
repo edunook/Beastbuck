@@ -1,21 +1,33 @@
-import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Home, Briefcase, Users, CheckSquare, Menu } from 'lucide-react';
+import { Home, User, MessageSquare, CheckSquare, Trophy } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { useGlobalStore } from '../../store/useGlobalStore';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/dashboard' },
-  { icon: Briefcase, label: 'Portfolio', path: '/portfolios' },
-  { icon: Users, label: 'Communities', path: '/communities' },
+  { icon: User, label: 'Portfolios', path: '/portfolio' },
+  { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: CheckSquare, label: 'Tasks', path: '/tasks' },
-  { icon: Menu, label: 'Menu', path: '/menu', isDrawerTrigger: true },
 ];
+
+const ICON_COLORS = {
+  Home: 'text-accent',
+  User: 'text-purple-400',
+  MessageSquare: 'text-cyan-400',
+  CheckSquare: 'text-green-400',
+  Trophy: 'text-yellow-400',
+};
+
+const GLOW_COLORS = {
+  Home: 'rgba(0, 240, 255, 0.4)',
+  User: 'rgba(168, 85, 247, 0.4)',
+  MessageSquare: 'rgba(34, 211, 238, 0.4)',
+  CheckSquare: 'rgba(74, 222, 128, 0.4)',
+  Trophy: 'rgba(250, 204, 21, 0.4)',
+};
 
 export default function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { toggleMobileDrawer } = useGlobalStore();
 
   const isActive = (path) => {
     if (path === '/dashboard') {
@@ -25,84 +37,82 @@ export default function MobileBottomNav() {
   };
 
   const handleNavClick = (item) => {
-    if (item.isDrawerTrigger) {
-      toggleMobileDrawer();
-    } else {
-      navigate(item.path);
-    }
+    navigate(item.path);
   };
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-background border-t border-white/10">
-        <div className="relative">
-          {/* Glassmorphism background */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/95 to-background/90 backdrop-blur-xl" />
-          
-          {/* Glow effect */}
-          <div className="absolute inset-x-0 -top-20 h-32 bg-gradient-to-t from-accent/5 to-transparent pointer-events-none" />
-          
-          {/* Navigation items */}
-          <div className="relative flex items-center justify-around px-2 py-3 pb-safe">
-            {navItems.map((item, index) => {
-              const active = isActive(item.path);
-              const Icon = item.icon;
-              
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => handleNavClick(item)}
+      <nav className="fixed bottom-0 left-0 right-0 z-[1000] md:hidden pointer-events-auto" role="navigation" aria-label="Main navigation">
+        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xl border-t border-white/10" />
+        <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+
+        <div className="relative flex items-center justify-around px-1 py-2 pb-safe">
+          {navItems.map((item, index) => {
+            const active = isActive(item.path);
+            const Icon = item.icon;
+            const colorClass = ICON_COLORS[item.icon.displayName] || 'text-text-muted';
+            const glowColor = GLOW_COLORS[item.icon.displayName] || 'rgba(255,255,255,0.2)';
+
+            return (
+              <button
+                key={item.path}
+                onClick={() => handleNavClick(item)}
+                className={cn(
+                  'group relative flex flex-col items-center justify-center gap-1 px-2 py-1.5 rounded-2xl transition-all duration-300 min-w-[64px]',
+                  active ? 'scale-105' : 'hover:scale-105 active:scale-95'
+                )}
+                style={{
+                  animation: `fadeInUp 0.5s ease-out ${index * 80}ms both`,
+                }}
+                aria-label={item.label}
+                aria-current={active ? 'page' : undefined}
+              >
+                {active && (
+                  <div
+                    className="absolute inset-0 rounded-2xl opacity-40 blur-md transition-opacity duration-300"
+                    style={{ backgroundColor: glowColor }}
+                  />
+                )}
+
+                <div
                   className={cn(
-                    "group relative flex items-center justify-center px-3 py-3 rounded-xl transition-all duration-300",
-                    active
-                      ? "scale-110"
-                      : "hover:scale-105"
+                    'relative flex items-center justify-center w-12 h-12 rounded-2xl transition-all duration-300',
+                    active && 'shadow-lg'
                   )}
-                  style={{
-                    animation: `fadeInUp 0.5s ease-out ${index * 100}ms both`
-                  }}
-                  aria-label={item.label}
+                  style={active ? { boxShadow: `0 0 20px ${glowColor}` } : undefined}
                 >
-                  {/* Active indicator glow */}
-                  {active && (
-                    <div className="absolute inset-0 bg-gradient-to-t from-accent/20 to-transparent rounded-xl blur-xl opacity-50" />
-                  )}
-                  
-                  {/* Icon container */}
-                  <div className={cn(
-                    "relative flex items-center justify-center transition-all duration-300",
-                    active ? "scale-110" : "group-hover:scale-105"
-                  )}>
-                    <div className={cn(
-                      "absolute inset-0 rounded-xl transition-all duration-300",
+                  <div
+                    className={cn(
+                      'absolute inset-0 rounded-2xl transition-all duration-300',
                       active
-                        ? "bg-gradient-to-br from-accent/30 to-purple-500/30 shadow-lg shadow-accent/30"
-                        : "bg-white/5 group-hover:bg-white/10"
-                    )} />
-                    <Icon 
-                      className={cn(
-                        "relative h-6 w-6 transition-all duration-300",
-                        active 
-                          ? "text-accent drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]" 
-                          : "text-text-muted group-hover:text-white"
-                      )} 
-                    />
-                  </div>
-                  
-                  {/* Active dot indicator */}
-                  {active && (
-                    <div className="absolute -bottom-1 h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_8px_rgba(0,240,255,0.8)]" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          
-          {/* Safe area padding for iPhone */}
-          <div className="h-safe-area-bottom" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
+                        ? 'bg-white/15 scale-100'
+                        : 'bg-white/5 scale-90 group-hover:scale-100 group-hover:bg-white/10'
+                    )}
+                  />
+                  <Icon
+                    className={cn(
+                      'relative h-6 w-6 transition-all duration-300',
+                      active ? colorClass : 'text-text-muted'
+                    )}
+                    style={active ? { filter: `drop-shadow(0 0 6px ${glowColor})` } : undefined}
+                  />
+                </div>
+
+                <div
+                  className="absolute -bottom-0.5 h-1 w-4 rounded-full transition-all duration-300"
+                  style={{
+                    backgroundColor: active ? glowColor : 'transparent',
+                    boxShadow: active ? `0 0 8px ${glowColor}` : 'none',
+                  }}
+                />
+              </button>
+            );
+          })}
         </div>
+
+        <div className="h-safe-area-bottom" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
       </nav>
-      
+
       <style>{`
         @keyframes fadeInUp {
           from {

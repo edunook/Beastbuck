@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from "../auth/AuthContext";
 import { MembershipService } from '../../services/firebase/membership';
-import { Sparkles, ArrowRight, CheckCircle, AlertCircle, Send } from 'lucide-react';
+import { Sparkles, CheckCircle, AlertCircle, Send } from 'lucide-react';
 
 export default function MembershipApply() {
   const { user } = useAuth();
@@ -30,6 +30,7 @@ export default function MembershipApply() {
     }
 
     loadExistingApplication();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
   const loadExistingApplication = async () => {
@@ -38,7 +39,8 @@ export default function MembershipApply() {
       const application = await MembershipService.getUserApplication(user.uid);
       setExistingApplication(application);
     } catch (err) {
-      console.error('Error loading application:', err);
+      console.log('Membership applications not accessible:', err.message);
+      setExistingApplication(null);
     } finally {
       setLoading(false);
     }
@@ -49,12 +51,18 @@ export default function MembershipApply() {
     setSubmitting(true);
     setError(null);
 
+    console.log('User submitting application:', user?.uid);
+    console.log('User email:', user?.email);
+    console.log('Form data:', formData);
+
     try {
       await MembershipService.submitApplication(user.uid, formData);
       setSuccess(true);
       await loadExistingApplication();
     } catch (err) {
       console.error('Error submitting application:', err);
+      console.error('Error code:', err.code);
+      console.error('Error message:', err.message);
       setError(err.message || 'Failed to submit application');
     } finally {
       setSubmitting(false);

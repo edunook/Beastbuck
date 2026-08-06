@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../features/auth/AuthContext';
-import { hasPermission, PERMISSIONS } from '../services/firebase/permissions';
+import { hasPermission } from '../services/firebase/permissions';
 import AppShell from '../components/layout/AppShell';
 import NotFound from '../components/NotFound';
 
@@ -15,31 +15,24 @@ const PublicProjects = React.lazy(() => import('../features/public/PublicPages')
 const HallOfFame = React.lazy(() => import('../features/public/PublicPages').then(module => ({ default: module.HallOfFame })));
 const JoinPage = React.lazy(() => import('../features/public/PublicPages').then(module => ({ default: module.JoinPage })));
 const PublicMemberProfile = React.lazy(() => import('../features/public/PublicPages').then(module => ({ default: module.PublicMemberProfile })));
-const PublicUserPage = React.lazy(() => import('../features/community/CommunityPages').then(module => ({ default: module.PublicUserPage })));
+
 const MembershipApply = React.lazy(() => import('../features/membership/MembershipApply'));
 const AdminMemberships = React.lazy(() => import('../features/admin/AdminMemberships'));
 const Dashboard = React.lazy(() => import('../features/dashboard/Dashboard'));
 const CEOPanel = React.lazy(() => import('../features/dashboard/CEOPanel'));
+const MissionControl = React.lazy(() => import('../features/mission-control/MissionControl'));
 const TasksHub = React.lazy(() => import('../features/tasks/TasksHub'));
 const ChatPage = React.lazy(() => import('../features/chat/ChatPage'));
-const CommunitiesPage = React.lazy(() => import('../features/community/CommunityPages').then(module => ({ default: module.CommunitiesPage })));
-const CommunityDetailPage = React.lazy(() => import('../features/community/CommunityPages').then(module => ({ default: module.CommunityDetailPage })));
-const ShowcasePage = React.lazy(() => import('../features/community/CommunityPages').then(module => ({ default: module.ShowcasePage })));
-const DiscoverPage = React.lazy(() => import('../features/community/CommunityPages').then(module => ({ default: module.DiscoverPage })));
 const ProfilePage = React.lazy(() => import('../features/profile/ProfilePage'));
-const ProfileEdit = React.lazy(() => import('../features/profile/ProfileEdit'));
 const LeaderboardsPage = React.lazy(() => import('../features/leaderboards/LeaderboardsPage'));
 const ExperimentsLab = React.lazy(() => import('../features/experiments/ExperimentsLab'));
 const ExperimentDetail = React.lazy(() => import('../features/experiments/ExperimentDetail'));
 const ProductsMarketplace = React.lazy(() => import('../features/products/ProductsMarketplace'));
 const ProductDetail = React.lazy(() => import('../features/products/ProductDetail'));
-const OrganizationHub = React.lazy(() => import('../features/organization/OrganizationHub'));
-const DivisionDashboard = React.lazy(() => import('../features/organization/DivisionDashboard'));
-const DepartmentDashboard = React.lazy(() => import('../features/organization/DepartmentDashboard'));
-const LabDashboard = React.lazy(() => import('../features/organization/LabDashboard'));
-const TeamDashboard = React.lazy(() => import('../features/organization/TeamDashboard'));
-const OperationsCenter = React.lazy(() => import('../features/organization/OperationsCenter'));
-const AdminOrganization = React.lazy(() => import('../features/admin/AdminOrganization'));
+const CreativeHub = React.lazy(() => import('../features/creative/CreativeHub'));
+const CreativeDetail = React.lazy(() => import('../features/creative/CreativeDetail'));
+const CreativityPage = React.lazy(() => import('../features/creative/CreativityPage'));
+const ChallengesPage = React.lazy(() => import('../features/challenges/ChallengesPage'));
 const SkillsHub = React.lazy(() => import('../features/skills/SkillsHub'));
 const SkillDetail = React.lazy(() => import('../features/skills/SkillDetail'));
 const AIOS = React.lazy(() => import('../features/ai/AIOS'));
@@ -49,16 +42,6 @@ const SignUp = React.lazy(() => import('../features/auth/SignUp'));
 const WorkspaceDashboard = React.lazy(() => import('../features/digital-workspace/WorkspaceDashboard'));
 const WorkspaceDetail = React.lazy(() => import('../features/digital-workspace/WorkspaceDetail'));
 const ModulePage = React.lazy(() => import('../features/dashboard/ModulePage'));
-// --- Collaboration Routes (Step 29) ---
-const VoiceRoomsPage = React.lazy(() => import('../features/collaboration/VoiceRoomsPage'));
-const VideoMeetPage = React.lazy(() => import('../features/collaboration/VideoMeetPage'));
-const WarRoomsPage = React.lazy(() => import('../features/collaboration/WarRoomsPage'));
-const WarRoomDetail = React.lazy(() => import('../features/collaboration/WarRoomPage')); // Details
-const BrainstormSession = React.lazy(() => import('../features/collaboration/BrainstormSession'));
-const MeetingsPage = React.lazy(() => import('../features/collaboration/MeetingsPage'));
-const ActivityStreamPage = React.lazy(() => import('../features/collaboration/ActivityStreamPage'));
-const CollaborationHub = React.lazy(() => import('../features/collaboration/CollaborationHub'));
-const AdminCollaboration = React.lazy(() => import('../features/admin/AdminCollaboration'));
 const NotificationsCenter = React.lazy(() => import('../features/notifications/NotificationsCenter'));
 // --- Admin Routes (Lazy Loaded) ---
 const AdminLayout = React.lazy(() => import('../features/admin/AdminLayout'));
@@ -72,27 +55,194 @@ const AdminAnalytics = React.lazy(() => import('../features/admin/AdminAnalytics
 const AdminSecurity = React.lazy(() => import('../features/admin/AdminSecurity'));
 const AdminEvents = React.lazy(() => import('../features/admin/AdminEvents'));
 const AdminInnovation = React.lazy(() => import('../features/admin/AdminInnovation'));
-const AdminVentures = React.lazy(() => import('../features/admin/AdminVentures'));
-const AdminMarketplace = React.lazy(() => import('../features/admin/AdminMarketplace'));
-const AdminAutomation = React.lazy(() => import('../features/admin/AdminAutomation'));
-const AIMarketplaceAssistant = React.lazy(() => import('../features/marketplace/AIMarketplaceAssistant'));
-const CreatorsHub = React.lazy(() => import('../features/marketplace/CreatorsHub'));
-const ServicesMarketplace = React.lazy(() => import('../features/marketplace/ServicesMarketplace'));
+const CommandCenter = React.lazy(() => import('../features/admin/CommandCenter'));
+const MembershipCenter = React.lazy(() => import('../features/admin/MembershipCenter'));
+const ExecutiveAIAssistant = React.lazy(() => import('../features/admin/ExecutiveAIAssistant'));
+const ExecutiveRoleManagement = React.lazy(() => import('../features/admin/ExecutiveRoleManagement'));
 
-// --- Governance & Trust OS (Step 34) ---
-const GovernanceCenter = React.lazy(() => import('../features/governance/GovernanceCenter'));
-const ElectionsHub = React.lazy(() => import('../features/governance/ElectionsHub'));
-const VerificationCenter = React.lazy(() => import('../features/governance/VerificationCenter'));
-const EndorsementsHub = React.lazy(() => import('../features/governance/EndorsementsHub'));
-const ConflictResolution = React.lazy(() => import('../features/governance/ConflictResolution'));
-const AIGovernanceAssistant = React.lazy(() => import('../features/governance/AIGovernanceAssistant'));
-const AdminGovernance = React.lazy(() => import('../features/admin/AdminGovernance'));
+// --- Research System (Phase 18) ---
+const FunResearchMode = React.lazy(() => import('../features/research/FunResearchMode'));
+const ResearchChallenges = React.lazy(() => import('../features/research/ResearchChallenges'));
+const DiscoveryFeed = React.lazy(() => import('../features/research/DiscoveryFeed'));
+const ResearchArena = React.lazy(() => import('../features/research/ResearchArena'));
+const AIResearchSimulator = React.lazy(() => import('../features/research/AIResearchSimulator'));
+const ResearchAnalytics = React.lazy(() => import('../features/research/ResearchAnalytics'));
+const ResearchCertificates = React.lazy(() => import('../features/research/ResearchCertificates'));
+const FeaturedResearch = React.lazy(() => import('../features/research/FeaturedResearch'));
+const ResearchLeaderboards = React.lazy(() => import('../features/research/ResearchLeaderboards'));
+const ResearchLevels = React.lazy(() => import('../features/research/ResearchLevels'));
+const ResearchBuilderWizard = React.lazy(() => import('../features/research/ResearchBuilderWizard'));
+const AICoAuthor = React.lazy(() => import('../features/research/AICoAuthor'));
+const ResearchNotebook = React.lazy(() => import('../features/research/ResearchNotebook'));
+const MediaSupport = React.lazy(() => import('../features/research/MediaSupport'));
+const ExperimentConnection = React.lazy(() => import('../features/research/ExperimentConnection'));
+const AIResearchReviewer = React.lazy(() => import('../features/research/AIResearchReviewer'));
+const DiscussionArea = React.lazy(() => import('../features/research/DiscussionArea'));
+const TeenGamification = React.lazy(() => import('../features/research/TeenGamification'));
+
+// --- Chat System (Phase 20) ---
+const RichMessageComposer = React.lazy(() => import('../features/chat/RichMessageComposer'));
+const FunChatEffects = React.lazy(() => import('../features/chat/FunChatEffects'));
+const AIInsideChat = React.lazy(() => import('../features/chat/AIInsideChat'));
+const VoiceMessages = React.lazy(() => import('../features/chat/VoiceMessages'));
+const VoiceRooms = React.lazy(() => import('../features/chat/VoiceRooms'));
+const VideoMeetings = React.lazy(() => import('../features/chat/VideoMeetings'));
+const SharedMedia = React.lazy(() => import('../features/chat/SharedMedia'));
+const ChatGames = React.lazy(() => import('../features/chat/ChatGames'));
+const AchievementCelebrations = React.lazy(() => import('../features/chat/AchievementCelebrations'));
+const MemberProfilesInChat = React.lazy(() => import('../features/chat/MemberProfilesInChat'));
+const SmartFilters = React.lazy(() => import('../features/chat/SmartFilters'));
+const MobileChatExperience = React.lazy(() => import('../features/chat/MobileChatExperience'));
+
+// --- AI Studio (Phase 21) ---
+const PromptEngineeringCenter = React.lazy(() => import('../features/ai-studio/PromptEngineeringCenter'));
+const InteractivePromptPlayground = React.lazy(() => import('../features/ai-studio/InteractivePromptPlayground'));
+const PromptAnalyzer = React.lazy(() => import('../features/ai-studio/PromptAnalyzer'));
+const PromptChallenges = React.lazy(() => import('../features/ai-studio/PromptChallenges'));
+const AITrainingCenter = React.lazy(() => import('../features/ai-studio/AITrainingCenter'));
+const AITestingLab = React.lazy(() => import('../features/ai-studio/AITestingLab'));
+const AIAnalytics = React.lazy(() => import('../features/ai-studio/AIAnalytics'));
+const AIVersionControl = React.lazy(() => import('../features/ai-studio/AIVersionControl'));
+const AICollections = React.lazy(() => import('../features/ai-studio/AICollections'));
+const AICompetitions = React.lazy(() => import('../features/ai-studio/AICompetitions'));
+const AIAchievements = React.lazy(() => import('../features/ai-studio/AIAchievements'));
+const AILearningAcademy = React.lazy(() => import('../features/ai-studio/AILearningAcademy'));
+const FunAIFeatures = React.lazy(() => import('../features/ai-studio/FunAIFeatures'));
+
+// Robust lazy loading helper with automatic retry for dynamic import failure
+const safeLazy = (importFn) =>
+  React.lazy(() =>
+    importFn().catch((error) => {
+      console.warn('Dynamic import failed, retrying chunk load...', error);
+      return new Promise((resolve) => setTimeout(resolve, 300))
+        .then(importFn)
+        .catch(() => {
+          const key = 'chunk_reload_retry';
+          const now = Date.now();
+          if (!sessionStorage.getItem(key) || now - Number(sessionStorage.getItem(key)) > 10000) {
+            sessionStorage.setItem(key, String(now));
+            window.location.reload();
+          }
+          throw error;
+        });
+    })
+  );
+
+// --- FunFlix (Phase 22) ---
+const CinematicHero = safeLazy(() => import('../features/funflix/CinematicHero'));
+const BeautifulCategories = safeLazy(() => import('../features/funflix/BeautifulCategories'));
+const HoverExperience = safeLazy(() => import('../features/funflix/HoverExperience'));
+const RichCreatorProfiles = safeLazy(() => import('../features/funflix/RichCreatorProfiles'));
+const CreatorLevels = safeLazy(() => import('../features/funflix/CreatorLevels'));
+const MovieUploadWizard = safeLazy(() => import('../features/funflix/MovieUploadWizard'));
+const AIMovieAssistant = safeLazy(() => import('../features/funflix/AIMovieAssistant'));
+const InteractiveWatching = React.lazy(() => import('../features/funflix/InteractiveWatching'));
+const WatchParties = React.lazy(() => import('../features/funflix/WatchParties'));
+const Series = React.lazy(() => import('../features/funflix/Series'));
+const Recommendations = React.lazy(() => import('../features/funflix/Recommendations'));
+const MovieAnalytics = React.lazy(() => import('../features/funflix/MovieAnalytics'));
+const Achievements = React.lazy(() => import('../features/funflix/Achievements'));
+const Playlists = React.lazy(() => import('../features/funflix/Playlists'));
+const AIDiscovery = React.lazy(() => import('../features/funflix/AIDiscovery'));
+const MobileExperience = React.lazy(() => import('../features/funflix/MobileExperience'));
+const DesignPhilosophy = React.lazy(() => import('../features/funflix/DesignPhilosophy'));
+
+// --- Portfolio (Phase 23) ---
+const VerificationBadges = React.lazy(() => import('../features/portfolio/VerificationBadges'));
+const SocialLinks = React.lazy(() => import('../features/portfolio/SocialLinks'));
+const QuickStatistics = React.lazy(() => import('../features/portfolio/QuickStatistics'));
+const AboutSection = React.lazy(() => import('../features/portfolio/AboutSection'));
+const Skills = React.lazy(() => import('../features/portfolio/Skills'));
+const Education = React.lazy(() => import('../features/portfolio/Education'));
+const Experience = React.lazy(() => import('../features/portfolio/Experience'));
+const AutoPopulatedSections = React.lazy(() => import('../features/portfolio/AutoPopulatedSections'));
+const DiscoveriesInventions = React.lazy(() => import('../features/portfolio/DiscoveriesInventions'));
+const MarketplaceShowcaseFunFlixAIStudio = React.lazy(() => import('../features/portfolio/MarketplaceShowcaseFunFlixAIStudio'));
+const AchievementsCertificates = React.lazy(() => import('../features/portfolio/AchievementsCertificates'));
+const LeaderboardHistory = React.lazy(() => import('../features/portfolio/LeaderboardHistory'));
+const Timeline = React.lazy(() => import('../features/portfolio/Timeline'));
+const ActivityFeed = React.lazy(() => import('../features/portfolio/ActivityFeed'));
+const FollowersRecommendations = React.lazy(() => import('../features/portfolio/FollowersRecommendations'));
+const ContactPrivacy = React.lazy(() => import('../features/portfolio/ContactPrivacy'));
+const Analytics = React.lazy(() => import('../features/portfolio/Analytics'));
+const PortfolioCustomization = React.lazy(() => import('../features/portfolio/PortfolioCustomization'));
+const PortfolioSharing = React.lazy(() => import('../features/portfolio/PortfolioSharing'));
+
+// --- Dashboard (Phase 24) ---
+const DashboardHeader = React.lazy(() => import('../features/dashboard/DashboardHeader'));
+const UserProfileCard = React.lazy(() => import('../features/dashboard/UserProfileCard'));
+const MembershipBadge = React.lazy(() => import('../features/dashboard/MembershipBadge'));
+const DashboardStatistics = React.lazy(() => import('../features/dashboard/DashboardStatistics'));
+const TodayTasks = React.lazy(() => import('../features/dashboard/TodayTasks'));
+const MyProjects = React.lazy(() => import('../features/dashboard/MyProjects'));
+const MyExperiments = React.lazy(() => import('../features/dashboard/MyExperiments'));
+const AIRecommendations = React.lazy(() => import('../features/dashboard/AIRecommendations'));
+const Announcements = React.lazy(() => import('../features/dashboard/Announcements'));
+const RecentActivity = React.lazy(() => import('../features/dashboard/RecentActivity'));
+const NotificationsWidget = React.lazy(() => import('../features/dashboard/NotificationsWidget'));
+const CalendarWidget = React.lazy(() => import('../features/dashboard/CalendarWidget'));
+const EventsSection = React.lazy(() => import('../features/dashboard/EventsSection'));
+const LeaderboardPreview = React.lazy(() => import('../features/dashboard/LeaderboardPreview'));
+const LearningProgress = React.lazy(() => import('../features/dashboard/LearningProgress'));
+const ResearchSnapshot = React.lazy(() => import('../features/dashboard/ResearchSnapshot'));
+const MarketplaceSnapshot = React.lazy(() => import('../features/dashboard/MarketplaceSnapshot'));
+const ShowcasePreview = React.lazy(() => import('../features/dashboard/ShowcasePreview'));
+const FunFlixPreview = React.lazy(() => import('../features/dashboard/FunFlixPreview'));
+const TeamOverview = React.lazy(() => import('../features/dashboard/TeamOverview'));
+const PersonalGoals = React.lazy(() => import('../features/dashboard/PersonalGoals'));
+const DailyStreak = React.lazy(() => import('../features/dashboard/DailyStreak'));
+const AIAssistantPanel = React.lazy(() => import('../features/dashboard/AIAssistantPanel'));
+const PerformanceRequirements = React.lazy(() => import('../features/dashboard/PerformanceRequirements'));
+const MobileDashboardRequirements = React.lazy(() => import('../features/dashboard/MobileDashboardRequirements'));
+
+// --- Settings (Phase 25) ---
+const ProfileSettings = React.lazy(() => import('../features/settings/ProfileSettings'));
+const AccountSettings = React.lazy(() => import('../features/settings/AccountSettings'));
+const SecuritySettings = React.lazy(() => import('../features/settings/SecuritySettings'));
+const AppearanceSettings = React.lazy(() => import('../features/settings/AppearanceSettings'));
+const AIPreferences = React.lazy(() => import('../features/settings/AIPreferences'));
+const LanguageSettings = React.lazy(() => import('../features/settings/LanguageSettings'));
+const PrivacySettings = React.lazy(() => import('../features/settings/PrivacySettings'));
+const ContentPreferences = React.lazy(() => import('../features/settings/ContentPreferences'));
+const NotificationPreferences = React.lazy(() => import('../features/settings/NotificationPreferences'));
+const ConnectedAccounts = React.lazy(() => import('../features/settings/ConnectedAccounts'));
+const StorageSettings = React.lazy(() => import('../features/settings/StorageSettings'));
+const AboutSettings = React.lazy(() => import('../features/settings/AboutSettings'));
+const SettingsUX = React.lazy(() => import('../features/settings/SettingsUX'));
+
+// --- Notifications (Phase 26) ---
+const NotificationCenter = React.lazy(() => import('../features/notifications/NotificationCenter'));
+const NotificationTypes = React.lazy(() => import('../features/notifications/NotificationTypes'));
+const RealTimeDelivery = React.lazy(() => import('../features/notifications/RealTimeDelivery'));
+const NotificationActions = React.lazy(() => import('../features/notifications/NotificationActions'));
+const SmartFiltering = React.lazy(() => import('../features/notifications/SmartFiltering'));
+const NotificationSearch = React.lazy(() => import('../features/notifications/NotificationSearch'));
+const NotificationSettings = React.lazy(() => import('../features/notifications/NotificationSettings'));
+const ExecutiveNotifications = React.lazy(() => import('../features/notifications/ExecutiveNotifications'));
+const NotificationDesign = React.lazy(() => import('../features/notifications/NotificationDesign'));
+
+// --- Presence (Phase 27) ---
+const PresenceStatus = React.lazy(() => import('../features/presence/PresenceStatus'));
+const RichPresence = React.lazy(() => import('../features/presence/RichPresence'));
+const LastSeen = React.lazy(() => import('../features/presence/LastSeen'));
+const ActiveDevice = React.lazy(() => import('../features/presence/ActiveDevice'));
+const PresencePrivacy = React.lazy(() => import('../features/presence/PresencePrivacy'));
+const PresenceInChat = React.lazy(() => import('../features/presence/PresenceInChat'));
+
+const ExecutivePresence = React.lazy(() => import('../features/presence/ExecutivePresence'));
+const TechnicalArchitecture = React.lazy(() => import('../features/presence/TechnicalArchitecture'));
+const FailureHandling = React.lazy(() => import('../features/presence/FailureHandling'));
+const PresenceDesign = React.lazy(() => import('../features/presence/PresenceDesign'));
+
+// --- QA (Phase 15) ---
+const CrossBrowserVerification = React.lazy(() => import('../features/qa/CrossBrowserVerification'));
+const ProductionLaunch = React.lazy(() => import('../features/qa/ProductionLaunch'));
+
+// --- Executive (Phase 16) ---
+const AdminExecutiveNotifications = React.lazy(() => import('../features/admin/ExecutiveNotifications'));
+const ExecutiveSecurity = React.lazy(() => import('../features/admin/ExecutiveSecurity'));
 
 // --- Intelligence & Predictive AI OS (Step 35) ---
-const IntelligenceCenter = React.lazy(() => import('../features/intelligence/IntelligenceCenter'));
-const EcosystemHealth = React.lazy(() => import('../features/intelligence/EcosystemHealth'));
-const OpportunityScanner = React.lazy(() => import('../features/intelligence/OpportunityScanner'));
-const RiskCenter = React.lazy(() => import('../features/intelligence/RiskCenter'));
 const TrendAnalytics = React.lazy(() => import('../features/intelligence/TrendAnalytics'));
 const ReportsAutomation = React.lazy(() => import('../features/intelligence/ReportsAutomation'));
 const IntelligenceAlerts = React.lazy(() => import('../features/intelligence/IntelligenceAlerts'));
@@ -116,7 +266,6 @@ const MissionControlLayout = React.lazy(() => import('../features/mission-contro
 const MissionControlDashboard = React.lazy(() => import('../features/mission-control/MissionControlDashboard'));
 const ExecutiveAlerts = React.lazy(() => import('../features/mission-control/ExecutiveAlerts'));
 const ProjectHealth = React.lazy(() => import('../features/mission-control/ProjectHealth'));
-const OrganizationHealth = React.lazy(() => import('../features/mission-control/OrganizationHealth'));
 const MemberAnalytics = React.lazy(() => import('../features/mission-control/MemberAnalytics'));
 const GlobalSearch = React.lazy(() => import('../features/mission-control/GlobalSearch'));
 const ReportsCenter = React.lazy(() => import('../features/mission-control/ReportsCenter'));
@@ -134,21 +283,6 @@ const PortfolioPage = React.lazy(() => import('../features/portfolio/PortfolioPa
 const PortfolioShare = React.lazy(() => import('../features/portfolio/PortfolioShare'));
 const CertificateView = React.lazy(() => import('../features/portfolio/CertificateView'));
 
-// --- Innovation Registry (Step 18) ---
-const InnovationShowcase = React.lazy(() => import('../features/innovation/InnovationShowcase'));
-const VenturesHub = React.lazy(() => import('../features/ventures/VenturesHub'));
-const VentureDetail = React.lazy(() => import('../features/ventures/VentureDetail'));
-const VentureDirectory = React.lazy(() => import('../features/ventures/VentureDirectory'));
-const VentureBuilder = React.lazy(() => import('../features/ventures/VentureBuilder'));
-const IncubatorHub = React.lazy(() => import('../features/ventures/IncubatorHub'));
-const AIVentureAssistant = React.lazy(() => import('../features/ai/AIVentureAssistant'));
-const VentureHealth = React.lazy(() => import('../features/mission-control/VentureHealth'));
-const MarketplaceHome = React.lazy(() => import('../features/marketplace/MarketplaceHome'));
-const MarketplaceDetail = React.lazy(() => import('../features/marketplace/MarketplaceDetail'));
-const CreatorProfile = React.lazy(() => import('../features/marketplace/CreatorProfile'));
-const MarketplaceHealth = React.lazy(() => import('../features/mission-control/MarketplaceHealth'));
-const CollaborationHealth = React.lazy(() => import('../features/mission-control/CollaborationHealth'));
-
 // --- Developer & Integration OS (Step 38) ---
 const DeveloperPortal = React.lazy(() => import('../features/developer/DeveloperPortal'));
 const APIKeysCenter = React.lazy(() => import('../features/developer/APIKeysCenter'));
@@ -162,14 +296,9 @@ const LearningIntegrations = React.lazy(() => import('../features/integrations/L
 const CommunicationHub = React.lazy(() => import('../features/integrations/CommunicationHub'));
 const EnterpriseIntegrations = React.lazy(() => import('../features/integrations/EnterpriseIntegrations'));
 const IntegrationSecurityCenter = React.lazy(() => import('../features/integrations/IntegrationSecurityCenter'));
-const IntegrationAnalytics = React.lazy(() => import('../features/integrations/IntegrationAnalytics'));
 
 // --- Global Ecosystem & Legacy (Step 39) ---
-const CommunityNetwork = React.lazy(() => import('../features/global-ecosystem/CommunityNetwork'));
-const OrganizationNetwork = React.lazy(() => import('../features/global-ecosystem/OrganizationNetwork'));
 const GlobalEventsHub = React.lazy(() => import('../features/global-ecosystem/GlobalEventsHub'));
-const GlobalIntelligence = React.lazy(() => import('../features/global-ecosystem/GlobalIntelligence'));
-const GlobalAnalytics = React.lazy(() => import('../features/global-ecosystem/GlobalAnalytics'));
 const GlobalSearchCenter = React.lazy(() => import('../features/global-ecosystem/GlobalSearchCenter'));
 const ComplianceCenter = React.lazy(() => import('../features/global-ecosystem/ComplianceCenter'));
 const GlobalMissionControl = React.lazy(() => import('../features/global-ecosystem/GlobalMissionControl'));
@@ -191,26 +320,17 @@ const ReleaseManager = React.lazy(() => import('../features/platform/ReleaseMana
 // --- FunFlix OS (Step 41) ---
 const FunFlixHub = React.lazy(() => import('../features/funflix/FunFlixHub'));
 const MoviePlayer = React.lazy(() => import('../features/funflix/MoviePlayer'));
-const CreatorStudio = React.lazy(() => import('../features/funflix/CreatorStudio'));
-const MyMovies = React.lazy(() => import('../features/funflix/MyMovies'));
 const FunFlixCreatorProfile = React.lazy(() => import('../features/funflix/CreatorProfile'));
-const MovieUploadWizard = React.lazy(() => import('../features/funflix/MovieUploadWizard'));
-const MovieAnalytics = React.lazy(() => import('../features/funflix/MovieAnalytics'));
 const MoviePlaylists = React.lazy(() => import('../features/funflix/MoviePlaylists'));
 const AIFunFlixAssistant = React.lazy(() => import('../features/funflix/AIFunFlixAssistant'));
-const FunFlixChallenges = React.lazy(() => import('../features/funflix/FunFlixChallenges'));
 const FunFlixAnalytics = React.lazy(() => import('../features/mission-control/FunFlixAnalytics'));
 const AdminFunFlix = React.lazy(() => import('../features/admin/AdminFunFlix'));
 
 // --- AI Creator Studio & Marketplace (Step 42) ---
-const AICreatorStudio = React.lazy(() => import('../features/ai-creator/AICreatorStudio'));
-const CreateAIWizard = React.lazy(() => import('../features/ai-creator/CreateAIWizard'));
+const AIStudioUnified = React.lazy(() => import('../features/ai-creator/AIStudioUnified'));
 const AIProfilePage = React.lazy(() => import('../features/ai-creator/AIProfilePage'));
 const AIChatPage = React.lazy(() => import('../features/ai-creator/AIChatPage'));
 const AIMarketplaceBrowser = React.lazy(() => import('../features/ai-creator/AIMarketplaceBrowser'));
-const AICreatorAnalytics = React.lazy(() => import('../features/ai-creator/AICreatorAnalytics'));
-const AICollections = React.lazy(() => import('../features/ai-creator/AICollections'));
-const AITrainingCenter = React.lazy(() => import('../features/ai-creator/AITrainingCenter'));
 const AIEcosystemAnalytics = React.lazy(() => import('../features/mission-control/AIEcosystemAnalytics'));
 const AdminAIStudio = React.lazy(() => import('../features/admin/AdminAIStudio'));
 
@@ -218,46 +338,17 @@ const AdminAIStudio = React.lazy(() => import('../features/admin/AdminAIStudio')
 const MobileDashboard = React.lazy(() => import('../mobile/MobileDashboard'));
 const DesktopHub = React.lazy(() => import('../desktop/DesktopHub'));
 
-// --- Agentic Workforce OS (Step 37) ---
-const AgentOS = React.lazy(() => import('../features/agents/AgentOS'));
-const AgentBuilder = React.lazy(() => import('../features/agents/AgentBuilder'));
-const AutomationCenter = React.lazy(() => import('../features/agents/AutomationCenter'));
-const AgentMarketplace = React.lazy(() => import('../features/agents/AgentMarketplace'));
-const AIOperationsCenter = React.lazy(() => import('../features/agents/AIOperationsCenter'));
-const ApprovalCenter = React.lazy(() => import('../features/agents/ApprovalCenter'));
-const AutomationAnalytics = React.lazy(() => import('../features/agents/AutomationAnalytics'));
-const ResearchAutomation = React.lazy(() => import('../features/agents/ResearchAutomation'));
-const VentureAutomation = React.lazy(() => import('../features/agents/VentureAutomation'));
-const MarketplaceAutomation = React.lazy(() => import('../features/agents/MarketplaceAutomation'));
-const KnowledgeAutomation = React.lazy(() => import('../features/agents/KnowledgeAutomation'));
-const CollaborationAutomation = React.lazy(() => import('../features/agents/CollaborationAutomation'));
-const GovernanceAutomation = React.lazy(() => import('../features/agents/GovernanceAutomation'));
-const AutomationHealth = React.lazy(() => import('../features/mission-control/AutomationHealth'));
-
 // --- Universe OS (Step 28) ---
 const UniverseHome = React.lazy(() => import('../features/universe/UniverseHome'));
 const UnifiedSearchPage = React.lazy(() => import('../features/universe/UnifiedSearchPage'));
 const UniverseGoals = React.lazy(() => import('../features/universe/UniverseGoals'));
-const KnowledgeGraphView = React.lazy(() => import('../features/universe/KnowledgeGraphView'));
 const AdminUniverse = React.lazy(() => import('../features/admin/AdminUniverse'));
 const UniverseAnalytics = React.lazy(() => import('../features/mission-control/UniverseAnalytics'));
-
-// --- Knowledge Base (Step 19 & 30) ---
-const KnowledgeHub = React.lazy(() => import('../features/knowledge/KnowledgeHub'));
-const ArticleViewer = React.lazy(() => import('../features/knowledge/ArticleViewer'));
-const KnowledgeMap = React.lazy(() => import('../features/knowledge/KnowledgeMap'));
-const SmartCollections = React.lazy(() => import('../features/knowledge/SmartCollections'));
-const LearningPaths = React.lazy(() => import('../features/knowledge/LearningPaths'));
-const KnowledgeRequests = React.lazy(() => import('../features/knowledge/KnowledgeRequests'));
-const ExpertDirectory = React.lazy(() => import('../features/experts/ExpertDirectory'));
-const MentorshipHub = React.lazy(() => import('../features/experts/MentorshipHub'));
-const KnowledgeAnalytics = React.lazy(() => import('../features/mission-control/KnowledgeAnalytics'));
-const AdminKnowledge = React.lazy(() => import('../features/admin/AdminKnowledge'));
 
 // --- Generic Fullscreen Loader ---
 export const FullScreenLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center w-full">
-    <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,240,255,0.5)]"></div>
+    <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin shadow-[0_0_15px_rgba(0,255,255,0.5)]"></div>
   </div>
 );
 
@@ -272,18 +363,23 @@ const ProtectedRoute = ({ children, requireMember, requireCeo, requireAdmin, req
     return <Navigate to="/signin" replace />;
   }
 
-  const role = roleData?.role;
+  const membershipStatus = roleData?.membershipStatus;
+  const normalizedRole = roleData?.role?.toLowerCase().trim();
+  const isAdmin = hasPermission(roleData?.role, 'canAccessCeoPanel') || 
+                  normalizedRole === 'main ceo' || 
+                  normalizedRole === 'co-ceo' || 
+                  normalizedRole === 'co ceo';
 
   // Check membership status if requireMember is true
-  if (requireMember && !PERMISSIONS.isApprovedMember(role)) {
+  if (requireMember && membershipStatus !== 'approved' && !isAdmin) {
     return <Navigate to="/membership/apply" replace />;
   }
 
-  if (requireCeo && !hasPermission(role, 'canAccessCeoPanel')) {
+  if (requireCeo && !hasPermission(roleData?.role, 'canAccessCeoPanel')) {
     return <Navigate to="/access-denied" replace />;
   }
 
-  if (requireAdmin && !hasPermission(role, 'canAccessAdmin')) {
+  if (requireAdmin && !hasPermission(roleData?.role, 'canAccessAdmin')) {
     return <Navigate to="/access-denied" replace />;
   }
   
@@ -308,8 +404,8 @@ export default function AppRouter() {
         <Route path="/signin" element={<AuthRoute><SignIn /></AuthRoute>} />
         <Route path="/signup" element={<AuthRoute><SignUp /></AuthRoute>} />
         
-        {/* All other routes require authentication */}
-        <Route element={<ProtectedRoute><PublicLayout /></ProtectedRoute>}>
+        {/* Public Routes - Accessible without authentication */}
+        <Route element={<ProtectedRoute requireAuth={false}><PublicLayout /></ProtectedRoute>}>
           <Route path="/" element={<PublicHome />} />
           <Route path="/about" element={<PublicAbout />} />
           <Route path="/experiments" element={<PublicExperiments />} />
@@ -318,7 +414,6 @@ export default function AppRouter() {
           <Route path="/hall-of-fame" element={<HallOfFame />} />
           <Route path="/join" element={<JoinPage />} />
           <Route path="/members/:uid" element={<PublicMemberProfile />} />
-          <Route path="/u/:username" element={<PublicUserPage />} />
         </Route>
         <Route path="/access-denied" element={<AccessDenied />} />
         
@@ -327,12 +422,11 @@ export default function AppRouter() {
           <Route path="/membership/apply" element={<MembershipApply />} />
         </Route>
         
-        {/* AppShell Protected Routes - Public for authenticated users */}
+        {/* AppShell Protected Routes - Member only dashboard and apps */}
         <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/universe" element={<UniverseHome />} />
-          <Route path="/universe/goals" element={<UniverseGoals />} />
-          <Route path="/universe/graph" element={<KnowledgeGraphView />} />
+          <Route path="/dashboard" element={<ProtectedRoute requireMember><Dashboard /></ProtectedRoute>} />
+          <Route path="/universe" element={<ProtectedRoute requireMember><UniverseHome /></ProtectedRoute>} />
+          <Route path="/universe/goals" element={<ProtectedRoute requireMember><UniverseGoals /></ProtectedRoute>} />
           <Route path="/search" element={<UnifiedSearchPage />} />
           
           {/* Standalone pages outside the main layout */}
@@ -344,241 +438,390 @@ export default function AppRouter() {
           <Route path="/desktop" element={<DesktopHub />} />
 
           <Route path="/tasks" element={<TasksHub />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/communities" element={<CommunitiesPage />} />
-          <Route path="/communities/:communityId" element={<CommunityDetailPage />} />
-          <Route path="/showcase" element={<ShowcasePage />} />
-          <Route path="/discover" element={<DiscoverPage />} />
+          <Route path="/chat" element={<ProtectedRoute requireMember><ChatPage /></ProtectedRoute>} />
           <Route path="/workspace" element={<WorkspaceDashboard />} />
           <Route path="/workspace/:id" element={<WorkspaceDetail />} />
           <Route path="/workspace/experiments" element={<ProtectedRoute requireMember><ExperimentsLab /></ProtectedRoute>} />
           <Route path="/workspace/experiments/:experimentId" element={<ExperimentDetail />} />
           <Route path="/workspace/products" element={<ProtectedRoute requireMember><ProductsMarketplace /></ProtectedRoute>} />
           <Route path="/workspace/products/:productId" element={<ProductDetail />} />
+          <Route path="/workspace/creative" element={<CreativeHub />} />
+          <Route path="/workspace/creative/:id" element={<CreativeDetail />} />
+          <Route path="/creativity" element={<CreativityPage />} />
+          <Route path="/challenges" element={<ChallengesPage />} />
           
-          {/* ========================================
-              COLLABORATION OS ROUTES (Step 29)
-              ======================================== */}
-          <Route path="/voice" element={<VoiceRoomsPage />} />
-          <Route path="/meet" element={<VideoMeetPage />} />
-          <Route path="/meet/:roomId" element={<VideoMeetPage />} />
-          <Route path="/war-rooms" element={<WarRoomsPage />} />
-          <Route path="/war-rooms/:id" element={<WarRoomDetail />} />
-          <Route path="/brainstorm/:id" element={<BrainstormSession />} />
-          <Route path="/meetings" element={<MeetingsPage />} />
-          <Route path="/activity" element={<ActivityStreamPage />} />
-          <Route path="/collaboration" element={<CollaborationHub />} />
-          <Route path="/war-room/:id" element={<WarRoomDetail />} />
-
           {/* ========================================
               ORGANIZATION OS ROUTES (Step 20) - Member Only
               ======================================== */}
-          <Route path="/organization" element={<OrganizationHub />} />
-          <Route path="/organization/division/:id" element={<DivisionDashboard />} />
-          <Route path="/organization/department/:id" element={<DepartmentDashboard />} />
-          <Route path="/organization/lab/:id" element={<LabDashboard />} />
-          <Route path="/organization/team/:id" element={<TeamDashboard />} />
-          <Route path="/operations" element={<OperationsCenter />} />
-          
           <Route path="/creative" element={<ModulePage type="creative" />} />
           <Route path="/workspace/skills" element={<SkillsHub />} />
           <Route path="/workspace/skills/:skillId" element={<SkillDetail />} />
-          <Route path="/teams" element={<Navigate to="/organization" replace />} />
-          <Route path="/announcements" element={<ModulePage type="announcements" />} />
           <Route path="/leaderboards" element={<LeaderboardsPage />} />
           <Route path="/notifications" element={<NotificationsCenter />} />
-          <Route path="/analytics" element={<ModulePage type="analytics" />} />
-          <Route path="/assessment" element={<ModulePage type="assessment" />} />
           <Route path="/ai" element={<AIOS />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:uid" element={<ProfilePage />} />
-          <Route path="/profile/:uid/edit" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
           <Route path="/settings" element={<ModulePage type="settings" />} />
           
           {/* CEO Protected Routes inside AppShell */}
-          <Route 
-            path="/ceo-panel" 
+          <Route
+            path="/ceo-panel"
             element={
               <ProtectedRoute requireCeo>
                 <CEOPanel />
               </ProtectedRoute>
-            } 
+            }
+          />
+
+          {/* Mission Control (Phase 29) */}
+          <Route
+            path="/mission-control"
+            element={
+              <ProtectedRoute requireCeo>
+                <MissionControl />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Executive Routes (Phase 16) */}
+          <Route
+            path="/command-center"
+            element={
+              <ProtectedRoute requireCeo>
+                <CommandCenter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/membership-center"
+            element={
+              <ProtectedRoute requireCeo>
+                <MembershipCenter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/executive-ai"
+            element={
+              <ProtectedRoute requireCeo>
+                <ExecutiveAIAssistant />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/executive-notifications"
+            element={
+              <ProtectedRoute requireCeo>
+                <AdminExecutiveNotifications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/executive-security"
+            element={
+              <ProtectedRoute requireCeo>
+                <ExecutiveSecurity />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/executive-role-management"
+            element={
+              <ProtectedRoute requireCeo>
+                <ExecutiveRoleManagement />
+              </ProtectedRoute>
+            }
           />
 
           {/* ========================================
               EVENTS & CHALLENGES ROUTES (Step 16)
               ======================================== */}
-          <Route path="events" element={<EventsPage />} />
-          <Route path="events/:eventId" element={<EventDetail />} />
-          <Route path="challenges/:challengeId" element={<ChallengeDetail />} />
+          <Route path="/events" element={<EventsPage />} />
+          <Route path="/events/:eventId" element={<EventDetail />} />
+          <Route path="/challenges/:challengeId" element={<ChallengeDetail />} />
 
           {/* ========================================
               PORTFOLIOS & CERTIFICATES ROUTES (Step 17)
               ======================================== */}
-          <Route path="portfolios" element={<PortfolioShowcase />} />
-          <Route path="portfolio" element={<Navigate to="/portfolios" replace />} />
-          <Route path="portfolio/:username" element={<PortfolioPage />} />
-          <Route path="portfolio/:username/share" element={<PortfolioShare />} />
-          <Route path="verify/:certId" element={<CertificateView />} />
+          <Route path="/portfolios" element={<PortfolioShowcase />} />
+          <Route path="/portfolio" element={<Navigate to="/portfolios" replace />} />
+          <Route path="/portfolio/:username" element={<PortfolioPage />} />
+          <Route path="/portfolio/:username/share" element={<PortfolioShare />} />
+          <Route path="/verify/:certId" element={<CertificateView />} />
 
           {/* ========================================
-              INNOVATION REGISTRY ROUTES (Step 18)
+              ACHIEVEMENTS ROUTES
               ======================================== */}
-          <Route path="innovation/explore" element={<InnovationShowcase />} />
-          <Route path="innovation/create" element={<InnovationShowcase />} />
-          <Route path="ventures" element={<VenturesHub />} />
-          <Route path="ventures/explore" element={<VentureDirectory />} />
-          <Route path="ventures/:id" element={<VentureDetail />} />
-          <Route path="venture-builder" element={<ProtectedRoute requireMember><VentureBuilder /></ProtectedRoute>} />
-          <Route path="incubator" element={<IncubatorHub />} />
-          <Route path="ai-venture" element={<AIVentureAssistant />} />
-          <Route path="marketplace" element={<MarketplaceHome />} />
-          <Route path="marketplace/item/:id" element={<MarketplaceDetail />} />
-          <Route path="marketplace/create" element={<MarketplaceHome />} />
-          <Route path="marketplace/ai-assistant" element={<AIMarketplaceAssistant />} />
-          <Route path="creators" element={<CreatorsHub />} />
-          <Route path="creator/:username" element={<CreatorProfile />} />
-          <Route path="services" element={<ServicesMarketplace />} />
-          {/* ========================================
-              AGENTIC WORKFORCE & AUTOMATION (Step 37)
-              ======================================== */}
-          <Route path="automation" element={<AgentOS />} />
-          <Route path="automation/builder" element={<ProtectedRoute requireMember><AgentBuilder /></ProtectedRoute>} />
-          <Route path="automation/center" element={<AutomationCenter />} />
-          <Route path="automation/marketplace" element={<AgentMarketplace />} />
-          <Route path="automation/operations" element={<AIOperationsCenter />} />
-          <Route path="automation/approvals" element={<ApprovalCenter />} />
-          <Route path="automation/analytics" element={<AutomationAnalytics />} />
-          <Route path="automation/research" element={<ResearchAutomation />} />
-          <Route path="automation/venture" element={<VentureAutomation />} />
-          <Route path="automation/marketplace-auto" element={<MarketplaceAutomation />} />
-          <Route path="automation/knowledge" element={<KnowledgeAutomation />} />
-          <Route path="automation/collaboration" element={<CollaborationAutomation />} />
-          <Route path="automation/governance" element={<GovernanceAutomation />} />
+          <Route path="/achievements" element={<Navigate to="/portfolios" replace />} />
 
           {/* ========================================
               DEVELOPER & INTEGRATION OS (Step 38)
               ======================================== */}
-          <Route path="developer" element={<DeveloperPortal />} />
-          <Route path="developer/keys" element={<APIKeysCenter />} />
-          <Route path="developer/webhooks" element={<WebhookCenter />} />
-          <Route path="developer/sdks" element={<SDKCenter />} />
-          <Route path="developer/marketplace" element={<DeveloperMarketplace />} />
+          <Route path="/developer" element={<DeveloperPortal />} />
+          <Route path="/developer/keys" element={<APIKeysCenter />} />
+          <Route path="/developer/webhooks" element={<WebhookCenter />} />
+          <Route path="/developer/sdks" element={<SDKCenter />} />
+          <Route path="/developer/marketplace" element={<DeveloperMarketplace />} />
           
-          <Route path="integrations/ai-providers" element={<AIProviderCenter />} />
-          <Route path="integrations/productivity" element={<ProductivityIntegrations />} />
-          <Route path="integrations/research" element={<ResearchIntegrations />} />
-          <Route path="integrations/learning" element={<LearningIntegrations />} />
-          <Route path="integrations/communication" element={<CommunicationHub />} />
-          <Route path="integrations/enterprise" element={<EnterpriseIntegrations />} />
-          <Route path="integrations/security" element={<IntegrationSecurityCenter />} />
-          <Route path="integrations/analytics" element={<IntegrationAnalytics />} />
+          <Route path="/integrations/ai-providers" element={<AIProviderCenter />} />
+          <Route path="/integrations/productivity" element={<ProductivityIntegrations />} />
+          <Route path="/integrations/research" element={<ResearchIntegrations />} />
+          <Route path="/integrations/learning" element={<LearningIntegrations />} />
+          <Route path="/integrations/communication" element={<CommunicationHub />} />
+          <Route path="/integrations/enterprise" element={<EnterpriseIntegrations />} />
+          <Route path="/integrations/security" element={<IntegrationSecurityCenter />} />
 
           {/* ========================================
               GLOBAL ECOSYSTEM & LEGACY (Step 39)
               ======================================== */}
-          <Route path="global/communities" element={<CommunityNetwork />} />
-          <Route path="global/organizations" element={<OrganizationNetwork />} />
-          <Route path="global/events" element={<GlobalEventsHub />} />
-          <Route path="global/intelligence" element={<GlobalIntelligence />} />
-          <Route path="global/analytics" element={<GlobalAnalytics />} />
-          <Route path="global/search" element={<GlobalSearchCenter />} />
-          <Route path="global/compliance" element={<ComplianceCenter />} />
-          <Route path="mission-control/global" element={<GlobalMissionControl />} />
-          <Route path="admin/global" element={<AdminGlobalEcosystem />} />
+          <Route path="/global/events" element={<GlobalEventsHub />} />
+          <Route path="/global/search" element={<GlobalSearchCenter />} />
+          <Route path="/global/compliance" element={<ComplianceCenter />} />
+          <Route path="/mission-control/global" element={<GlobalMissionControl />} />
+          <Route path="/admin/global" element={<AdminGlobalEcosystem />} />
 
-          <Route path="legacy/hall-of-fame" element={<LegacyCenter />} />
-          <Route path="legacy/recognition" element={<RecognitionCenter />} />
-          <Route path="legacy/timeline" element={<TimelineCenter />} />
+          <Route path="/legacy/hall-of-fame" element={<LegacyCenter />} />
+          <Route path="/legacy/recognition" element={<RecognitionCenter />} />
+          <Route path="/legacy/timeline" element={<TimelineCenter />} />
 
           {/* ========================================
               PLATFORM HARDENING & LAUNCH (Step 40)
               ======================================== */}
-          <Route path="platform/security" element={<SecurityCenter />} />
-          <Route path="platform/seo" element={<SEOHealthCenter />} />
-          <Route path="platform/monitoring" element={<MonitoringCenter />} />
-          <Route path="platform/backup" element={<BackupCenter />} />
-          <Route path="platform/docs" element={<DocumentationCenter />} />
-          <Route path="platform/launch" element={<LaunchCenter />} />
-          <Route path="platform/certification" element={<PlatformCertificationCenter />} />
-          <Route path="platform/releases" element={<ReleaseManager />} />
+          <Route path="/platform/security" element={<SecurityCenter />} />
+          <Route path="/platform/seo" element={<SEOHealthCenter />} />
+          <Route path="/platform/monitoring" element={<MonitoringCenter />} />
+          <Route path="/platform/backup" element={<BackupCenter />} />
+          <Route path="/platform/docs" element={<DocumentationCenter />} />
+          <Route path="/platform/launch" element={<LaunchCenter />} />
+          <Route path="/platform/certification" element={<PlatformCertificationCenter />} />
+          <Route path="/platform/releases" element={<ReleaseManager />} />
 
           {/* ========================================
               FUNFLIX OS (Step 41)
               ======================================== */}
-          <Route path="funflix" element={<FunFlixHub />} />
-          <Route path="funflix/watch/:movieId" element={<MoviePlayer />} />
-          <Route path="funflix/studio" element={<ProtectedRoute requireMember><CreatorStudio /></ProtectedRoute>} />
-          <Route path="funflix/my-movies" element={<ProtectedRoute requireMember><MyMovies /></ProtectedRoute>} />
-          <Route path="funflix/creator/:username" element={<FunFlixCreatorProfile />} />
-          <Route path="funflix/upload" element={<ProtectedRoute requireMember><MovieUploadWizard /></ProtectedRoute>} />
-          <Route path="funflix/analytics" element={<ProtectedRoute requireMember><MovieAnalytics /></ProtectedRoute>} />
-          <Route path="funflix/playlists" element={<ProtectedRoute requireMember><MoviePlaylists /></ProtectedRoute>} />
-          <Route path="funflix/ai" element={<AIFunFlixAssistant />} />
-          <Route path="funflix/challenges" element={<FunFlixChallenges />} />
-          <Route path="mission-control/funflix" element={<FunFlixAnalytics />} />
-          <Route path="admin/funflix" element={<AdminFunFlix />} />
+          <Route path="/funflix" element={<FunFlixHub />} />
+          <Route path="/funflix/watch/:movieId" element={<MoviePlayer />} />
+          <Route path="/funflix/creator/:username" element={<FunFlixCreatorProfile />} />
+          <Route path="/funflix/upload" element={<ProtectedRoute requireMember><MovieUploadWizard /></ProtectedRoute>} />
+          <Route path="/funflix/playlists" element={<ProtectedRoute requireMember><MoviePlaylists /></ProtectedRoute>} />
+          <Route path="/funflix/ai" element={<AIFunFlixAssistant />} />
+          <Route path="/mission-control/funflix" element={<FunFlixAnalytics />} />
+          <Route path="/admin/funflix" element={<AdminFunFlix />} />
 
           {/* ========================================
               AI CREATOR STUDIO & MARKETPLACE (Step 42)
               ======================================== */}
-          <Route path="ai-studio" element={<AICreatorStudio />} />
-          <Route path="ai-studio/create" element={<ProtectedRoute requireMember><CreateAIWizard /></ProtectedRoute>} />
-          <Route path="ai-studio/analytics" element={<ProtectedRoute requireMember><AICreatorAnalytics /></ProtectedRoute>} />
-          <Route path="ai-studio/training" element={<ProtectedRoute requireMember><AITrainingCenter /></ProtectedRoute>} />
-          <Route path="ais" element={<AIMarketplaceBrowser />} />
-          <Route path="ais/:aiId" element={<AIProfilePage />} />
-          <Route path="ais/:aiId/chat" element={<AIChatPage />} />
-          <Route path="ai-collections" element={<AICollections />} />
-          <Route path="mission-control/ai-ecosystem" element={<AIEcosystemAnalytics />} />
-          <Route path="admin/ai-studio" element={<AdminAIStudio />} />
+          <Route path="/ai-studio" element={<AIStudioUnified />} />
+          <Route path="/ais" element={<AIMarketplaceBrowser />} />
+          <Route path="/ais/:aiId" element={<AIProfilePage />} />
+          <Route path="/ais/:aiId/chat" element={<AIChatPage />} />
+          <Route path="/mission-control/ai-ecosystem" element={<AIEcosystemAnalytics />} />
+          <Route path="/admin/ai-studio" element={<AdminAIStudio />} />
 
           {/* ========================================
-              GOVERNANCE & TRUST OS ROUTES (Step 34)
+              RESEARCH SYSTEM ROUTES (Phase 18)
               ======================================== */}
-          <Route path="governance" element={<GovernanceCenter />} />
-          <Route path="governance/elections" element={<ElectionsHub />} />
-          <Route path="governance/verification" element={<VerificationCenter />} />
-          <Route path="governance/endorsements" element={<EndorsementsHub />} />
-          <Route path="governance/conflict" element={<ConflictResolution />} />
-          <Route path="governance/ai" element={<AIGovernanceAssistant />} />
+          <Route path="/research/fun-mode" element={<FunResearchMode />} />
+          <Route path="/research/challenges" element={<ResearchChallenges />} />
+          <Route path="/research/discovery" element={<DiscoveryFeed />} />
+          <Route path="/research/arena" element={<ResearchArena />} />
+          <Route path="/research/simulator" element={<AIResearchSimulator />} />
+          <Route path="/research/analytics" element={<ResearchAnalytics />} />
+          <Route path="/research/certificates" element={<ResearchCertificates />} />
+          <Route path="/research/featured" element={<FeaturedResearch />} />
+          <Route path="/research/leaderboards" element={<ResearchLeaderboards />} />
+          <Route path="/research/levels" element={<ResearchLevels />} />
+          <Route path="/research/builder" element={<ProtectedRoute requireMember><ResearchBuilderWizard /></ProtectedRoute>} />
+          <Route path="/research/coauthor" element={<AICoAuthor />} />
+          <Route path="/research/notebook" element={<ResearchNotebook />} />
+          <Route path="/research/media" element={<MediaSupport />} />
+          <Route path="/research/experiments" element={<ExperimentConnection />} />
+          <Route path="/research/reviewer" element={<AIResearchReviewer />} />
+          <Route path="/research/discussion" element={<DiscussionArea />} />
+          <Route path="/research/gamification" element={<TeenGamification />} />
+
+          {/* ========================================
+              CHAT SYSTEM ROUTES (Phase 20)
+              ======================================== */}
+          <Route path="/chat/composer" element={<RichMessageComposer />} />
+          <Route path="/chat/effects" element={<FunChatEffects />} />
+          <Route path="/chat/ai" element={<AIInsideChat />} />
+          <Route path="/chat/voice" element={<VoiceMessages />} />
+          <Route path="/chat/rooms" element={<VoiceRooms />} />
+          <Route path="/chat/video" element={<VideoMeetings />} />
+          <Route path="/chat/media" element={<SharedMedia />} />
+          <Route path="/chat/games" element={<ChatGames />} />
+          <Route path="/chat/achievements" element={<AchievementCelebrations />} />
+          <Route path="/chat/profiles" element={<MemberProfilesInChat />} />
+          <Route path="/chat/filters" element={<SmartFilters />} />
+          <Route path="/chat/mobile" element={<MobileChatExperience />} />
+
+          {/* ========================================
+              AI STUDIO ROUTES (Phase 21)
+              ======================================== */}
+          <Route path="/ai-studio/prompt-center" element={<PromptEngineeringCenter />} />
+          <Route path="/ai-studio/playground" element={<InteractivePromptPlayground />} />
+          <Route path="/ai-studio/analyzer" element={<PromptAnalyzer />} />
+          <Route path="/ai-studio/challenges" element={<PromptChallenges />} />
+          <Route path="/ai-studio/training" element={<AITrainingCenter />} />
+          <Route path="/ai-studio/testing" element={<AITestingLab />} />
+          <Route path="/ai-studio/analytics" element={<AIAnalytics />} />
+          <Route path="/ai-studio/version-control" element={<AIVersionControl />} />
+          <Route path="/ai-studio/collections" element={<AICollections />} />
+          <Route path="/ai-studio/competitions" element={<AICompetitions />} />
+          <Route path="/ai-studio/achievements" element={<AIAchievements />} />
+          <Route path="/ai-studio/academy" element={<AILearningAcademy />} />
+          <Route path="/ai-studio/fun" element={<FunAIFeatures />} />
+
+          {/* ========================================
+              FUNFLIX ROUTES (Phase 22)
+              ======================================== */}
+          <Route path="/funflix/cinematic-hero" element={<CinematicHero />} />
+          <Route path="/funflix/categories" element={<BeautifulCategories />} />
+          <Route path="/funflix/hover" element={<HoverExperience />} />
+          <Route path="/funflix/creator-profiles" element={<RichCreatorProfiles />} />
+          <Route path="/funflix/creator-levels" element={<CreatorLevels />} />
+          <Route path="/funflix/ai-assistant" element={<AIMovieAssistant />} />
+          <Route path="/funflix/interactive" element={<InteractiveWatching />} />
+          <Route path="/funflix/watch-parties" element={<WatchParties />} />
+          <Route path="/funflix/series" element={<Series />} />
+          <Route path="/funflix/recommendations" element={<Recommendations />} />
+          <Route path="/funflix/analytics" element={<MovieAnalytics />} />
+          <Route path="/funflix/achievements" element={<Achievements />} />
+          <Route path="/funflix/playlists" element={<Playlists />} />
+          <Route path="/funflix/ai-discovery" element={<AIDiscovery />} />
+          <Route path="/funflix/mobile" element={<MobileExperience />} />
+          <Route path="/funflix/design" element={<DesignPhilosophy />} />
+
+          {/* ========================================
+              PORTFOLIO ROUTES (Phase 23)
+              ======================================== */}
+          <Route path="/portfolio/verification-badges" element={<VerificationBadges />} />
+          <Route path="/portfolio/social-links" element={<SocialLinks />} />
+          <Route path="/portfolio/statistics" element={<QuickStatistics />} />
+          <Route path="/portfolio/about" element={<AboutSection />} />
+          <Route path="/portfolio/skills" element={<Skills />} />
+          <Route path="/portfolio/education" element={<Education />} />
+          <Route path="/portfolio/experience" element={<Experience />} />
+          <Route path="/portfolio/auto-populated" element={<AutoPopulatedSections />} />
+          <Route path="/portfolio/discoveries-inventions" element={<DiscoveriesInventions />} />
+          <Route path="/portfolio/marketplace-showcase" element={<MarketplaceShowcaseFunFlixAIStudio />} />
+          <Route path="/portfolio/achievements-certificates" element={<AchievementsCertificates />} />
+          <Route path="/portfolio/leaderboard-history" element={<LeaderboardHistory />} />
+          <Route path="/portfolio/timeline" element={<Timeline />} />
+          <Route path="/portfolio/activity-feed" element={<ActivityFeed />} />
+          <Route path="/portfolio/followers-recommendations" element={<FollowersRecommendations />} />
+          <Route path="/portfolio/contact-privacy" element={<ContactPrivacy />} />
+          <Route path="/portfolio/analytics" element={<Analytics />} />
+          <Route path="/portfolio/customization" element={<ProtectedRoute requireMember><PortfolioCustomization /></ProtectedRoute>} />
+          <Route path="/portfolio/sharing" element={<PortfolioSharing />} />
+
+          {/* ========================================
+              DASHBOARD ROUTES (Phase 24)
+              ======================================== */}
+          <Route path="/dashboard/header" element={<DashboardHeader />} />
+          <Route path="/dashboard/profile-card" element={<UserProfileCard />} />
+          <Route path="/dashboard/membership-badge" element={<MembershipBadge />} />
+          <Route path="/dashboard/statistics" element={<DashboardStatistics />} />
+          <Route path="/dashboard/today-tasks" element={<TodayTasks />} />
+          <Route path="/dashboard/my-projects" element={<MyProjects />} />
+          <Route path="/dashboard/my-experiments" element={<MyExperiments />} />
+          <Route path="/dashboard/ai-recommendations" element={<AIRecommendations />} />
+          <Route path="/dashboard/announcements" element={<Announcements />} />
+          <Route path="/dashboard/recent-activity" element={<RecentActivity />} />
+          <Route path="/dashboard/notifications" element={<NotificationsWidget />} />
+          <Route path="/dashboard/calendar" element={<CalendarWidget />} />
+          <Route path="/dashboard/events" element={<EventsSection />} />
+          <Route path="/dashboard/leaderboard" element={<LeaderboardPreview />} />
+          <Route path="/dashboard/learning-progress" element={<LearningProgress />} />
+          <Route path="/dashboard/research-snapshot" element={<ResearchSnapshot />} />
+          <Route path="/dashboard/marketplace-snapshot" element={<MarketplaceSnapshot />} />
+          <Route path="/dashboard/showcase-preview" element={<ShowcasePreview />} />
+          <Route path="/dashboard/funflix-preview" element={<FunFlixPreview />} />
+          <Route path="/dashboard/team-overview" element={<TeamOverview />} />
+          <Route path="/dashboard/personal-goals" element={<PersonalGoals />} />
+          <Route path="/dashboard/daily-streak" element={<DailyStreak />} />
+          <Route path="/dashboard/ai-assistant" element={<AIAssistantPanel />} />
+          <Route path="/dashboard/performance" element={<PerformanceRequirements />} />
+          <Route path="/dashboard/mobile" element={<MobileDashboardRequirements />} />
+
+          {/* ========================================
+              SETTINGS ROUTES (Phase 25)
+              ======================================== */}
+          <Route path="/settings/profile" element={<ProfileSettings />} />
+          <Route path="/settings/account" element={<AccountSettings />} />
+          <Route path="/settings/security" element={<SecuritySettings />} />
+          <Route path="/settings/appearance" element={<AppearanceSettings />} />
+          <Route path="/settings/ai" element={<AIPreferences />} />
+          <Route path="/settings/language" element={<LanguageSettings />} />
+          <Route path="/settings/privacy" element={<PrivacySettings />} />
+          <Route path="/settings/content" element={<ContentPreferences />} />
+          <Route path="/settings/notifications" element={<NotificationPreferences />} />
+          <Route path="/settings/connected-accounts" element={<ConnectedAccounts />} />
+          <Route path="/settings/storage" element={<StorageSettings />} />
+          <Route path="/settings/about" element={<AboutSettings />} />
+          <Route path="/settings/ux" element={<SettingsUX />} />
+
+          {/* ========================================
+              NOTIFICATIONS ROUTES (Phase 26)
+              ======================================== */}
+          <Route path="/notifications/center" element={<NotificationCenter />} />
+          <Route path="/notifications/types" element={<NotificationTypes />} />
+          <Route path="/notifications/realtime" element={<RealTimeDelivery />} />
+          <Route path="/notifications/actions" element={<NotificationActions />} />
+          <Route path="/notifications/filtering" element={<SmartFiltering />} />
+          <Route path="/notifications/search" element={<NotificationSearch />} />
+          <Route path="/notifications/settings" element={<NotificationSettings />} />
+          <Route path="/notifications/executive" element={<ExecutiveNotifications />} />
+          <Route path="/notifications/design" element={<NotificationDesign />} />
+
+          {/* ========================================
+              PRESENCE ROUTES (Phase 27)
+              ======================================== */}
+          <Route path="/presence/status" element={<PresenceStatus />} />
+          <Route path="/presence/rich" element={<RichPresence />} />
+          <Route path="/presence/last-seen" element={<LastSeen />} />
+          <Route path="/presence/device" element={<ActiveDevice />} />
+          <Route path="/presence/privacy" element={<PresencePrivacy />} />
+          <Route path="/presence/chat" element={<PresenceInChat />} />
+
+          <Route path="/presence/executive" element={<ExecutivePresence />} />
+          <Route path="/presence/architecture" element={<TechnicalArchitecture />} />
+          <Route path="/presence/failure" element={<FailureHandling />} />
+          <Route path="/presence/design" element={<PresenceDesign />} />
+
+          {/* ========================================
+              QA ROUTES (Phase 15)
+              ======================================== */}
+          <Route path="/qa/browser-verification" element={<CrossBrowserVerification />} />
+          <Route path="/qa/production-launch" element={<ProductionLaunch />} />
+
+          {/* ========================================
+              EXECUTIVE ROUTES (Phase 16)
+              ======================================== */}
+          <Route path="/executive/notifications" element={<AdminExecutiveNotifications />} />
+          <Route path="/executive/security" element={<ExecutiveSecurity />} />
 
           {/* ========================================
               INTELLIGENCE & PREDICTIVE AI OS ROUTES (Step 35)
               ======================================== */}
-          <Route path="intelligence" element={<IntelligenceCenter />} />
-          <Route path="intelligence/health" element={<EcosystemHealth />} />
-          <Route path="intelligence/opportunities" element={<OpportunityScanner />} />
-          <Route path="intelligence/risks" element={<RiskCenter />} />
-          <Route path="intelligence/trends" element={<TrendAnalytics />} />
-          <Route path="intelligence/reports" element={<ReportsAutomation />} />
-          <Route path="intelligence/alerts" element={<IntelligenceAlerts />} />
-          <Route path="intelligence/ai" element={<AIExecutiveAdvisor />} />
+          <Route path="/intelligence/trends" element={<TrendAnalytics />} />
+          <Route path="/intelligence/reports" element={<ReportsAutomation />} />
+          <Route path="/intelligence/alerts" element={<IntelligenceAlerts />} />
+          <Route path="/intelligence/ai" element={<AIExecutiveAdvisor />} />
 
           {/* ========================================
               ECOSYSTEM & LEGACY OS ROUTES (Step 36)
               ======================================== */}
-          <Route path="ecosystem" element={<EcosystemHub />} />
-          <Route path="ecosystem/chapters" element={<ChaptersHub />} />
-          <Route path="ecosystem/ambassadors" element={<AmbassadorHub />} />
-          <Route path="ecosystem/institutions" element={<InstitutionHub />} />
-          <Route path="ecosystem/programs" element={<ProgramsHub />} />
-          <Route path="legacy" element={<LegacyCenter />} />
-          <Route path="legacy/hall-of-fame" element={<LegacyHallOfFame />} />
-          <Route path="legacy/rankings" element={<GlobalRankings />} />
-          <Route path="legacy/ai" element={<AILegacyAdvisor />} />
-
-          {/* ========================================
-              KNOWLEDGE BASE ROUTES (Step 19)
-              ======================================== */}
-          <Route path="knowledge" element={<KnowledgeHub />} />
-          <Route path="knowledge/article/:id" element={<ArticleViewer />} />
-          <Route path="knowledge/maps" element={<KnowledgeMap />} />
-          <Route path="knowledge/collections" element={<SmartCollections />} />
-          <Route path="knowledge/paths" element={<LearningPaths />} />
-          <Route path="knowledge/requests" element={<KnowledgeRequests />} />
-          <Route path="experts" element={<ExpertDirectory />} />
-          <Route path="mentorship" element={<MentorshipHub />} />
+          <Route path="/ecosystem" element={<EcosystemHub />} />
+          <Route path="/ecosystem/chapters" element={<ChaptersHub />} />
+          <Route path="/ecosystem/ambassadors" element={<AmbassadorHub />} />
+          <Route path="/ecosystem/institutions" element={<InstitutionHub />} />
+          <Route path="/ecosystem/programs" element={<ProgramsHub />} />
+          <Route path="/legacy" element={<LegacyCenter />} />
+          <Route path="/legacy/hall-of-fame" element={<LegacyHallOfFame />} />
+          <Route path="/legacy/rankings" element={<GlobalRankings />} />
+          <Route path="/legacy/ai" element={<AILegacyAdvisor />} />
 
           {/* ========================================
               ADMIN COMMAND CENTER ROUTES
@@ -605,15 +848,8 @@ export default function AppRouter() {
             <Route path="security" element={<AdminSecurity />} />
             <Route path="events" element={<AdminEvents />} />
             <Route path="innovation" element={<AdminInnovation />} />
-            <Route path="ventures" element={<AdminVentures />} />
-            <Route path="marketplace" element={<AdminMarketplace />} />
-            <Route path="automation" element={<AdminAutomation />} />
             <Route path="universe" element={<AdminUniverse />} />
-            <Route path="collaboration" element={<AdminCollaboration />} />
-            <Route path="organization" element={<AdminOrganization />} />
-            <Route path="knowledge" element={<AdminKnowledge />} />
-            <Route path="ventures" element={<AdminVentures />} />
-            <Route path="governance" element={<AdminGovernance />} />
+
             <Route path="intelligence" element={<AdminIntelligence />} />
             <Route path="ecosystem" element={<AdminEcosystem />} />
           </Route>
@@ -632,19 +868,13 @@ export default function AppRouter() {
             <Route path="dashboard" element={<MissionControlDashboard />} />
             <Route path="alerts" element={<ExecutiveAlerts />} />
             <Route path="projects" element={<ProjectHealth />} />
-            <Route path="org" element={<OrganizationHealth />} />
+
             <Route path="members" element={<MemberAnalytics />} />
             <Route path="search" element={<GlobalSearch />} />
             <Route path="reports" element={<ReportsCenter />} />
             <Route path="ai" element={<AIInsights />} />
             <Route path="innovation" element={<InnovationHealth />} />
-            <Route path="ventures" element={<VentureHealth />} />
-            <Route path="marketplace" element={<MarketplaceHealth />} />
-            <Route path="automation" element={<AutomationHealth />} />
-            <Route path="collaboration" element={<CollaborationHealth />} />
             <Route path="universe" element={<UniverseAnalytics />} />
-            <Route path="knowledge" element={<KnowledgeAnalytics />} />
-            <Route path="ventures" element={<VentureHealth />} />
           </Route>
         </Route>
 
@@ -654,3 +884,6 @@ export default function AppRouter() {
     </Suspense>
   );
 }
+
+
+

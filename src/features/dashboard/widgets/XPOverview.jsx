@@ -1,23 +1,95 @@
 import { useEffect, useState } from 'react';
-import { Award, Medal, Trophy, Zap, TrendingUp } from 'lucide-react';
+import { Award, Medal, Trophy, Zap } from 'lucide-react';
 import { useAuth } from '../../auth/AuthContext';
 import { DashboardCard } from '../../../components/ui/DashboardCard';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/Card';
 import { GamificationService, getLevelProgress } from '../../../services/firebase/gamification';
+import { DynamicEmptyState } from '../../../components/dashboard/DynamicEmptyStates';
 
 export function XPOverview() {
   const { roleData } = useAuth();
   const progress = getLevelProgress(roleData?.xp || 0);
+  const [animatedPercent, setAnimatedPercent] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimatedPercent(progress.percent || 0);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [progress.percent]);
+
+  const radius = 45;
+  const strokeWidth = 8;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (animatedPercent / 100) * circumference;
 
   return (
-    <DashboardCard
-      title="Total Experience"
-      icon={Trophy}
-      value={`${progress.currentXP} XP`}
-      subtitle={`Level ${roleData?.level || progress.level}`}
-      trend={`${progress.remainingXP} XP to next`}
-      trendUp={true}
-    />
+    <Card className="group relative overflow-hidden border border-white/10 bg-gradient-to-br from-accent/5 to-purple-500/5 backdrop-blur-sm transition-all duration-500 hover:border-accent/50 hover:shadow-2xl hover:shadow-accent/20 hover:-translate-y-1">
+      <div className="absolute inset-0 bg-gradient-to-r from-accent/0 via-purple-500/0 to-cyan-500/0 opacity-0 transition-all duration-700 group-hover:from-accent/5 group-hover:via-purple-500/5 group-hover:to-cyan-500/5 group-hover:opacity-100" />
+      
+      <CardContent className="relative flex flex-col items-center justify-center p-6 text-center">
+        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1">
+          <Trophy className="h-4 w-4 text-status-warning animate-pulse" />
+          XP Progress
+        </h3>
+
+        <div className="relative h-32 w-32 flex items-center justify-center mb-4 select-none">
+          <svg className="absolute transform -rotate-90 w-full h-full" viewBox="0 0 120 120">
+            <defs>
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="#00f2fe" floodOpacity="0.6"/>
+              </filter>
+              <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#00f2fe" />
+                <stop offset="50%" stopColor="#9b5de5" />
+                <stop offset="100%" stopColor="#f15bb5" />
+              </linearGradient>
+            </defs>
+            
+            <circle
+              className="text-white/10"
+              strokeWidth={strokeWidth}
+              stroke="currentColor"
+              fill="transparent"
+              r={radius}
+              cx="60"
+              cy="60"
+            />
+            <circle
+              stroke="url(#progressGrad)"
+              strokeWidth={strokeWidth}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              fill="transparent"
+              r={radius}
+              cx="60"
+              cy="60"
+              style={{
+                transition: 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                filter: 'url(#glow)'
+              }}
+            />
+          </svg>
+
+          <div className="text-center z-10 transition-transform duration-300 group-hover:scale-110">
+            <span className="font-heading text-3xl font-black text-white bg-gradient-to-r from-accent via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              Lvl {progress.level}
+            </span>
+            <div className="text-xs font-bold text-text-muted mt-1">
+              {Math.round(animatedPercent)}%
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full text-center">
+          <p className="text-sm font-medium text-white">{progress.progressXP} / {progress.nextLevelXP} XP</p>
+          <p className="mt-1 text-xs text-text-muted font-bold tracking-wide">
+            {progress.remainingXP} XP to next level
+          </p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -104,10 +176,7 @@ export function RecentAchievementsWidget() {
         )}
 
         {!loading && achievements.length === 0 && (
-          <div className="rounded-xl border border-dashed border-white/10 p-6 text-center">
-            <Medal className="mx-auto mb-2 h-8 w-8 text-text-muted" />
-            <p className="text-sm font-medium text-text-muted">No achievements unlocked yet.</p>
-          </div>
+          <DynamicEmptyState type="achievements" />
         )}
 
         {!loading && achievements.map((achievement, index) => (

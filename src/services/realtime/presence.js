@@ -1,6 +1,7 @@
 import { ref, onValue, onDisconnect, set, serverTimestamp, get } from 'firebase/database';
 import { doc, setDoc, onSnapshot, serverTimestamp as firestoreTimestamp } from 'firebase/firestore';
 import { rtdb, db } from '../firebase/config';
+import { errorHandler } from '../../utils/errorHandler';
 
 export const PRESENCE_STATES = [
   'online',
@@ -93,21 +94,21 @@ export const PresenceService = {
       onDisconnect(statusRef).set({
         state: 'offline',
         last_changed: serverTimestamp(),
-      }).catch(err => console.warn('Presence onDisconnect status error:', err.message));
+      }).catch(err => errorHandler.warn('Presence onDisconnect status error', 'Presence Status', { error: err.message }));
 
       onDisconnect(richRef).set({
         ...basePayload,
         state: 'offline',
         activity: '',
-      }).catch(err => console.warn('Presence onDisconnect rich error:', err.message));
+      }).catch(err => errorHandler.warn('Presence onDisconnect rich error', 'Presence Rich', { error: err.message }));
 
-      set(statusRef, basePayload).catch(err => console.warn('Presence set status error:', err.message));
+      set(statusRef, basePayload).catch(err => errorHandler.warn('Presence set status error', 'Presence Set Status', { error: err.message }));
       set(richRef, {
         ...basePayload,
         activity: profile.activity || '',
         activeWorkspace: profile.activeWorkspace || null,
         activeProject: profile.activeProject || null,
-      }).catch(err => console.warn('Presence set rich error:', err.message));
+      }).catch(err => errorHandler.warn('Presence set rich error', 'Presence Set Rich', { error: err.message }));
 
       setDoc(
         doc(db, 'presence', uid),
@@ -125,7 +126,7 @@ export const PresenceService = {
           updatedAt: firestoreTimestamp(),
         },
         { merge: true }
-      ).catch(err => console.warn('Presence Firestore error:', err.message));
+      ).catch(err => errorHandler.warn('Presence Firestore not accessible', 'Presence Firestore', { error: err.message }));
     });
 
     return () => {
@@ -157,7 +158,7 @@ export const PresenceService = {
         last_changed: serverTimestamp(),
       });
     } catch (err) {
-      console.warn('[Presence] RTDB update failed:', err);
+      errorHandler.warn('RTDB update failed', 'Presence RTDB Update', { error: err.message });
     }
 
     await setDoc(

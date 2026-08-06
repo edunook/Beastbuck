@@ -20,6 +20,7 @@ export default function AIMemoryManager() {
   useEffect(() => {
     if (!user) return;
     loadMemory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadMemory = async () => {

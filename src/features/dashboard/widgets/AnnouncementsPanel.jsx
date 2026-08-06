@@ -24,7 +24,7 @@ export function AnnouncementsPanel() {
         setLoading(false);
       },
       onError: (err) => {
-        console.error('Dashboard announcements failed:', err);
+        console.log('Dashboard announcements not accessible:', err.message);
         setLoading(false);
       },
     });

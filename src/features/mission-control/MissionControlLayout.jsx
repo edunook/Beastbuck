@@ -13,7 +13,6 @@ import {
   BriefcaseBusiness,
   PackageOpen,
   FlaskConical,
-  GraduationCap,
   Workflow,
   Orbit,
   Network
@@ -68,13 +67,29 @@ export default function MissionControlLayout() {
         action={
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <NavLink
-                to="/admin/dashboard"
-                className="flex items-center gap-2 rounded-xl border border-accent-alt/30 bg-accent-alt/10 px-4 py-2 text-sm font-bold text-accent-alt transition-all hover:bg-accent-alt/20"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Command Center
-              </NavLink>
+              <>
+                <NavLink
+                  to="/command-center"
+                  className="flex items-center gap-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-sm font-bold text-purple-400 transition-all hover:bg-purple-500/20"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  Command Center
+                </NavLink>
+                <NavLink
+                  to="/membership-center"
+                  className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-bold text-amber-400 transition-all hover:bg-amber-500/20"
+                >
+                  <Users className="h-4 w-4" />
+                  Membership Center
+                </NavLink>
+                <NavLink
+                  to="/executive-ai"
+                  className="flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-bold text-cyan-400 transition-all hover:bg-cyan-500/20"
+                >
+                  <Brain className="h-4 w-4" />
+                  Executive AI
+                </NavLink>
+              </>
             )}
             <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-accent/25 bg-accent/10 text-accent">
               <Brain className="h-6 w-6" />

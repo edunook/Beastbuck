@@ -19,7 +19,7 @@ export default function PublicLayout() {
 
   return (
     <main className="min-h-screen bg-background text-white">
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background backdrop-blur">
+      <header className="fixed top-0 left-0 right-0 z-[3000] border-b border-border/60 bg-background backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 md:px-8">
           <Link to="/" className="flex items-center gap-3">
             <img src="/logo.png" alt="BeastBuck" className="h-10 w-auto" />
@@ -41,7 +41,7 @@ export default function PublicLayout() {
               </>
             )}
           </div>
-          <button type="button" onClick={() => setOpen(current => !current)} className="rounded-lg p-2 text-text-soft hover:bg-white/5 lg:hidden" aria-label="Open public navigation">
+          <button type="button" onClick={() => setOpen(current => !current)} className="rounded-lg p-2 text-text-soft hover:bg-white/5 lg:hidden relative z-[3001]" aria-label="Open public navigation">
             <Menu className="h-6 w-6" />
           </button>
         </div>
@@ -59,7 +59,9 @@ export default function PublicLayout() {
           </div>
         )}
       </header>
-      <Outlet />
+      <div className="pt-16">
+        <Outlet />
+      </div>
       <PublicFooter />
     </main>
   );

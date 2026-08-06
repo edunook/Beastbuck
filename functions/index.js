@@ -1,5 +1,5 @@
+/* eslint-disable */
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
-const { onDocumentCreated, onDocumentUpdated, onDocumentDeleted } = require('firebase-functions/v2/firestore');
 const admin = require('firebase-admin');
 admin.initializeApp();
 

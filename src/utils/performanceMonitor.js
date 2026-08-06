@@ -160,7 +160,7 @@ export function initPerformanceMonitoring() {
   monitor.startCoreWebVitalsMonitoring();
   
   // Log metrics every 5 seconds in development
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     setInterval(() => {
       const metrics = monitor.getMetrics();
       const thresholds = monitor.checkPerformanceThresholds();

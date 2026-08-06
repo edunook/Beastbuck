@@ -100,22 +100,31 @@ export const CommunityService = {
   },
 
   async joinCommunity(community, member) {
-    const batch = writeBatch(db);
     const communityRef = doc(db, 'communities', community.id);
+    const snap = await getDoc(communityRef);
+    const batch = writeBatch(db);
     const memberRef = doc(db, 'communityMembers', communityMemberId(community.id, member.uid));
 
-    batch.set(communityRef, {
-      id: community.id,
-      name: community.name,
-      description: community.description,
-      category: community.category,
-      visibility: community.visibility || 'PUBLIC',
-      memberCount: increment(1),
-      postCount: community.postCount || 0,
-      archived: false,
-      updatedAt: now(),
-      createdAt: community.createdAt || now(),
-    }, { merge: true });
+    if (!snap.exists()) {
+      batch.set(communityRef, {
+        id: community.id,
+        name: community.name,
+        description: community.description,
+        category: community.category,
+        visibility: community.visibility || 'PUBLIC',
+        createdBy: member.uid,
+        memberCount: 1,
+        postCount: community.postCount || 0,
+        archived: false,
+        createdAt: now(),
+        updatedAt: now(),
+      });
+    } else {
+      batch.update(communityRef, {
+        memberCount: increment(1),
+        updatedAt: now(),
+      });
+    }
     batch.set(memberRef, {
       communityId: community.id,
       userId: member.uid,
@@ -410,5 +419,51 @@ export const CommunityService = {
       status: 'REMOVED',
       updatedAt: now(),
     });
+  },
+
+  async upvotePost(postId, userId) {
+    const postRef = doc(db, 'communityPosts', postId);
+    const postSnap = await getDoc(postRef);
+    if (!postSnap.exists()) throw new Error('Post not found');
+    
+    const post = postSnap.data();
+    const upvotes = post.upvotes || [];
+    
+    if (upvotes.includes(userId)) {
+      await updateDoc(postRef, {
+        upvotes: arrayRemove(userId),
+      });
+    } else {
+      await updateDoc(postRef, {
+        upvotes: arrayUnion(userId),
+      });
+    }
+  },
+
+  async acceptSolution(commentId, postId, authorId) {
+    const commentRef = doc(db, 'communityComments', commentId);
+    const postRef = doc(db, 'communityPosts', postId);
+    
+    // Mark comment as accepted solution
+    await updateDoc(commentRef, {
+      isAcceptedSolution: true,
+    });
+    
+    // Mark post as solved
+    await updateDoc(postRef, {
+      acceptedSolution: true,
+    });
+    
+    // Award XP to the commenter (50 XP for accepted solution)
+    const commentSnap = await getDoc(commentRef);
+    const comment = commentSnap.data();
+    const commenterId = comment.authorId;
+    
+    if (commenterId && commenterId !== authorId) {
+      const userRef = doc(db, 'users', commenterId);
+      await updateDoc(userRef, {
+        xp: increment(50),
+      });
+    }
   },
 };

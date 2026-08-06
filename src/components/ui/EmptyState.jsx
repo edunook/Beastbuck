@@ -1,5 +1,5 @@
 import React from 'react';
-import { Inbox, Sparkles, Rocket, Film, BookOpen, Users, Plus, ArrowRight, Lightbulb } from 'lucide-react';
+import { Inbox, Sparkles, Rocket, Film, BookOpen, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import Button from './Button';
 

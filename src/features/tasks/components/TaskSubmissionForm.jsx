@@ -17,15 +17,16 @@ export function TaskSubmissionForm({ task, onClose, onSuccess }) {
   if (!task) return null;
 
   const addAttachment = () => {
-    if (!newAttach.url.trim()) return;
+    const url = newAttach.url?.trim();
+    if (!url) return;
     if (attachments.length >= 10) {
       setError('You can attach up to 10 proof files or links.');
       return;
     }
     setAttachments(prev => [...prev, {
-      type: newAttach.type,
-      name: newAttach.name.trim() || newAttach.url,
-      url: newAttach.url.trim(),
+      type: newAttach.type || 'link',
+      name: newAttach.name?.trim() || url,
+      url: url,
       uploadedAt: new Date().toISOString(),
     }]);
     setNewAttach({ name: '', url: '', type: 'link' });
@@ -80,13 +81,13 @@ export function TaskSubmissionForm({ task, onClose, onSuccess }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-surface border border-border rounded-2xl shadow-2xl custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="relative w-full max-w-lg max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-surface border border-border rounded-2xl shadow-2xl custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-200">
 
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-border/50 p-5 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-border/50 p-4 sm:p-5 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-4 h-4 text-accent" />
@@ -102,7 +103,7 @@ export function TaskSubmissionForm({ task, onClose, onSuccess }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-5">
 
           {/* XP Reminder */}
           <div className="bg-accent/5 border border-accent/20 rounded-xl px-4 py-3 flex items-center gap-3">

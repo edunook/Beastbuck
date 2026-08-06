@@ -7,46 +7,75 @@ import {
   FlaskConical,
   FolderKanban,
   GraduationCap,
-  Lightbulb,
   Mic,
   MicOff,
-  Search,
   Send,
-  Sparkles,
   Volume2,
   MessageSquare,
   PlusCircle,
   Trash2,
-  ChevronRight,
+  ChevronDown,
+  X,
+  Sparkles,
   Zap,
-  Target,
-  Calendar,
-  Users } from 'lucide-react';
+  Cpu,
+  Globe,
+  ChevronUp,
+  MoreVertical
+} from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useAI } from './AIProvider';
 import { PageContainer } from '../../components/layout/LayoutWrappers';
-import { PageHeader } from '../../components/ui/UIElements';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import { Card, CardContent } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { AI_MODES, AIService } from '../../services/ai/aiService';
-import { AIRecommendationsService } from '../../services/ai/aiRecommendations';
 import AIMemoryManager from './AIMemoryManager';
+import { cn } from '../../lib/utils';
+
+const animations = `
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+  .animate-slide-up { animation: slideUp 0.4s ease-out; }
+  .animate-pulse { animation: pulse 2s ease-in-out infinite; }
+  .glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(30px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .gradient-text {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+`;
 
 const quickPrompts = [
-  { mode: 'learning', prompt: 'Create a 5-question quiz about Physics and forces.', icon: GraduationCap, label: 'Quiz Me' },
-  { mode: 'experiment', prompt: 'Give me 3 safe science fair ideas for a young inventor.', icon: FlaskConical, label: 'Experiment Ideas' },
-  { mode: 'project', prompt: 'Turn my robotics idea into milestones and next steps.', icon: FolderKanban, label: 'Plan a Project' },
-  { mode: 'coding', prompt: 'Explain how to debug a React form that will not submit.', icon: Code2, label: 'Debug Help' },
-];
-
-const assistantWorkflows = [
-  { icon: GraduationCap, title: 'Learning Assistant', desc: 'Quizzes, explanations, study help, and skill ecosystem support.' },
-  { icon: FlaskConical, title: 'Experiment Assistant', desc: 'Safe experiment ideas, materials, procedures, and research guidance.' },
-  { icon: Code2, title: 'Coding Help', desc: 'Debugging, code explanations, implementation guidance, and review prompts.' },
-  { icon: FolderKanban, title: 'Project Help', desc: 'Milestones, risk analysis, task breakdown, and project planning.' },
-  { icon: Lightbulb, title: 'Innovation Assistant', desc: 'Invention descriptions, prototype improvement, and discovery documentation.' },
-  { icon: Brain, title: 'Research Assistant', desc: 'Summarize findings, generate hypotheses, and organize research logs.' },
+  { mode: 'learning', prompt: 'Create a 5-question quiz about Physics and forces.', icon: GraduationCap, label: 'Quiz Me', color: 'from-purple-500 to-pink-500' },
+  { mode: 'experiment', prompt: 'Give me 3 safe science fair ideas for a young inventor.', icon: FlaskConical, label: 'Experiment Ideas', color: 'from-blue-500 to-cyan-500' },
+  { mode: 'project', prompt: 'Turn my robotics idea into milestones and next steps.', icon: FolderKanban, label: 'Plan a Project', color: 'from-green-500 to-emerald-500' },
+  { mode: 'coding', prompt: 'Explain how to debug a React form that will not submit.', icon: Code2, label: 'Debug Help', color: 'from-orange-500 to-red-500' },
 ];
 
 function speechRecognitionFactory() {
@@ -78,33 +107,41 @@ export default function AIOS() {
     setActiveSessionId,
     createNewSession,
     deleteSession,
+    providerId: contextProviderId,
+    setProviderId: setContextProviderId,
   } = useAI();
   const recognitionRef = useRef(null);
   const bottomRef = useRef(null);
 
   const [input, setInput] = useState('');
   const [mode, setMode] = useState('general');
-  const [providerId, setProviderId] = useState('gemini');
+  const [providerId, setProviderId] = useState(contextProviderId || 'groq');
   const [listening, setListening] = useState(false);
-  const [activeTab, setActiveTab] = useState('chat'); // chat | history | memory | recommendations
-  const [recommendations, setRecommendations] = useState([]);
-  const [recsLoading, setRecsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('chat');
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
 
-  const providers = useMemo(() => [{ id: 'local', name: 'Local fallback', configured: true }, ...AIService.getProviders()], []);
+  const providers = useMemo(() => [
+    { id: 'groq', name: 'Groq', icon: Zap, color: 'from-green-500 to-emerald-500' },
+    { id: 'openrouter', name: 'OpenRouter', icon: Globe, color: 'from-orange-500 to-red-500' },
+    { id: 'gemini', name: 'Gemini', icon: Sparkles, color: 'from-blue-500 to-purple-500' },
+  ], []);
   const authorName = roleData?.displayName || roleData?.username || user?.displayName || 'Member';
+
+  const selectedProvider = providers.find(p => p.id === providerId) || providers[0];
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [globalMessages]);
 
   useEffect(() => {
-    if (activeTab === 'recommendations' && user) {
-      setRecsLoading(true);
-      AIRecommendationsService.getPersonalizedRecommendations(user.uid, roleData)
-        .then(setRecommendations)
-        .finally(() => setRecsLoading(false));
+    if (contextProviderId) {
+      setProviderId(contextProviderId);
     }
-  }, [activeTab, user]);
+  }, [contextProviderId]);
+
+  useEffect(() => {
+    setContextProviderId(providerId);
+  }, [providerId, setContextProviderId]);
 
   const runCommand = (text) => {
     const lower = text.toLowerCase();
@@ -147,220 +184,333 @@ export default function AIOS() {
   };
 
   const TABS = [
-    { id: 'chat', label: 'AI Chat', icon: Bot },
+    { id: 'chat', label: 'Chat', icon: Bot },
     { id: 'history', label: 'History', icon: MessageSquare },
     { id: 'memory', label: 'Memory', icon: Brain },
-    { id: 'recommendations', label: 'For You', icon: Sparkles },
   ];
 
-  const recIcons = { course: GraduationCap, project: FolderKanban, event: Calendar, team: Users };
-
   return (
-    <PageContainer>
-      <PageHeader
-        title="BeastBuck AI OS"
-        description="Your intelligent assistant — integrated across projects, tasks, research, learning, and organization."
-        action={<div className="flex h-12 w-12 items-center justify-center rounded-lg border border-accent/25 bg-accent/10 text-accent"><Bot className="h-6 w-6" /></div>}
-      />
+    <>
+      <style>{animations}</style>
+      <PageContainer className="p-0">
+        <div className="flex flex-col h-screen">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/10 glass animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center shadow-lg shadow-accent/25">
+                <Bot className="h-5 w-5 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold text-white">AI Assistant</h1>
+              </div>
+            </div>
 
-      {/* Tabs */}
-      <div className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border bg-surface/50 p-1">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-bold transition ${
-              activeTab === tab.id ? 'bg-accent text-black' : 'text-text-muted hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+            <div className="flex items-center gap-2">
+              {/* Model Selector */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowModelDropdown(!showModelDropdown)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-border/50 hover:bg-white/10 transition-all"
+                >
+                  <selectedProvider.icon className="h-4 w-4 text-accent" />
+                  <span className="text-sm font-medium text-white">{selectedProvider.name}</span>
+                  <ChevronDown className="h-4 w-4 text-text-muted" />
+                </button>
 
-      {/* ==== CHAT TAB ==== */}
-      {activeTab === 'chat' && (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="space-y-5">
-            <Card className="rounded-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg"><Sparkles className="h-5 w-5 text-accent" />AI Chat</CardTitle>
-                <CardDescription>Ask anything. Context-aware across BeastBuck.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-0">
-                {/* Provider & Mode selectors */}
-                <div className="grid gap-3 md:grid-cols-2">
-                  <select value={providerId} onChange={e => setProviderId(e.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-                    {providers.map(p => <option key={p.id} value={p.id}>{p.name}{p.configured ? '' : ' (not configured)'}</option>)}
-                  </select>
-                  <select value={mode} onChange={e => setMode(e.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-                    {Object.entries(AI_MODES).map(([id, item]) => <option key={id} value={id}>{item.label}</option>)}
-                  </select>
-                </div>
-
-                {/* Messages */}
-                <div className="max-h-[36rem] space-y-3 overflow-y-auto rounded-xl border border-border bg-black/20 p-4 custom-scrollbar">
-                  {globalMessages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 opacity-50">
-                      <Bot className="mb-4 h-12 w-12 text-accent" />
-                      <p className="text-sm text-white">How can I help you today?</p>
-                    </div>
-                  ) : (
-                    globalMessages.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${msg.role === 'user' ? 'bg-accent/15 text-white rounded-tr-sm' : 'bg-white/[0.06] text-text-soft rounded-tl-sm'}`}>
-                          <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-text-muted">{msg.role === 'user' ? authorName : 'BeastBuck AI'}</p>
-                          <p className="whitespace-pre-wrap text-sm leading-6">{msg.content}</p>
-                          {msg.role === 'assistant' && (
-                            <button type="button" onClick={() => speak(msg.content)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-accent hover:text-accent/80 transition">
-                              <Volume2 className="h-3.5 w-3.5" />Speak
-                            </button>
-                          )}
+                {showModelDropdown && (
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-gray-900 border border-border/50 shadow-2xl overflow-hidden z-50 animate-slide-up">
+                    {providers.map(provider => (
+                      <button
+                        key={provider.id}
+                        onClick={() => { setProviderId(provider.id); setShowModelDropdown(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-3 text-left transition-all",
+                          providerId === provider.id ? "bg-accent/20" : "hover:bg-white/5"
+                        )}
+                      >
+                        <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${provider.color} flex items-center justify-center`}>
+                          <provider.icon className="h-4 w-4 text-white" />
                         </div>
-                      </div>
-                    ))
-                  )}
-                  {globalLoading && (
-                    <div className="flex justify-start">
-                      <div className="rounded-2xl rounded-tl-sm bg-white/[0.06] px-4 py-3 flex gap-1">
-                        <span className="h-2 w-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="h-2 w-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="h-2 w-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    </div>
-                  )}
-                  <div ref={bottomRef} />
-                </div>
+                        <span className="text-sm font-medium text-white">{provider.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-                {/* Quick prompts */}
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                  {quickPrompts.map(qp => (
-                    <button key={qp.prompt} type="button" onClick={() => { setMode(qp.mode); handleSend(qp.prompt); }}
-                      className="flex items-center gap-2 rounded-xl border border-border bg-white/[0.03] p-3 text-left text-xs font-semibold text-text-soft hover:border-accent/40 hover:text-white transition">
-                      <qp.icon className="h-4 w-4 text-accent shrink-0" />
-                      {qp.label}
+              {/* New Chat Button */}
+              {isApprovedMember && (
+                <Button
+                  size="sm"
+                  onClick={createNewSession}
+                  className="hidden sm:flex h-10 px-4 rounded-xl bg-gradient-to-r from-accent to-purple-600 hover:from-accent/90 hover:to-purple-600/90 text-white font-semibold shadow-lg shadow-accent/25"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  New Chat
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Sidebar - Desktop */}
+            <div className="hidden md:flex flex-col w-64 border-r border-border/10 glass p-4">
+              <div className="flex-1 space-y-2 overflow-y-auto">
+                {sessions.map(s => (
+                  <div
+                    key={s.id}
+                    onClick={() => setActiveSessionId(s.id)}
+                    className={cn(
+                      "w-full text-left p-3 rounded-xl transition-all group cursor-pointer",
+                      activeSessionId === s.id
+                        ? "bg-gradient-to-r from-accent/20 to-purple-600/20 border border-accent/30"
+                        : "hover:bg-white/5 border border-transparent"
+                    )}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{s.title || 'Conversation'}</p>
+                        <p className="text-xs text-text-muted mt-1">
+                          {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : 'Recent'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                        className="p-1 rounded-lg text-text-muted hover:text-status-danger hover:bg-status-danger/10 transition opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mode Selector */}
+              <div className="mt-4 pt-4 border-t border-border/10">
+                <p className="text-xs font-semibold text-text-muted mb-3 uppercase tracking-wider">AI Mode</p>
+                <div className="space-y-1">
+                  {Object.entries(AI_MODES).map(([id, item]) => (
+                    <button
+                      key={id}
+                      onClick={() => setMode(id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-all",
+                        mode === id
+                          ? "bg-accent/20 text-accent font-medium"
+                          : "text-text-muted hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      {item.label}
                     </button>
                   ))}
                 </div>
-
-                {/* Input */}
-                <form onSubmit={e => { e.preventDefault(); handleSend(); }} className="flex gap-2">
-                  <Input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask BeastBuck AI..." className="flex-1" />
-                  <Button type="button" variant="secondary" onClick={listening ? stopListening : startListening}>
-                    {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  </Button>
-                  <Button type="submit" disabled={globalLoading || !input.trim()}><Send className="mr-2 h-4 w-4" />Send</Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar - Workflows */}
-          <aside className="space-y-5">
-            <Card className="rounded-lg">
-              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Zap className="h-5 w-5 text-accent" />Assistant Modes</CardTitle></CardHeader>
-              <CardContent className="space-y-3 pt-0">
-                {assistantWorkflows.map(w => (
-                  <div key={w.title} className="rounded-xl border border-border bg-white/[0.03] p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <w.icon className="h-4 w-4 text-accent" />
-                      <h4 className="font-bold text-white text-sm">{w.title}</h4>
-                    </div>
-                    <p className="text-xs leading-5 text-text-muted">{w.desc}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-lg">
-              <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Search className="h-5 w-5 text-accent" />Voice Commands</CardTitle></CardHeader>
-              <CardContent className="space-y-2 pt-0 text-sm text-text-soft">
-                {['open tasks', 'open projects', 'open experiments'].map(cmd => (
-                  <p key={cmd} className="rounded-lg bg-white/[0.03] px-3 py-2 font-mono text-xs">{cmd}</p>
-                ))}
-              </CardContent>
-            </Card>
-          </aside>
-        </div>
-      )}
-
-      {/* ==== HISTORY TAB ==== */}
-      {activeTab === 'history' && (
-        <Card className="rounded-lg">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2"><MessageSquare className="h-5 w-5 text-accent" />Chat History</CardTitle>
-              {isApprovedMember && <Button size="sm" onClick={createNewSession}><PlusCircle className="mr-2 h-4 w-4" />New</Button>}
+              </div>
             </div>
-            <CardDescription>Revisit, continue, or delete past conversations.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {sessions.length === 0 ? (
-              <p className="text-sm text-text-muted py-8 text-center">No past conversations yet. Start chatting to create one.</p>
-            ) : (
-              <div className="space-y-2">
-                {sessions.map(s => (
-                  <div key={s.id}
-                    className={`flex items-center justify-between rounded-xl p-4 transition cursor-pointer ${activeSessionId === s.id ? 'bg-accent/20 border border-accent/30 text-white' : 'bg-white/[0.03] border border-border text-text-soft hover:bg-white/[0.06]'}`}
-                    onClick={() => { setActiveSessionId(s.id); setActiveTab('chat'); }}
+
+            {/* Chat Area */}
+            <div className="flex-1 flex flex-col">
+              {/* Mobile Tabs */}
+              <div className="flex md:hidden border-b border-border/10 glass">
+                {TABS.map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-2 py-3 text-sm font-medium transition-all",
+                      activeTab === tab.id
+                        ? "text-accent border-b-2 border-accent"
+                        : "text-text-muted"
+                    )}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <MessageSquare className="h-4 w-4 shrink-0 text-accent" />
-                      <span className="truncate font-bold">{s.title || 'Conversation'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={e => { e.stopPropagation(); deleteSession(s.id); }} className="p-1.5 rounded-lg text-text-muted hover:text-status-danger hover:bg-status-danger/10 transition">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                      <ChevronRight className="h-4 w-4 text-text-muted" />
-                    </div>
-                  </div>
+                    <tab.icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
                 ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
-      {/* ==== MEMORY TAB ==== */}
-      {activeTab === 'memory' && <AIMemoryManager />}
+              {/* Content based on tab */}
+              {activeTab === 'chat' && (
+                <>
+                  {/* Messages */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                    {globalMessages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full py-12 animate-fade-in">
+                        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-accent to-purple-600 flex items-center justify-center mb-6 shadow-2xl shadow-accent/25 animate-pulse">
+                          <Bot className="h-8 w-8 text-white" />
+                        </div>
+                        <h3 className="text-xl font-bold text-white mb-2">How can I help you?</h3>
+                        <p className="text-text-muted text-sm max-w-md text-center mb-8">Ask me anything about projects, tasks, research, or learning.</p>
 
-      {/* ==== RECOMMENDATIONS TAB ==== */}
-      {activeTab === 'recommendations' && (
-        <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-accent" />Personalized Recommendations</CardTitle>
-            <CardDescription>AI-powered suggestions based on your activity, interests, and specializations.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recsLoading ? (
-              <div className="flex items-center justify-center py-16">
-                <Sparkles className="h-8 w-8 animate-spin text-accent" />
-              </div>
-            ) : recommendations.length === 0 ? (
-              <p className="text-sm text-text-muted py-8 text-center">No recommendations available yet. Keep using BeastBuck to get personalized suggestions.</p>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {recommendations.map((rec, i) => {
-                  const Icon = recIcons[rec.type] || Target;
-                  return (
-                    <div key={i} className="rounded-2xl border border-border bg-white/[0.03] p-5 hover:border-accent/30 hover:bg-white/[0.05] transition">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/15 text-accent"><Icon className="h-4 w-4" /></div>
-                        <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-text-muted">{rec.type}</span>
+                        {/* Quick Actions */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-lg">
+                          {quickPrompts.map(qp => (
+                            <button
+                              key={qp.prompt}
+                              type="button"
+                              onClick={() => { setMode(qp.mode); handleSend(qp.prompt); }}
+                              className="group relative overflow-hidden rounded-xl border border-border/30 glass p-4 text-left transition-all hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10"
+                            >
+                              <div className={`absolute inset-0 bg-gradient-to-br ${qp.color} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                              <qp.icon className="h-5 w-5 text-accent mb-2" />
+                              <p className="text-sm font-semibold text-white">{qp.label}</p>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                      <h4 className="font-bold text-white mb-1">{rec.title}</h4>
-                      <p className="text-sm text-text-muted leading-6">{rec.description}</p>
-                      <Button size="sm" variant="secondary" className="mt-4 w-full">{rec.actionLabel || 'View'}</Button>
+                    ) : (
+                      <div className="space-y-4 animate-fade-in">
+                        {globalMessages.map((msg, i) => (
+                          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 ${
+                              msg.role === 'user'
+                                ? 'bg-gradient-to-br from-accent to-purple-600 text-white shadow-lg shadow-accent/20'
+                                : 'glass text-text-soft border border-border/30'
+                            }`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-bold uppercase tracking-wider opacity-70">
+                                  {msg.role === 'user' ? authorName : 'AI'}
+                                </span>
+                                {msg.role === 'assistant' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => speak(msg.content)}
+                                    className="p-1 rounded-lg hover:bg-white/10 transition"
+                                  >
+                                    <Volume2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                              <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {globalLoading && (
+                          <div className="flex justify-start">
+                            <div className="glass border border-border/30 rounded-2xl px-4 py-3 flex gap-2">
+                              <span className="h-2 w-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0ms' }} />
+                              <span className="h-2 w-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '150ms' }} />
+                              <span className="h-2 w-2 rounded-full bg-accent animate-bounce" style={{ animationDelay: '300ms' }} />
+                            </div>
+                          </div>
+                        )}
+                        <div ref={bottomRef} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Input Area */}
+                  <div className="p-4 border-t border-border/10 glass">
+                    <form onSubmit={e => { e.preventDefault(); handleSend(); }} className="flex gap-3">
+                      <div className="flex-1 relative">
+                        <Input
+                          value={input}
+                          onChange={e => setInput(e.target.value)}
+                          placeholder="Type your message..."
+                          className="w-full h-12 pl-4 pr-12 rounded-xl border border-border/30 bg-white/5 text-white placeholder:text-text-muted focus:border-accent/50 focus:ring-2 focus:ring-accent/20"
+                        />
+                        {input && (
+                          <button
+                            type="button"
+                            onClick={() => setInput('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg text-text-muted hover:text-white hover:bg-white/10 transition"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={listening ? stopListening : startListening}
+                        className={`h-12 w-12 rounded-xl flex items-center justify-center transition-all ${
+                          listening
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            : 'glass text-text-muted hover:text-white border border-border/30 hover:border-accent/50'
+                        }`}
+                      >
+                        {listening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                      </button>
+                      <Button
+                        type="submit"
+                        disabled={globalLoading || !input.trim()}
+                        className="h-12 px-6 rounded-xl bg-gradient-to-r from-accent to-purple-600 hover:from-accent/90 hover:to-purple-600/90 text-white font-semibold shadow-lg shadow-accent/25"
+                      >
+                        <Send className="mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">Send</span>
+                      </Button>
+                    </form>
+                  </div>
+                </>
+              )}
+
+              {/* History Tab - Mobile */}
+              {activeTab === 'history' && (
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-bold text-white">Chat History</h2>
+                    {isApprovedMember && (
+                      <Button
+                        size="sm"
+                        onClick={createNewSession}
+                        className="rounded-xl bg-gradient-to-r from-accent to-purple-600 hover:from-accent/90 hover:to-purple-600/90 text-white font-semibold shadow-lg shadow-accent/25"
+                      >
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        New
+                      </Button>
+                    )}
+                  </div>
+
+                  {sessions.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <div className="h-16 w-16 rounded-2xl glass flex items-center justify-center mb-4">
+                        <MessageSquare className="h-8 w-8 text-text-muted" />
+                      </div>
+                      <p className="text-text-muted text-sm">No past conversations yet.</p>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </PageContainer>
+                  ) : (
+                    <div className="space-y-2">
+                      {sessions.map(s => (
+                        <div
+                          key={s.id}
+                          onClick={() => { setActiveSessionId(s.id); setActiveTab('chat'); }}
+                          className={cn(
+                            "w-full text-left p-4 rounded-xl transition-all group cursor-pointer",
+                            activeSessionId === s.id
+                              ? "bg-gradient-to-r from-accent/20 to-purple-600/20 border border-accent/30"
+                              : "glass border border-border/30 hover:border-accent/50"
+                          )}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-white truncate">{s.title || 'Conversation'}</p>
+                              <p className="text-xs text-text-muted mt-1">
+                                {s.createdAt ? new Date(s.createdAt).toLocaleDateString() : 'Recent'}
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
+                              className="p-2 rounded-lg text-text-muted hover:text-status-danger hover:bg-status-danger/10 transition opacity-0 group-hover:opacity-100"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Memory Tab - Mobile */}
+              {activeTab === 'memory' && (
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                  <AIMemoryManager />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </PageContainer>
+    </>
   );
 }

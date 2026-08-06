@@ -62,6 +62,7 @@ export default function DocumentEditor({ workspaceId, docId, onClose }) {
          leavePresence();
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, user]);
 
   const loadDocument = async () => {
@@ -201,7 +202,7 @@ export default function DocumentEditor({ workspaceId, docId, onClose }) {
         </div>
 
         {/* AI Sidebar */}
-        <div className="w-80 border-l border-border bg-surface/30 flex flex-col p-4">
+        <div className="w-full lg:w-80 border-l border-border bg-surface/30 flex flex-col p-4">
            <h3 className="font-bold text-sm text-text-muted uppercase tracking-widest mb-4">Document AI</h3>
            <AIContextPanel 
               actions={[

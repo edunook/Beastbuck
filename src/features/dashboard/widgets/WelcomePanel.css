@@ -1,0 +1,431 @@
+/* WelcomePanel - Kids/Teens Awesome Styles */
+
+.welcome-panel {
+  position: relative;
+  min-height: 400px;
+  overflow: visible;
+}
+
+.floating-emojis {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+.floating-emoji {
+  position: absolute;
+  bottom: -20px;
+  font-size: 2rem;
+  animation: float-emoji 4s ease-out forwards;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes float-emoji {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-20px) rotate(10deg) scale(1.2);
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-500px) rotate(360deg) scale(0.5);
+    opacity: 0;
+  }
+}
+
+.welcome-card {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(131, 56, 236, 0.3) 0%,
+    rgba(255, 0, 110, 0.2) 50%,
+    rgba(58, 134, 255, 0.3) 100%
+  );
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 32px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(131, 56, 236, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  overflow: visible;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: slide-up-bounce 1s var(--ease-elastic) both;
+}
+
+.welcome-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(255, 0, 110, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  animation: float 8s ease-in-out infinite;
+}
+
+.shape-1 {
+  width: 200px;
+  height: 200px;
+  background: var(--color-neon-pink);
+  top: -100px;
+  right: -50px;
+  animation-delay: 0s;
+}
+
+.shape-2 {
+  width: 150px;
+  height: 150px;
+  background: var(--color-neon-purple);
+  bottom: -75px;
+  left: -75px;
+  animation-delay: 2s;
+}
+
+.shape-3 {
+  width: 180px;
+  height: 180px;
+  background: var(--color-neon-cyan);
+  top: 50%;
+  right: -90px;
+  animation-delay: 4s;
+}
+
+.shape-4 {
+  width: 120px;
+  height: 120px;
+  background: var(--color-neon-blue);
+  bottom: 20%;
+  left: 10%;
+  animation-delay: 6s;
+}
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, rgba(131, 56, 236, 0.3), rgba(255, 0, 110, 0.3));
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 9999px;
+  color: white;
+  font-weight: 800;
+  font-size: 0.875rem;
+  box-shadow: 0 0 20px rgba(131, 56, 236, 0.4);
+  animation: scaleIn 0.6s var(--ease-bounce) both;
+  transition: all 0.3s;
+}
+
+.role-badge:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 0 30px rgba(255, 0, 110, 0.6);
+}
+
+.role-badge svg {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.badge-text {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 84, 0, 0.3), rgba(255, 0, 110, 0.3));
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 9999px;
+  color: white;
+  font-weight: 800;
+  font-size: 0.875rem;
+  box-shadow: 0 0 20px rgba(255, 84, 0, 0.4);
+  animation: scaleIn 0.6s var(--ease-bounce) 0.1s both;
+  transition: all 0.3s;
+}
+
+.streak-badge:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 0 30px rgba(255, 84, 0, 0.6);
+}
+
+.streak-text {
+  text-shadow: 0 0 10px currentColor;
+}
+
+.greeting-emoji {
+  display: inline-block;
+  animation: float 3s ease-in-out infinite;
+  margin-right: 0.5rem;
+}
+
+.greeting-text {
+  display: inline-block;
+  animation: fadeInUp 0.8s var(--ease-elastic) 0.2s both;
+}
+
+/* 3D Stat Cards */
+.stat-card {
+  position: relative;
+  padding: 1.5rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: scaleIn 0.6s var(--ease-bounce) both;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.3s; }
+.stat-card:nth-child(2) { animation-delay: 0.4s; }
+.stat-card:nth-child(3) { animation-delay: 0.5s; }
+
+.stat-card:hover {
+  transform: translateY(-8px) scale(1.05) rotateX(5deg);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(131, 56, 236, 0.4);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transition: left 0.6s;
+}
+
+.stat-card:hover::before {
+  left: 100%;
+}
+
+.level-card {
+  background: linear-gradient(135deg, rgba(131, 56, 236, 0.3), rgba(58, 134, 255, 0.2));
+  box-shadow: 0 0 20px rgba(131, 56, 236, 0.3);
+}
+
+.xp-card {
+  background: linear-gradient(135deg, rgba(255, 0, 110, 0.3), rgba(255, 84, 0, 0.2));
+  box-shadow: 0 0 20px rgba(255, 0, 110, 0.3);
+}
+
+.progress-card {
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.3), rgba(57, 255, 20, 0.2));
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.stat-content {
+  position: relative;
+  z-index: 1;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: white;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 0 20px currentColor;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Progress Bar */
+.progress-section {
+  animation: fadeInUp 0.8s var(--ease-elastic) 0.6s both;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    #8338ec 0%,
+    #ff006e 50%,
+    #3a86ff 100%
+  );
+  background-size: 200% 100%;
+  animation: gradient-shift 2s linear infinite;
+  border-radius: 9999px;
+  position: relative;
+  box-shadow: 0 0 20px rgba(131, 56, 236, 0.6);
+  transition: width 1s var(--ease-bounce);
+}
+
+.progress-bar-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+/* Mission Preview Cards */
+.mission-preview-card {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  text-align: center;
+  transition: all 0.4s var(--ease-elastic);
+  animation: scaleIn 0.6s var(--ease-bounce) both;
+  cursor: pointer;
+}
+
+.mission-preview-card:nth-child(1) { animation-delay: 0.7s; }
+.mission-preview-card:nth-child(2) { animation-delay: 0.8s; }
+.mission-preview-card:nth-child(3) { animation-delay: 0.9s; }
+
+.mission-preview-card:hover {
+  transform: translateY(-6px) scale(1.05);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.mission-preview-card svg {
+  transition: all 0.3s var(--ease-bounce);
+}
+
+.mission-preview-card:hover svg {
+  transform: scale(1.2) rotate(10deg);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .welcome-card {
+    border-radius: 24px;
+  }
+  
+  .stat-card {
+    padding: 1rem 0.75rem;
+  }
+  
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Animations for kids */
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateY(50px);
+  }
+  50% {
+    transform: scale(1.05) translateY(-10px);
+  }
+  70% {
+    transform: scale(0.95) translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes rainbow {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.8s var(--ease-bounce) both;
+}
+
+.animate-shake:hover {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-rainbow {
+  animation: rainbow 3s linear infinite;
+}

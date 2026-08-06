@@ -3,6 +3,7 @@ import { PageContainer, SectionWrapper } from '../../components/layout/LayoutWra
 import { PageHeader } from '../../components/ui/UIElements';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import Button from '../../components/ui/Button';
+
 import { TaskBoard } from './components/TaskBoard';
 import { TaskDetailModal } from './components/TaskDetailModal';
 import { TaskSubmissionForm } from './components/TaskSubmissionForm';
@@ -11,7 +12,7 @@ import { CreateTaskModal } from './components/CreateTaskModal';
 import { TasksService } from '../../services/firebase/tasks';
 import { useAuth } from '../auth/AuthContext';
 import { hasPermission } from '../../services/firebase/permissions';
-import { AlertCircle, Plus, RefreshCw } from 'lucide-react';
+import { AlertCircle, Plus, RefreshCw, Search, X } from 'lucide-react';
 
 const TABS = [
   { id: 'MY_TASKS',       label: 'My Tasks' },
@@ -31,6 +32,7 @@ const TasksHub = React.memo(function TasksHub() {
   const [loading, setLoading]             = useState(true);
   const [loadError, setLoadError]         = useState(null);
   const [activeTab, setActiveTab]         = useState('MY_TASKS');
+  const [searchQuery, setSearchQuery]     = useState('');
 
   // Modal state
   const [detailTask, setDetailTask]           = useState(null);
@@ -64,16 +66,28 @@ const TasksHub = React.memo(function TasksHub() {
 
   // Derive what to show in the board
   const boardTasks = (() => {
-    if (activeTab === 'MY_TASKS')        return tasks.filter(t => t.assigneeIds?.includes(user?.uid));
-    if (activeTab === 'GLOBAL_MISSIONS') return tasks.filter(t => t.type === 'GLOBAL');
-    if (activeTab === 'REVIEW_QUEUE')    return reviewTasks;
-    return [];
+    let filtered = [];
+    if (activeTab === 'MY_TASKS')        filtered = tasks.filter(t => t.assigneeIds?.includes(user?.uid));
+    if (activeTab === 'GLOBAL_MISSIONS') filtered = tasks.filter(t => t.type === 'GLOBAL');
+    if (activeTab === 'REVIEW_QUEUE')    filtered = reviewTasks;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(t =>
+        t.title?.toLowerCase().includes(query) ||
+        t.description?.toLowerCase().includes(query) ||
+        (t.tags || []).some(tag => tag.toLowerCase().includes(query))
+      );
+    }
+
+    return filtered;
   })();
 
   // --- Handlers ---
   const handleTaskClick = (task) => setDetailTask(task);
 
   const handleTaskUpdated = (updated) => {
+    if (!updated) return;
     setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
     setDetailTask(updated);
   };
@@ -131,6 +145,29 @@ const TasksHub = React.memo(function TasksHub() {
       />
 
       <SectionWrapper>
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search tasks by title, description, or tags..."
+              className="w-full pl-10 pr-10 py-2.5 bg-black/30 border border-border rounded-xl text-sm text-white placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/50 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-white transition-colors"
+                title="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-1 mb-6 bg-black/20 rounded-2xl p-1 border border-border/50 overflow-x-auto custom-scrollbar w-fit max-w-full">
           {TABS.filter(t => !t.leaderOnly || isLeader).map(tab => (

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Rocket, BookOpen, Lightbulb, ArrowRight, Zap, Target, Sparkles } from 'lucide-react';
+import { ArrowRight, Zap, Sparkles } from 'lucide-react';
 import { PageContainer } from '../../components/layout/LayoutWrappers';
 import { PageHeader, EmptyState } from '../../components/ui/UIElements';
 import { cn } from '../../lib/utils';
 
 export default function ProgramsHub() {
-  const [programs, setPrograms] = useState([]);
+  const [programs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

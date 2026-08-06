@@ -27,15 +27,15 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { UsersService } from '../../services/firebase/users';
-import { hasPermission, PERMISSIONS } from '../../services/firebase/permissions';
+import { hasPermission } from '../../services/firebase/permissions';
 import { getLevelProgress } from '../../services/firebase/gamification';
 import { OrganizationService } from '../../services/firebase/organization';
 import { UniverseService } from '../../services/firebase/universe';
 import { PresenceService } from '../../services/realtime/presence';
 import { DEFAULT_SKILLS } from '../../services/firebase/skills';
 import { getSpecializationById } from '../../constants/specializations';
+import { ROLES } from '../../constants/roles';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { LoadingState } from '../../components/ui/UIElements';
 import { CardSkeleton } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import { MembershipService } from '../../services/firebase/membership';
@@ -720,7 +720,7 @@ function MembershipCard({ userId, role }) {
     checkMembership();
   }, [userId]);
 
-  if (loading || PERMISSIONS.isApprovedMember(role)) return null;
+  if (loading || role === ROLES.MAIN_CEO || role === ROLES.CO_CEO || role === ROLES.MEMBER) return null;
 
   return (
     <Card className="border-accent/30 bg-gradient-to-br from-accent/10 via-purple-500/10 to-cyan-500/10">
@@ -936,7 +936,7 @@ function ProfileHero({ profile, status, isOwnProfile }) {
         <div className="flex flex-col gap-5 sm:gap-6 sm:flex-row sm:items-center md:flex-row md:items-center w-full">
           <div className="relative h-28 w-28 sm:h-36 sm:w-36 md:h-44 md:w-44 shrink-0 overflow-hidden rounded-2xl sm:rounded-3xl border-4 shadow-2xl transition-all duration-300 hover:scale-105" style={{ borderColor: theme.accentColor }}>
             {profile.avatar ? (
-              <img src={profile.avatar} alt="" className="h-full w-full object-cover" />
+              <img src={profile.avatar} alt={`Avatar of ${profile.displayName || profile.username}`} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-4xl sm:text-5xl md:text-6xl font-black" style={{ color: theme.accentColor }}>
                 {getInitials(profile)}

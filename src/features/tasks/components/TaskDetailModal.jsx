@@ -30,7 +30,7 @@ const TYPE_LABELS = {
 
 export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTaskUpdated }) {
   const { user, roleData } = useAuth();
-  const [progress, setProgress] = useState(task.progressPercent || 0);
+  const [progress, setProgress] = useState(Math.max(0, Math.min(100, task.progressPercent || 0)));
   const [updatingProgress, setUpdatingProgress] = useState(false);
   const [progressError, setProgressError] = useState(null);
 
@@ -63,15 +63,21 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
     }
   };
 
+  const getProgressMessage = () => {
+    if (progress === 0) return 'Not started';
+    if (progress < 100) return 'In progress';
+    return 'Ready for review';
+  };
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-surface border border-border rounded-2xl shadow-2xl custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="relative w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-surface border border-border rounded-2xl shadow-2xl custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-200">
 
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-border/50 p-6 flex items-start justify-between gap-4">
+        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-border/50 p-4 sm:p-6 flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest', prio.bg, prio.text)}>
@@ -95,7 +101,7 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6">
 
           {/* Description */}
           <div>
@@ -162,7 +168,10 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
             <div className="bg-black/20 rounded-2xl p-4 border border-border/50">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest">Your Progress</h3>
-                <span className="text-sm font-bold text-accent">{progress}%</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-accent">{progress}%</span>
+                  <span className="text-xs text-text-muted">- {getProgressMessage()}</span>
+                </div>
               </div>
               <input
                 type="range"

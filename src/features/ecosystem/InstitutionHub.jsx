@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Building, GraduationCap, FlaskConical, HeartHandshake, ExternalLink, ShieldCheck, Sparkles } from 'lucide-react';
+import { ExternalLink, ShieldCheck, Sparkles } from 'lucide-react';
 import { PageContainer } from '../../components/layout/LayoutWrappers';
 import { PageHeader, EmptyState } from '../../components/ui/UIElements';
 import { cn } from '../../lib/utils';
 
 export default function InstitutionHub() {
-  const [institutions, setInstitutions] = useState([]);
+  const institutions = [];
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

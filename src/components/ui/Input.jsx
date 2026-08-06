@@ -1,6 +1,6 @@
 import { forwardRef, useState } from 'react';
 import { cn } from '../../lib/utils';
-import { Check, X, AlertCircle, Loader2 } from 'lucide-react';
+import { Check, X, Loader2 } from 'lucide-react';
 
 const Input = forwardRef(({ 
   className, 

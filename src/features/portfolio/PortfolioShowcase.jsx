@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Trophy, ArrowRight, Zap, Award, Search, Filter, Users, TrendingUp, Star, Shield, Crown, Medal } from 'lucide-react';
+import { Sparkles, Trophy, ArrowRight, Zap, Award, Search, Users, TrendingUp, Star, Shield, Crown, Medal } from 'lucide-react';
 import { UsersService } from '../../services/firebase/users';
 import { GamificationService } from '../../services/firebase/gamification';
 import { PageContainer, SectionWrapper } from '../../components/layout/LayoutWrappers';
@@ -207,7 +207,7 @@ export default function PortfolioShowcase() {
                     <div className="mb-4 flex items-center gap-4">
                       <div className="relative h-20 w-20 overflow-hidden rounded-2xl border-2 border-accent/30 bg-black/50 shadow-lg shadow-accent/20 transition-all duration-300 group-hover:border-accent/60 group-hover:shadow-accent/40 group-hover:scale-110">
                         {member.avatar ? (
-                          <img src={member.avatar} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                          <img src={member.avatar} alt={`Avatar of ${member.displayName || member.username}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-2xl font-black text-accent">
                             {(member.displayName || member.username)[0].toUpperCase()}
@@ -281,7 +281,7 @@ export default function PortfolioShowcase() {
         )}
       </SectionWrapper>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;

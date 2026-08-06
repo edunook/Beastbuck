@@ -9,6 +9,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 
 export const PROJECT_STATUSES = ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'ARCHIVED'];
@@ -301,5 +302,43 @@ export const OrganizationService = {
       teams: organization.teams.filter(team => teamIds.has(team.id)),
       activeProjects,
     };
+  },
+
+  // ---------------------------------------------------------------------------
+  // DEPARTMENT STATISTICS
+  // ---------------------------------------------------------------------------
+  async getDepartmentStatistics() {
+    try {
+      const organization = await this.getOrganization();
+      if (!organization) return [];
+
+      const departmentsWithStats = await Promise.all(
+        organization.departments.map(async (dept) => {
+          // Count members in this department
+          const membersSnap = await getDocs(
+            query(collection(db, 'users'), where('departmentId', '==', dept.id))
+          );
+          const memberCount = membersSnap.size;
+
+          // Calculate health score based on activity
+          const activeMembers = membersSnap.docs.map(d => d.data()).filter(u => u.accountStatus === 'active').length;
+          const healthScore = memberCount > 0 ? Math.round((activeMembers / memberCount) * 100) : 0;
+
+          return {
+            id: dept.id,
+            name: dept.name,
+            description: dept.description || '',
+            memberCount,
+            healthScore,
+            leadId: dept.leadId,
+          };
+        })
+      );
+
+      return departmentsWithStats;
+    } catch (error) {
+      console.error('Error fetching department statistics:', error);
+      return [];
+    }
   },
 };

@@ -47,11 +47,11 @@ const Button = forwardRef(({
   const baseStyles = "inline-flex items-center justify-center rounded-xl font-bold transition-all duration-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden";
   
   const variants = {
-    primary: "bg-gradient-premium-1 text-text shadow-glow-sm hover:shadow-glow-md hover:-translate-y-0.5 active:scale-95 focus:ring-accent",
-    secondary: "bg-surface border border-border text-text hover:bg-surface-100 hover:border-border-100 hover:-translate-y-0.5 active:scale-95 focus:ring-text-50",
-    danger: "bg-status-danger/10 border border-status-danger/20 text-status-danger hover:bg-status-danger/20 hover:-translate-y-0.5 active:scale-95 focus:ring-status-danger",
-    ghost: "text-text-muted hover:text-text hover:bg-surface hover:-translate-y-0.5 active:scale-95 focus:ring-text-50",
-    success: "bg-status-success/10 border border-status-success/20 text-status-success hover:bg-status-success/20 hover:-translate-y-0.5 active:scale-95 focus:ring-status-success",
+    primary: "bg-gradient-premium-1 text-text shadow-glow-sm hover:shadow-glow-md hover:scale-105 hover:-translate-y-1 active:scale-95 focus:ring-accent",
+    secondary: "bg-surface border border-border text-text hover:bg-surface-100 hover:border-border-100 hover:scale-105 hover:-translate-y-1 active:scale-95 focus:ring-text-50",
+    danger: "bg-status-danger/10 border border-status-danger/20 text-status-danger hover:bg-status-danger/20 hover:scale-105 hover:-translate-y-1 active:scale-95 focus:ring-status-danger",
+    ghost: "text-text-muted hover:text-text hover:bg-surface hover:scale-105 hover:-translate-y-1 active:scale-95 focus:ring-text-50",
+    success: "bg-status-success/10 border border-status-success/20 text-status-success hover:bg-status-success/20 hover:scale-105 hover:-translate-y-1 active:scale-95 focus:ring-status-success",
   };
 
   const sizes = {

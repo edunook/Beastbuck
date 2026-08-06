@@ -43,12 +43,28 @@ const providers = {
 const PROVIDER_FALLBACK_ORDER = ['groq', 'openrouter', 'gemini'];
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [1000, 2000, 4000]; // Exponential backoff: 1s, 2s, 4s
+const MAX_SYSTEM_PROMPT_CHARS = 6000; // Safe cap for free-tier providers (~1500 tokens)
+
+function isNonRetryableError(err) {
+  const msg = (err.message || '').toLowerCase();
+  return (
+    msg.includes('not found for api version') ||
+    msg.includes('is not found') ||
+    (msg.includes('invalid') && msg.includes('api key')) ||
+    msg.includes('api key is not configured') ||
+    msg.includes('request too large') ||
+    msg.includes('content too large') ||
+    msg.includes('rate limit') ||
+    msg.includes('too many requests')
+  );
+}
 
 async function retryWithBackoff(fn, retries = MAX_RETRIES) {
   for (let i = 0; i < retries; i++) {
     try {
       return await fn();
     } catch (err) {
+      if (isNonRetryableError(err)) throw err;
       if (i === retries - 1) throw err;
       const delay = RETRY_DELAYS[i] || 1000;
       console.log(`[AI] Retry ${i + 1}/${retries} after ${delay}ms...`);
@@ -56,6 +72,22 @@ async function retryWithBackoff(fn, retries = MAX_RETRIES) {
     }
   }
   throw new Error('Max retries exceeded');
+}
+
+function buildSystemPrompt(mode, knowledge = []) {
+  const basePrompt = AI_MODES[mode]?.systemPrompt || AI_MODES.general.systemPrompt;
+
+  let knowledgeText = '';
+  if (knowledge.length > 0) {
+    const fullKnowledge = knowledge.map(item => item.content).join('\n\n');
+    if (fullKnowledge.length > MAX_SYSTEM_PROMPT_CHARS) {
+      knowledgeText = fullKnowledge.slice(0, MAX_SYSTEM_PROMPT_CHARS) + '\n\n[Context truncated due to size limits]';
+    } else {
+      knowledgeText = fullKnowledge;
+    }
+  }
+
+  return [basePrompt, 'Use BeastBuck organization knowledge when relevant.', knowledgeText].filter(Boolean).join('\n\n');
 }
 
 function localReply({ messages, mode, knowledge = [] }) {
@@ -97,11 +129,7 @@ export const AIService = {
   },
 
   async chat({ providerId = 'local', mode = 'general', messages = [], knowledge = [], signal }) {
-    const systemPrompt = [
-      AI_MODES[mode]?.systemPrompt || AI_MODES.general.systemPrompt,
-      'Use BeastBuck organization knowledge when relevant.',
-      knowledge.length ? `IMPORTANT: Here is the current user's profile and organizational data:\n${knowledge.map(item => item.content).join('\n\n')}` : '',
-    ].filter(Boolean).join('\n\n');
+    const systemPrompt = buildSystemPrompt(mode, knowledge);
 
     // If local mode, return local reply
     if (providerId === 'local') {
@@ -110,14 +138,18 @@ export const AIService = {
 
     // Get provider priority order
     let providerOrder = PROVIDER_FALLBACK_ORDER;
-    
+
     // If specific provider requested, try it first, then fallback
+    const selectedProviderId = providerId;
     if (providerId && providers[providerId]) {
       providerOrder = [providerId, ...PROVIDER_FALLBACK_ORDER.filter(p => p !== providerId)];
     }
 
-    // Filter to configured providers only
-    const configuredProviders = providerOrder.filter(id => providers[id]?.configured);
+    // Filter to configured providers only, but preserve explicitly selected provider
+    const configuredProviders = providerOrder.filter(id => {
+      if (id === selectedProviderId) return true;
+      return providers[id]?.configured;
+    });
 
     if (configuredProviders.length === 0) {
       console.warn('[AI] No configured providers available');

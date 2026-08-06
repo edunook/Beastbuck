@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '../../services/firebase/auth';
+import { assignFirstCEO } from '../../services/firebase/executive';
 import { Sparkles, Lock, User, ArrowRight, Eye, EyeOff, Zap, Phone, CheckCircle, XCircle, Shield } from 'lucide-react';
 
 export default function SignUp() {
@@ -49,13 +50,27 @@ export default function SignUp() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     if (usernameError || checkingUsername) return;
-    
+
     setLoading(true);
     setError(null);
 
     try {
-      await AuthService.signUp(phoneNumber, password, username);
-      navigate('/dashboard'); 
+      const userCredential = await AuthService.signUp(phoneNumber, password, username);
+      
+      // Attempt to assign CEO role if this is the first user
+      if (userCredential?.user?.uid) {
+        const userData = {
+          username,
+          displayName: username,
+          email: userCredential.user.email || phoneNumber,
+          phoneNumber,
+          createdAt: new Date(),
+        };
+        
+        await assignFirstCEO(userCredential.user.uid, userData);
+      }
+      
+      navigate('/dashboard');
     } catch (err) {
       console.error(err);
       setError(err.message || 'Failed to create account. Please try again.');
@@ -272,7 +287,7 @@ export default function SignUp() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes float {
           0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
           10% { opacity: 1; }

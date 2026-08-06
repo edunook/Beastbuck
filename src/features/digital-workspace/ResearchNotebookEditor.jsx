@@ -18,6 +18,7 @@ export default function ResearchNotebookEditor({ notebookId }) {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notebookId]);
 
   const loadData = async () => {

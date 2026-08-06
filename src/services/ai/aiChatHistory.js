@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 
 export const AIChatHistoryService = {

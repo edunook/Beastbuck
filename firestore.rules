@@ -117,16 +117,16 @@ service cloud.firestore {
       allow update: if canReviewTasks()
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['xp', 'level', 'stats']);
 
-      // Member-created systems such as experiments can award narrowly scoped self XP and stats.
-      allow update: if isAuthenticated() && request.auth.uid == userId
+      // Approved member systems such as experiments can award narrowly scoped self XP and stats.
+      allow update: if isApprovedMember() && request.auth.uid == userId
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['xp', 'level', 'stats']);
 
-      // Community systems can award reputation without granting broader profile edit powers.
-      allow update: if isAuthenticated() && request.auth.uid == userId
+      // Community systems can award reputation to approved members without granting broader profile edit powers.
+      allow update: if isApprovedMember() && request.auth.uid == userId
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reputation']);
 
-      // Skill ecosystem contributions award separate skill XP without changing global XP.
-      allow update: if isAuthenticated() && request.auth.uid == userId
+      // Skill ecosystem contributions award separate skill XP to approved members without changing global XP.
+      allow update: if isApprovedMember() && request.auth.uid == userId
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['skillXp', 'skillStats']);
                     
       // CEOs can update anyone
@@ -549,6 +549,36 @@ service cloud.firestore {
       }
     }
 
+    match /creative_works/{workId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow delete: if isAuthenticated();
+      }
+    }
+
+    // ----------------------------------------
+    // COMMUNITY CHALLENGES
+    // ----------------------------------------
+    match /communityChallenges/{challengeId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
+    match /challengeResponses/{responseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+
     match /skills/{skillId} {
       // Global skill categories
       allow read: if isAuthenticated();
@@ -681,15 +711,10 @@ service cloud.firestore {
     // AI CHAT SESSIONS (Step 21)
     // ----------------------------------------
     match /aiChatSessions/{sessionId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated()
-                    && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read, create, update, delete: if isAuthenticated();
 
       match /messages/{messageId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
+        allow read, create: if isAuthenticated();
       }
     }
 
@@ -1979,6 +2004,64 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
       allow delete: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // FUNFLIX OS COLLECTIONS
+    // ----------------------------------------
+    match /funflix_videos/{videoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || canManageMembers());
+    }
+
+    match /funflix_challenges/{challengeId} {
+      allow read: if isAuthenticated();
+      allow write: if canManageMembers() || isLeader();
+    }
+
+    match /funflix_creators/{creatorId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (creatorId == request.auth.uid || canManageMembers());
+    }
+
+    match /funflix_followers/{followId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.followerId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.followerId == request.auth.uid;
+    }
+
+    match /funflix_watchlist/{watchlistId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /funflix_comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canManageMembers());
+    }
+
+    // ----------------------------------------
+    // GAMIFICATION & SYSTEM LOGS
+    // ----------------------------------------
+    match /xpLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || request.resource.data.actorId == request.auth.uid || canManageMembers());
+      allow update, delete: if canManageMembers();
+    }
+
+    match /skillXpLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || canManageMembers());
+      allow update, delete: if canManageMembers();
+    }
+
+    match /activityLogs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || canManageMembers());
+      allow update, delete: if canManageMembers();
     }
 
     // ----------------------------------------

@@ -136,6 +136,7 @@ export default function AdminAuditLogs() {
     }
   }, [filterType, lastDoc]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(true); }, [filterType]);
 
   // Summarize counts per type

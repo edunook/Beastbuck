@@ -1,154 +1,302 @@
-import React from 'react';
-import { Globe, TrendingUp, Search, Filter } from 'lucide-react';
+import React, { useState } from 'react';
+import { Globe, TrendingUp, Search, Filter, ArrowUpDown, Users, Building, Beaker, Briefcase, MapPin, Award } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { PageContainer } from '../../components/layout/LayoutWrappers';
+import { PageHeader } from '../../components/ui/UIElements';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import Button from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 
 const rankingCategories = [
-  'Members', 'Teams', 'Labs', 'Departments', 'Ventures', 'Chapters'
+  { id: 'Members', label: 'Members', icon: Users },
+  { id: 'Teams', label: 'Teams', icon: Building },
+  { id: 'Labs', label: 'Labs', icon: Beaker },
+  { id: 'Departments', label: 'Departments', icon: Briefcase },
+  { id: 'Ventures', label: 'Ventures', icon: TrendingUp },
+  { id: 'Chapters', label: 'Chapters', icon: MapPin },
 ];
 
-import { GamificationService } from '../../services/firebase/gamification';
+const MOCK_RANKINGS = {
+  Members: [
+    { rank: 1, name: 'Dr. Sarah Chen', entityType: 'Member', score: 245000, trend: '+15%', location: 'San Francisco, USA', avatar: 'SC' },
+    { rank: 2, name: 'Marcus Webb', entityType: 'Member', score: 198000, trend: '+12%', location: 'London, UK', avatar: 'MW' },
+    { rank: 3, name: 'Elena Rodriguez', entityType: 'Member', score: 178000, trend: '+8%', location: 'Madrid, Spain', avatar: 'ER' },
+    { rank: 4, name: 'David Kim', entityType: 'Member', score: 165000, trend: '+5%', location: 'Seoul, South Korea', avatar: 'DK' },
+    { rank: 5, name: 'Anita Patel', entityType: 'Member', score: 152000, trend: '+22%', location: 'Mumbai, India', avatar: 'AP' },
+  ],
+  Teams: [
+    { rank: 1, name: 'Quantum Research Team', entityType: 'Team', score: 450000, trend: '+18%', location: 'Global', avatar: 'QR' },
+    { rank: 2, name: 'AI Innovation Squad', entityType: 'Team', score: 380000, trend: '+14%', location: 'Global', avatar: 'AI' },
+    { rank: 3, name: 'Sustainability Group', entityType: 'Team', score: 320000, trend: '+9%', location: 'Europe', avatar: 'SG' },
+  ],
+  Labs: [
+    { rank: 1, name: 'Advanced AI Lab', entityType: 'Lab', score: 520000, trend: '+20%', location: 'San Francisco, USA', avatar: 'AA' },
+    { rank: 2, name: 'Quantum Computing Lab', entityType: 'Lab', score: 410000, trend: '+15%', location: 'Boston, USA', avatar: 'QC' },
+  ],
+  Departments: [
+    { rank: 1, name: 'Research Department', entityType: 'Department', score: 680000, trend: '+12%', location: 'Global', avatar: 'RD' },
+    { rank: 2, name: 'Engineering Department', entityType: 'Department', score: 590000, trend: '+10%', location: 'Global', avatar: 'ED' },
+  ],
+  Ventures: [
+    { rank: 1, name: 'NeuralTech Ventures', entityType: 'Venture', score: 750000, trend: '+25%', location: 'Silicon Valley, USA', avatar: 'NT' },
+    { rank: 2, name: 'GreenEnergy Solutions', entityType: 'Venture', score: 620000, trend: '+18%', location: 'Berlin, Germany', avatar: 'GE' },
+  ],
+  Chapters: [
+    { rank: 1, name: 'Tokyo Chapter', entityType: 'Chapter', score: 156000, trend: '+10%', location: 'Tokyo, Japan', avatar: 'TK' },
+    { rank: 2, name: 'New York Chapter', entityType: 'Chapter', score: 124000, trend: '+8%', location: 'New York, USA', avatar: 'NY' },
+    { rank: 3, name: 'London Chapter', entityType: 'Chapter', score: 89000, trend: '+6%', location: 'London, UK', avatar: 'LD' },
+  ],
+};
+
+const SORT_OPTIONS = [
+  { value: 'score-desc', label: 'Score (High to Low)' },
+  { value: 'score-asc', label: 'Score (Low to High)' },
+  { value: 'trend-desc', label: 'Trend (High to Low)' },
+  { value: 'name-asc', label: 'Name (A-Z)' },
+  { value: 'name-desc', label: 'Name (Z-A)' },
+];
 
 export default function GlobalRankings() {
-  const [activeCategory, setActiveCategory] = React.useState('Members');
-  const [rankings, setRankings] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
+  const [activeCategory, setActiveCategory] = useState('Members');
+  const [rankings, setRankings] = useState(MOCK_RANKINGS.Members);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState('score-desc');
+  const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      if (activeCategory === 'Members') {
-        try {
-          const members = await GamificationService.getLeaderboard({ type: 'xp', maxCount: 20 });
-          const mapped = members.map((m, i) => ({
-            rank: i + 1,
-            name: m.displayName || m.username || 'Anonymous',
-            entityType: 'Member',
-            score: m.xp || 0,
-            trend: '+0%', // Can be calculated based on past logs if needed
-            location: m.location || 'Global',
-          }));
-          setRankings(mapped);
-        } catch (err) {
-          console.error('Failed to load member rankings', err);
-        }
-      } else {
-        // Fallback or empty state for other entities until they are fully integrated
-        setRankings([]);
-      }
+    setLoading(true);
+    // Simulate loading
+    setTimeout(() => {
+      const categoryData = MOCK_RANKINGS[activeCategory] || [];
+      setRankings(categoryData);
       setLoading(false);
-    }
-    loadData();
+    }, 300);
   }, [activeCategory]);
 
+  const filteredAndSortedRankings = React.useMemo(() => {
+    let filtered = rankings;
+    
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(item => 
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.location.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      switch(sortBy) {
+        case 'score-desc':
+          return b.score - a.score;
+        case 'score-asc':
+          return a.score - b.score;
+        case 'trend-desc':
+          return parseFloat(b.trend) - parseFloat(a.trend);
+        case 'trend-asc':
+          return parseFloat(a.trend) - parseFloat(b.trend);
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        default:
+          return b.score - a.score;
+      }
+    });
+
+    // Re-assign ranks after sorting
+    return sorted.map((item, index) => ({ ...item, rank: index + 1 }));
+  }, [rankings, searchQuery, sortBy]);
+
+  const CategoryIcon = rankingCategories.find(c => c.id === activeCategory)?.icon || Globe;
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-neutral-200 p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center space-x-3 mb-2">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Globe className="w-8 h-8 text-blue-400" />
-              </div>
-              <h1 className="text-4xl font-bold text-white">Global Rankings</h1>
+    <PageContainer>
+      <PageHeader 
+        title="Global Rankings" 
+        description="Comprehensive leaderboard of impact scores across the BeastBuck network."
+      />
+
+      {/* Stats Overview */}
+      <div className="grid gap-4 sm:grid-cols-4 mb-6">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Globe className="h-5 w-5 text-accent" />
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">Active</span>
             </div>
-            <p className="text-neutral-400 text-lg">Comprehensive leaderboard of impact scores across the BeastBuck network.</p>
+            <p className="text-2xl font-bold text-white">
+              {Object.values(MOCK_RANKINGS).flat().length}
+            </p>
+            <p className="text-xs text-text-muted">Total Ranked Entities</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Award className="h-5 w-5 text-accent" />
+              <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400">Top</span>
+            </div>
+            <p className="text-2xl font-bold text-white">
+              {Object.values(MOCK_RANKINGS).flat().reduce((sum, item) => sum + item.score, 0).toLocaleString()}
+            </p>
+            <p className="text-xs text-text-muted">Total Impact Score</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <TrendingUp className="h-5 w-5 text-accent" />
+              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400">Growth</span>
+            </div>
+            <p className="text-2xl font-bold text-white">+18%</p>
+            <p className="text-xs text-text-muted">Average Trend</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Users className="h-5 w-5 text-accent" />
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">Categories</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{rankingCategories.length}</p>
+            <p className="text-xs text-text-muted">Ranking Categories</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Category Tabs */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex overflow-x-auto gap-2 pb-2">
+            {rankingCategories.map(cat => {
+              const Icon = cat.icon;
+              return (
+                <Button
+                  key={cat.id}
+                  size="sm"
+                  variant={activeCategory === cat.id ? 'default' : 'secondary'}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className="whitespace-nowrap"
+                >
+                  <Icon className="h-4 w-4 mr-2" />
+                  {cat.label}
+                </Button>
+              );
+            })}
           </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
-              <input 
-                type="text" 
-                placeholder="Search rankings..." 
-                className="bg-neutral-900 border border-neutral-800 rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 transition-all text-white placeholder:text-neutral-600"
+        </CardContent>
+      </Card>
+
+      {/* Filters */}
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex-1 relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+              <Input 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search rankings..."
+                className="pl-10"
               />
             </div>
-            <button className="p-2.5 bg-neutral-900 border border-neutral-800 rounded-xl hover:bg-neutral-800 transition-colors">
-              <Filter className="w-5 h-5 text-neutral-400" />
-            </button>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-text-muted" />
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+              >
+                {SORT_OPTIONS.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Tabs */}
-        <div className="flex overflow-x-auto pb-2 scrollbar-hide space-x-2">
-          {rankingCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={cn(
-                "px-5 py-2.5 rounded-xl font-medium whitespace-nowrap transition-all duration-200",
-                activeCategory === cat
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20"
-                  : "bg-neutral-900/50 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
-              )}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Table List */}
-        <div className="bg-neutral-900/40 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl shadow-depth-2">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-white/10 bg-neutral-900/50 text-neutral-400 text-caption font-semibold uppercase tracking-wider">
-                <th className="p-6 font-semibold w-24 text-center">Rank</th>
-                <th className="p-6 font-semibold">Entity Name</th>
-                <th className="p-6 font-semibold">Location</th>
-                <th className="p-6 font-semibold text-right">Impact Score</th>
-                <th className="p-6 font-semibold text-right">30d Trend</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-800/40">
-              {loading ? (
+      {/* Rankings Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CategoryIcon className="h-5 w-5 text-accent" />
+            {activeCategory} Leaderboard
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="text-text-muted text-sm">
                 <tr>
-                  <td colSpan="5" className="p-6 text-center text-neutral-500">Loading rankings...</td>
+                  <th className="px-4 py-3 font-medium w-24 text-center">Rank</th>
+                  <th className="px-4 py-3 font-medium">Entity Name</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
+                  <th className="px-4 py-3 font-medium">Location</th>
+                  <th className="px-4 py-3 font-medium text-right cursor-pointer hover:text-accent" onClick={() => setSortBy(sortBy.includes('score') ? (sortBy === 'score-desc' ? 'score-asc' : 'score-desc') : 'score-desc')}>
+                    Impact Score <ArrowUpDown className="h-3 w-3 inline ml-1" />
+                  </th>
+                  <th className="px-4 py-3 font-medium text-right cursor-pointer hover:text-accent" onClick={() => setSortBy(sortBy.includes('trend') ? (sortBy === 'trend-desc' ? 'trend-asc' : 'trend-desc') : 'trend-desc')}>
+                    30d Trend <ArrowUpDown className="h-3 w-3 inline ml-1" />
+                  </th>
                 </tr>
-              ) : rankings.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="p-6 text-center text-neutral-500">No data available for {activeCategory} yet.</td>
-                </tr>
-              ) : rankings.map((item, idx) => (
-                <tr key={idx} className="hover:bg-neutral-800/30 transition-colors group">
-                  <td className="p-6">
-                    <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center font-bold mx-auto text-lg",
-                      item.rank === 1 ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.2)]" :
-                      item.rank === 2 ? "bg-white/20 text-white border border-white/30" :
-                      item.rank === 3 ? "bg-amber-700/20 text-amber-600 border border-amber-700/30" :
-                      "bg-neutral-800 text-neutral-500"
-                    )}>
-                      {item.rank}
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <div className="font-bold text-lg text-neutral-100 group-hover:text-blue-400 transition-colors">{item.name}</div>
-                    <div className="text-sm text-neutral-500 mt-1">{item.entityType}</div>
-                  </td>
-                  <td className="p-6 text-neutral-400">
-                    {item.location}
-                  </td>
-                  <td className="p-6 text-right">
-                    <span className="font-mono text-xl font-semibold text-neutral-100">{item.score.toLocaleString()}</span>
-                  </td>
-                  <td className="p-6 text-right">
-                    <div className={cn(
-                      "inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium",
-                      item.trend.startsWith('+') ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
-                    )}>
-                      <TrendingUp className={cn("w-4 h-4", item.trend.startsWith('-') && "rotate-180")} />
-                      <span>{item.trend}</span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-      </div>
-    </div>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-text-muted">Loading rankings...</td>
+                  </tr>
+                ) : filteredAndSortedRankings.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-6 text-center text-text-muted">No data available for {activeCategory}.</td>
+                  </tr>
+                ) : filteredAndSortedRankings.map((item) => (
+                  <tr key={item.rank} className="hover:bg-white/[0.02] transition-colors group">
+                    <td className="px-4 py-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center font-bold mx-auto text-lg",
+                        item.rank === 1 ? "bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.2)]" :
+                        item.rank === 2 ? "bg-white/20 text-white border border-white/30" :
+                        item.rank === 3 ? "bg-amber-700/20 text-amber-600 border border-amber-700/30" :
+                        "bg-white/5 text-text-muted"
+                      )}>
+                        {item.rank}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold text-sm">
+                          {item.avatar}
+                        </div>
+                        <div className="font-bold text-lg text-white group-hover:text-accent transition-colors">{item.name}</div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2.5 py-1 rounded-md text-xs font-medium bg-white/10 text-text-muted">
+                        {item.entityType}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-text-muted text-sm">{item.location}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-mono text-xl font-semibold text-white">{item.score.toLocaleString()}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className={cn(
+                        "inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium",
+                        item.trend.startsWith('+') ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                      )}>
+                        <TrendingUp className={cn("w-4 h-4", item.trend.startsWith('-') && "rotate-180")} />
+                        <span>{item.trend}</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </PageContainer>
   );
 }

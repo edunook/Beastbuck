@@ -87,12 +87,6 @@ export function FadeIn({ children, delay = 0, duration = 'base', className }) {
 }
 
 export function StaggeredChildren({ children, staggerDelay = 100, className }) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 50);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <div className={className}>

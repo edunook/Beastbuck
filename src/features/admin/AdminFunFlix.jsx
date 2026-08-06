@@ -10,7 +10,8 @@ export default function AdminFunFlix() {
       <div className="mb-8">
         <h3 className="font-bold text-white mb-4 flex items-center gap-2"><ShieldAlert className="text-yellow-400 w-5 h-5" /> Pending Review (Flagged Content)</h3>
         <div className="bg-surface/40 border border-border rounded-xl overflow-hidden backdrop-blur-sm">
-          <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-border/50 text-text-muted bg-black/20">
                 <th className="py-3 px-4">Video Title</th>
@@ -39,6 +40,7 @@ export default function AdminFunFlix() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </PageContainer>

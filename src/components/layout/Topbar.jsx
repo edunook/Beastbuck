@@ -14,11 +14,11 @@ export default function Topbar() {
   const onlineCount = Object.values(onlineMembers).filter(m => m.state !== 'offline').length;
 
   return (
-    <header className="h-16 bg-surface backdrop-blur-glass-md border-b border-border sticky top-0 z-fixed flex items-center justify-between px-4 lg:px-8">
-      
+    <header className="h-16 bg-surface backdrop-blur-glass-md border-b border-border fixed top-0 left-0 right-0 z-[9999] flex items-center justify-between px-4 lg:px-8 pointer-events-auto">
+
       {/* Mobile Menu Toggle & Brand */}
       <div className="flex items-center gap-3 md:hidden">
-        <button 
+        <button
           onClick={toggleMobileDrawer}
           className="p-3 -ml-3 text-text-muted hover:text-text rounded-lg hover:bg-surface transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
@@ -31,9 +31,9 @@ export default function Topbar() {
       <div className="hidden md:flex flex-1 max-w-xl px-4">
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <Input 
-            type="text" 
-            placeholder="Search experiments, skills, members..." 
+          <Input
+            type="text"
+            placeholder="Search experiments, skills, members..."
             className="w-full pl-10 bg-surface border-border hover:border-border-100 focus:bg-surface-100 rounded-full h-10"
           />
         </div>
@@ -41,7 +41,7 @@ export default function Topbar() {
 
       {/* Right Actions */}
       <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-        <button 
+        <button
           onClick={togglePresencePanel}
           className="relative p-3 text-text-muted hover:text-text rounded-full hover:bg-surface transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           title="Live Presence"
@@ -54,14 +54,14 @@ export default function Topbar() {
           )}
         </button>
         <NotificationBell />
-        
+
         <div className="flex items-center gap-3 pl-2 sm:pl-4 sm:border-l border-border">
           <div className="hidden sm:block text-right">
             <div className="text-sm font-medium text-text leading-none">{roleData?.username || 'Operative'}</div>
             <div className="text-badge text-accent mt-1 leading-none">{roleData?.role || 'Guest'}</div>
           </div>
-          <Link 
-            to={user?.uid ? `/profile/${user.uid}` : '/profile'} 
+          <Link
+            to={user?.uid ? `/profile/${user.uid}` : '/profile'}
             className="w-9 h-9 rounded-full bg-gradient-premium-1 p-[2px] hover:scale-105 transition-transform cursor-pointer"
             title="View Profile"
           >

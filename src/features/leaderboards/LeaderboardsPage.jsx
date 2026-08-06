@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlaskConical, Medal, Package, Trophy, CheckSquare, GraduationCap, BookOpen, Users, Brain, Network, PackageOpen, Palette, FileText } from 'lucide-react';
+import { FlaskConical, Medal, Package, Trophy, CheckSquare, GraduationCap, BookOpen, Users, Brain, Network, PackageOpen, Palette, FileText, Crown } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { PageContainer, SectionWrapper } from '../../components/layout/LayoutWrappers';
 import { PageHeader, LoadingState } from '../../components/ui/UIElements';
 import { Card, CardContent } from '../../components/ui/Card';
@@ -55,6 +56,7 @@ function getInitials(member) {
 }
 
 export default function LeaderboardsPage() {
+  const { user } = useAuth();
   const [activeBoard, setActiveBoard] = useState('xp');
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,7 @@ export default function LeaderboardsPage() {
     [activeBoard],
   );
   const ActiveIcon = activeConfig.icon;
+  const currentUserRank = members.findIndex(m => m.id === user?.uid) + 1;
 
   useEffect(() => {
     let cancelled = false;
@@ -112,14 +115,15 @@ export default function LeaderboardsPage() {
                 key={board.id}
                 type="button"
                 onClick={() => setActiveBoard(board.id)}
-                className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-4 text-sm font-bold transition ${
+                className={`inline-flex min-h-10 sm:min-h-11 shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border px-3 sm:px-4 text-xs sm:text-sm font-bold transition ${
                   active
                     ? 'border-accent/40 bg-accent/10 text-white'
                     : 'border-border bg-white/[0.03] text-text-muted hover:text-white'
                 }`}
               >
-                <Icon className="h-4 w-4" />
-                {board.label}
+                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">{board.label}</span>
+                <span className="sm:hidden">{board.label.split(' ')[0]}</span>
               </button>
             );
           })}
@@ -128,22 +132,32 @@ export default function LeaderboardsPage() {
 
       <SectionWrapper>
         {error && (
-          <div className="mb-4 rounded-xl border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">
+          <div className="mb-3 sm:mb-4 rounded-xl border border-status-danger/20 bg-status-danger/10 px-3 py-2.5 text-xs sm:text-sm text-status-danger sm:px-4 sm:py-3">
             {error}
+          </div>
+        )}
+
+        {user && currentUserRank > 0 && currentUserRank <= 25 && (
+          <div className="mb-4 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 flex items-center gap-3">
+            <Crown className="h-5 w-5 text-accent" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-white">Your current rank: #{currentUserRank}</p>
+              <p className="text-xs text-text-muted">Keep earning {activeConfig.metric} to climb higher!</p>
+            </div>
           </div>
         )}
 
         <Card className="rounded-lg">
           <CardContent className="p-0">
             {loading ? (
-              <div className="flex min-h-64 items-center justify-center">
+              <div className="flex min-h-52 sm:min-h-64 items-center justify-center">
                 <LoadingState text={`Loading ${activeConfig.label} leaderboard...`} />
               </div>
             ) : members.length === 0 ? (
-              <div className="p-8 text-center">
-                <Medal className="mx-auto mb-3 h-10 w-10 text-text-muted" />
-                <h2 className="mb-1 text-lg font-bold text-white">No leaderboard entries yet</h2>
-                <p className="text-sm text-text-muted">Members will appear here after earning reputation stats.</p>
+              <div className="p-6 sm:p-8 text-center">
+                <Medal className="mx-auto mb-3 h-8 w-8 sm:h-10 sm:w-10 text-text-muted" />
+                <h2 className="mb-1 text-base sm:text-lg font-bold text-white">No leaderboard entries yet</h2>
+                <p className="text-xs sm:text-sm text-text-muted">Members will appear here after earning reputation stats.</p>
               </div>
             ) : (
               <div className="divide-y divide-border">
@@ -151,10 +165,10 @@ export default function LeaderboardsPage() {
                   <Link
                     key={member.id}
                     to={`/profile/${member.id}`}
-                    className="grid gap-3 p-4 transition hover:bg-white/[0.03] sm:grid-cols-[4rem_minmax(0,1fr)_8rem] sm:items-center"
+                    className="grid gap-2 sm:gap-3 p-3 sm:p-4 transition hover:bg-white/[0.03] sm:grid-cols-[4rem_minmax(0,1fr)_8rem] sm:items-center"
                   >
                     <div className="flex items-center gap-3 sm:block">
-                      <span className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-black ${
+                      <span className={`inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border text-xs sm:text-sm font-black ${
                         index === 0
                           ? 'border-status-warning/40 bg-status-warning/10 text-status-warning'
                           : 'border-border bg-white/5 text-text-soft'
@@ -163,19 +177,19 @@ export default function LeaderboardsPage() {
                       </span>
                     </div>
 
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-accent/10 text-sm font-bold text-accent">
-                        {member.avatar ? <img src={member.avatar} alt="" className="h-full w-full object-cover" /> : getInitials(member)}
+                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                      <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-accent/10 text-xs sm:text-sm font-bold text-accent">
+                        {member.avatar ? <img src={member.avatar} alt={`Avatar of ${member.displayName || member.username}`} className="h-full w-full object-cover" /> : getInitials(member)}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate font-bold text-white">{member.displayName || member.username || 'Member'}</p>
-                        <p className="truncate text-xs text-text-muted">@{member.username || 'member'} · Level {member.level || 1}</p>
+                        <p className="truncate text-xs sm:text-sm font-bold text-white">{member.displayName || member.username || 'Member'}</p>
+                        <p className="truncate text-[10px] sm:text-xs text-text-muted">@{member.username || 'member'} · Level {member.level || 1}</p>
                       </div>
                     </div>
 
                     <div className="text-left sm:text-right">
-                      <p className="text-xl font-black text-white">{getScore(member, activeBoard)}</p>
-                      <p className="text-xs font-bold uppercase tracking-widest text-text-muted">{activeConfig.metric}</p>
+                      <p className="text-lg sm:text-xl font-black text-white">{getScore(member, activeBoard)}</p>
+                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-text-muted">{activeConfig.metric}</p>
                     </div>
                   </Link>
                 ))}

@@ -1,4 +1,5 @@
 import { db } from './config';
+import { errorHandler } from '../../utils/errorHandler';
 import {
   arrayUnion,
   collection,
@@ -120,7 +121,7 @@ export const SkillsService = {
       for (const skill of stored) merged.set(skill.id, { ...merged.get(skill.id), ...skill });
       return [...merged.values()].sort((a, b) => a.name.localeCompare(b.name));
     } catch (err) {
-      console.error('Skills read failed:', err);
+      errorHandler.error(err, 'Skills Read');
       return DEFAULT_SKILLS.map(skill => ({ ...skill, description: skill.overview }));
     }
   },

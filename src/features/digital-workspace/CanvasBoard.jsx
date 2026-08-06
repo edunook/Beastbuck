@@ -39,6 +39,7 @@ export default function CanvasBoard({ workspaceId, boardId, type = 'whiteboard',
           leaveWhiteboard();
        };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId, user]);
 
   const loadBoard = async () => {

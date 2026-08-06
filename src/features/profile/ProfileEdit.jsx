@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Save, X, Sparkles, Plus, Trash2, User, Mail, MapPin, Globe, Briefcase, GraduationCap, Heart, Zap, Palette, Layout, Wand2, Upload, Lock, Globe as GlobeIcon, Star } from 'lucide-react';
+import { Save, X, Plus, Trash2, User, MapPin, Globe, Briefcase, GraduationCap, Heart, Palette, Layout, Wand2, Upload, Lock, Globe as GlobeIcon, Star, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { UsersService } from '../../services/firebase/users';
 import { ThemesService } from '../../services/firebase/themes';
 import { uploadProofFile, isCloudinaryConfigured } from '../../services/cloudinary/uploads';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { LoadingState } from '../../components/ui/UIElements';
-import Button from '../../components/ui/Button';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+
 
 // Theme Templates
 const THEME_TEMPLATES = [
@@ -638,6 +640,7 @@ export default function ProfileEdit() {
   const [uploadingTheme, setUploadingTheme] = useState(false);
   const [customThemes, setCustomThemes] = useState([]);
   const [showThemePreview, setShowThemePreview] = useState(false);
+  const [showBioPreview, setShowBioPreview] = useState(false);
   
   // Theme customization state
   const [customizingTheme, setCustomizingTheme] = useState(false);
@@ -650,6 +653,27 @@ export default function ProfileEdit() {
   const [themeSearch, setThemeSearch] = useState('');
   const [themeCategory, setThemeCategory] = useState('all');
   const [favoriteThemes, setFavoriteThemes] = useState([]);
+
+  // Initialize TipTap editor for bio
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: formData.bio,
+    onUpdate: ({ editor }) => {
+      handleInputChange('bio', editor.getHTML());
+    },
+    editorProps: {
+      attributes: {
+        class: 'prose prose-invert max-w-none focus:outline-none min-h-[200px] p-4 rounded-xl border border-border bg-surface text-white',
+      },
+    },
+  });
+
+  // Update editor content when formData.bio changes externally
+  useEffect(() => {
+    if (editor && formData.bio !== editor.getHTML()) {
+      editor.commands.setContent(formData.bio);
+    }
+  }, [formData.bio, editor]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -681,7 +705,12 @@ export default function ProfileEdit() {
     ThemesService.getPublicThemes()
       .then(themes => {
         console.log('Public themes loaded:', themes);
-        setCustomThemes(themes);
+        setCustomThemes(prev => {
+          // Remove duplicates by ID
+          const existingIds = new Set(prev.map(t => t.id));
+          const newThemes = themes.filter(t => !existingIds.has(t.id));
+          return [...prev, ...newThemes];
+        });
       })
       .catch(err => {
         console.error('Failed to load public themes:', err);
@@ -693,7 +722,12 @@ export default function ProfileEdit() {
       ThemesService.getUserThemes(user.uid)
         .then(themes => {
           console.log('User themes loaded:', themes);
-          setCustomThemes(prev => [...prev, ...themes]);
+          setCustomThemes(prev => {
+            // Remove duplicates by ID
+            const existingIds = new Set(prev.map(t => t.id));
+            const newThemes = themes.filter(t => !existingIds.has(t.id));
+            return [...prev, ...newThemes];
+          });
         })
         .catch(err => {
           console.error('Failed to load user themes:', err);
@@ -940,25 +974,77 @@ export default function ProfileEdit() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-white flex items-center gap-2">
-                  Bio
+                <label className="mb-2 block text-sm font-bold text-white flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    Bio
+                    <button
+                      type="button"
+                      onClick={handleGenerateBio}
+                      disabled={generatingBio}
+                      className="rounded-lg bg-accent/10 px-2 py-1 text-xs font-bold text-accent hover:bg-accent/20 disabled:opacity-50 flex items-center gap-1"
+                    >
+                      <Wand2 className="h-3 w-3" />
+                      {generatingBio ? 'Generating...' : 'AI Generate'}
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    onClick={handleGenerateBio}
-                    disabled={generatingBio}
-                    className="rounded-lg bg-accent/10 px-2 py-1 text-xs font-bold text-accent hover:bg-accent/20 disabled:opacity-50 flex items-center gap-1"
+                    onClick={() => setShowBioPreview(!showBioPreview)}
+                    className="rounded-lg bg-white/10 px-2 py-1 text-xs font-bold text-white hover:bg-white/20 flex items-center gap-1"
                   >
-                    <Wand2 className="h-3 w-3" />
-                    {generatingBio ? 'Generating...' : 'AI Generate'}
+                    {showBioPreview ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    {showBioPreview ? 'Edit' : 'Preview'}
                   </button>
                 </label>
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
-                  rows={4}
-                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-white placeholder:text-text-muted focus:border-accent focus:outline-none resize-none"
-                  placeholder="Tell us about yourself..."
-                />
+                
+                {/* Split-screen Bio Editor */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Editor Panel */}
+                  {!showBioPreview && (
+                    <div className="md:col-span-2">
+                      {editor && (
+                        <div className="rounded-xl border border-border bg-surface overflow-hidden">
+                          <div className="flex items-center gap-2 border-b border-border bg-white/5 p-2">
+                            <button
+                              onClick={() => editor.chain().focus().toggleBold().run()}
+                              className={`rounded px-2 py-1 text-sm font-bold ${editor.isActive('bold') ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+                            >
+                              B
+                            </button>
+                            <button
+                              onClick={() => editor.chain().focus().toggleItalic().run()}
+                              className={`rounded px-2 py-1 text-sm italic ${editor.isActive('italic') ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+                            >
+                              I
+                            </button>
+                            <button
+                              onClick={() => editor.chain().focus().toggleBulletList().run()}
+                              className={`rounded px-2 py-1 text-sm ${editor.isActive('bulletList') ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+                            >
+                              • List
+                            </button>
+                            <button
+                              onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+                              className={`rounded px-2 py-1 text-sm font-mono ${editor.isActive('codeBlock') ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
+                            >
+                              &lt;/&gt;
+                            </button>
+                          </div>
+                          <EditorContent editor={editor} />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Preview Panel */}
+                  {showBioPreview && (
+                    <div className="md:col-span-2">
+                      <div className="rounded-xl border border-border bg-surface p-4 prose prose-invert max-w-none">
+                        <div dangerouslySetInnerHTML={{ __html: formData.bio }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

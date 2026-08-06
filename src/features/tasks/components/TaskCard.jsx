@@ -18,25 +18,28 @@ const STATUS_ICONS = {
 };
 
 export function TaskCard({ task, onClick }) {
+  if (!task) return null;
+
   const StatusIcon = STATUS_ICONS[task.status] || Clock;
-  
+  const priorityColor = PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.NORMAL;
+
   return (
-    <Card 
+    <Card
       className="cursor-pointer hover:border-accent/50 transition-colors bg-surface/50 hover:bg-surface"
       onClick={() => onClick?.(task)}
     >
       <CardContent className="p-4">
         <div className="flex justify-between items-start mb-2">
           <h4 className="font-bold text-white text-sm line-clamp-2 leading-tight">
-            {task.title}
+            {task.title || 'Untitled Task'}
           </h4>
-          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded ml-2 shrink-0 bg-white/5", PRIORITY_COLORS[task.priority])}>
-            {task.priority}
+          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded ml-2 shrink-0 bg-white/5", priorityColor)}>
+            {task.priority || 'NORMAL'}
           </span>
         </div>
-        
+
         <p className="text-xs text-text-muted line-clamp-2 mb-4">
-          {task.description}
+          {task.description || 'No description'}
         </p>
 
         {/* Progress Bar */}
@@ -46,9 +49,9 @@ export function TaskCard({ task, onClick }) {
             <span>{task.progressPercent || 0}%</span>
           </div>
           <div className="w-full bg-black/40 h-1.5 rounded-full overflow-hidden">
-            <div 
-              className="bg-accent h-full rounded-full transition-all duration-500" 
-              style={{ width: `${task.progressPercent || 0}%` }}
+            <div
+              className="bg-accent h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(0, Math.min(100, task.progressPercent || 0))}%` }}
             />
           </div>
         </div>
@@ -56,10 +59,10 @@ export function TaskCard({ task, onClick }) {
         <div className="flex items-center justify-between text-xs text-text-muted border-t border-border/50 pt-3">
           <div className="flex items-center gap-1.5">
             <StatusIcon className="w-3.5 h-3.5" />
-            <span className="capitalize">{task.status.replace('_', ' ').toLowerCase()}</span>
+            <span className="capitalize">{(task.status || 'TODO').replace('_', ' ').toLowerCase()}</span>
           </div>
           <div className="font-medium text-accent">
-            {task.baseXP} XP
+            {task.baseXP || 0} XP
           </div>
         </div>
       </CardContent>

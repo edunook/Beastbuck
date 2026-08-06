@@ -42,7 +42,7 @@ export default function AILegacyAdvisor() {
     <div className="min-h-screen bg-[#050505] text-neutral-200 flex flex-col md:flex-row">
       
       {/* Sidebar */}
-      <div className="w-full md:w-80 border-r border-neutral-800/60 bg-neutral-900/30 p-6 flex flex-col backdrop-blur-xl">
+      <div className="w-full md:w-80 lg:w-96 border-r border-neutral-800/60 bg-neutral-900/30 p-6 flex flex-col backdrop-blur-xl">
         <div className="flex items-center space-x-3 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-900/20">
             <Bot className="w-7 h-7 text-white" />

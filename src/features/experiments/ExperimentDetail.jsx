@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Archive, ArrowLeft, Eye, FileText, Heart, MessageSquare, Pencil, Star, Trash2, Users, Video, FolderKanban } from 'lucide-react';
+import { Archive, ArrowLeft, Eye, FileText, Heart, MessageSquare, Pencil, Star, Trash2, Users, Video, FolderKanban, Sparkles } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { PageContainer, SectionWrapper } from '../../components/layout/LayoutWrappers';
 import { LoadingState } from '../../components/ui/UIElements';
@@ -11,6 +11,7 @@ import { ExperimentsService } from '../../services/firebase/experiments';
 import { EXPERIMENT_CATEGORIES, EXPERIMENT_DIFFICULTIES, EXPERIMENT_STATUSES } from '../../services/firebase/experiments';
 import { UsersService } from '../../services/firebase/users';
 import { isCloudinaryConfigured, uploadExperimentMedia } from '../../services/cloudinary/uploads';
+import { AIContextPanel } from '../ai/AIContextPanel';
 
 function formatDate(timestamp) {
   const date = timestamp?.toDate?.();
@@ -338,6 +339,31 @@ export default function ExperimentDetail() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Sparkles className="h-5 w-5 text-accent" />AI Assistant</CardTitle></CardHeader>
+            <CardContent>
+              <AIContextPanel
+                buttons={[
+                  {
+                    label: 'Summarize Experiment',
+                    prompt: `Summarize this experiment:\n\nTitle: ${experiment?.title}\n\nDescription: ${experiment?.description}\n\nCategory: ${experiment?.category}\n\nDifficulty: ${experiment?.difficulty}\n\nStatus: ${experiment?.status}\n\nMaterials: ${experiment?.materials}\n\nProcedure: ${experiment?.procedure}\n\nResults: ${experiment?.results}\n\nLessons Learned: ${experiment?.lessonsLearned}`,
+                    mode: 'research',
+                  },
+                  {
+                    label: 'Analyze Methodology',
+                    prompt: `Analyze the methodology of this experiment:\n\nTitle: ${experiment?.title}\n\nProcedure: ${experiment?.procedure}\n\nMaterials: ${experiment?.materials}\n\nProvide feedback on the scientific approach, potential improvements, and best practices.`,
+                    mode: 'research',
+                  },
+                  {
+                    label: 'Suggest Improvements',
+                    prompt: `Based on this experiment, suggest improvements:\n\nTitle: ${experiment?.title}\n\nResults: ${experiment?.results}\n\nLessons Learned: ${experiment?.lessonsLearned}\n\nWhat could be done differently or better next time?`,
+                    mode: 'learning',
+                  },
+                ]}
+              />
+            </CardContent>
+          </Card>
+
           {isOwner && (
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2 text-lg"><Pencil className="h-5 w-5 text-accent" />Owner Tools</CardTitle></CardHeader>
@@ -355,32 +381,63 @@ export default function ExperimentDetail() {
         <SectionWrapper title="Edit Experiment" className="mt-6">
           <form onSubmit={saveEdits} className="space-y-4 rounded-2xl border border-border bg-surface p-4 md:p-5">
             <div className="grid gap-3 md:grid-cols-2">
-              <input value={editForm.title} onChange={(event) => updateEditField('title', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent" required />
-              <select value={editForm.category} onChange={(event) => updateEditField('category', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-                {EXPERIMENT_CATEGORIES.map(category => <option key={category}>{category}</option>)}
-              </select>
-              <select value={editForm.difficulty} onChange={(event) => updateEditField('difficulty', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-                {EXPERIMENT_DIFFICULTIES.map(difficulty => <option key={difficulty}>{difficulty}</option>)}
-              </select>
-              <select value={editForm.status} onChange={(event) => updateEditField('status', event.target.value)} className="h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
-                {EXPERIMENT_STATUSES.filter(status => status !== 'ARCHIVED').map(status => <option key={status}>{status}</option>)}
-              </select>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Title <span className="text-status-danger">*</span></label>
+                <input value={editForm.title} onChange={(event) => updateEditField('title', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent" required maxLength={100} />
+                <div className="mt-1 text-[10px] text-text-muted text-right">{editForm.title.length}/100</div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Category</label>
+                <select value={editForm.category} onChange={(event) => updateEditField('category', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
+                  {EXPERIMENT_CATEGORIES.map(category => <option key={category}>{category}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Difficulty</label>
+                <select value={editForm.difficulty} onChange={(event) => updateEditField('difficulty', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
+                  {EXPERIMENT_DIFFICULTIES.map(difficulty => <option key={difficulty}>{difficulty}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Status</label>
+                <select value={editForm.status} onChange={(event) => updateEditField('status', event.target.value)} className="h-10 w-full rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
+                  {EXPERIMENT_STATUSES.filter(status => status !== 'ARCHIVED').map(status => <option key={status}>{status}</option>)}
+                </select>
+              </div>
             </div>
             {[
-              ['description', 'Overview'],
-              ['materials', 'Materials'],
-              ['procedure', 'Procedure'],
-              ['results', 'Results'],
-              ['lessonsLearned', 'Lessons learned'],
-            ].map(([field, label]) => (
-              <textarea key={field} value={editForm[field]} onChange={(event) => updateEditField(field, event.target.value)} placeholder={label} rows={field === 'description' ? 3 : 4} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-text-muted focus:ring-2 focus:ring-accent" />
+              ['description', 'Overview', 'Short overview of your experiment', 3, 500],
+              ['materials', 'Materials', 'List materials and equipment needed', 4, 2000],
+              ['procedure', 'Procedure', 'Step-by-step instructions', 4, 2000],
+              ['results', 'Results', 'Document your findings', 4, 2000],
+              ['lessonsLearned', 'Lessons learned', 'What did you learn?', 4, 2000],
+            ].map(([field, label, placeholder, rows, maxLen]) => (
+              <div key={field}>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">{label} {field === 'description' && <span className="text-status-danger">*</span>}</label>
+                <textarea value={editForm[field]} onChange={(event) => updateEditField(field, event.target.value)} placeholder={placeholder} rows={rows} maxLength={maxLen} className="w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-text-muted focus:ring-2 focus:ring-accent" />
+                <div className="mt-1 text-[10px] text-text-muted text-right">{editForm[field].length}/{maxLen}</div>
+              </div>
             ))}
-            <label className="block">
-              <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-text-muted">Team Members</span>
+            <div>
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-text-muted">Team Members</label>
+              <p className="mb-2 text-[10px] text-text-muted">Hold Ctrl/Cmd to select multiple members</p>
               <select multiple value={editForm.teamMembers} onChange={(event) => updateEditField('teamMembers', [...event.target.selectedOptions].map(option => option.value))} className="min-h-28 w-full rounded-xl border border-border bg-white/5 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-accent">
                 {members.map(member => <option key={member.id} value={member.id}>{member.displayName || member.username}</option>)}
               </select>
-            </label>
+              {editForm.teamMembers.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {editForm.teamMembers.map(uid => {
+                    const member = members.find(m => m.id === uid);
+                    return member ? (
+                      <span key={uid} className="flex items-center gap-1 rounded-full bg-accent/10 px-2 py-1 text-xs text-accent">
+                        {member.displayName || member.username}
+                        <button type="button" onClick={() => updateEditField('teamMembers', editForm.teamMembers.filter(id => id !== uid))} className="hover:text-status-danger">×</button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
+            </div>
             <div className="rounded-xl border border-border bg-black/20 p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm font-bold text-white">Media</p>

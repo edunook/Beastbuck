@@ -9,6 +9,9 @@ import {
   doc,
   setDoc,
   updateDoc,
+  getDoc,
+  increment,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { UsersService } from './users';
 import { CertificateService } from './certificates';
@@ -18,6 +21,80 @@ import { OrganizationService } from './organization';
 function docsFrom(snap) {
   return snap.docs.map(item => ({ id: item.id, ...item.data() }));
 }
+
+// Stats Aggregator Engine - Helper for aggregating counts
+export const StatsAggregator = {
+  async aggregateUserStats(uid) {
+    const [
+      projectsSnap,
+      experimentsSnap,
+      productsSnap,
+      discoveriesSnap,
+      certificatesSnap,
+      activitySnap,
+    ] = await Promise.all([
+      getDocs(query(collection(db, 'projects'), where('memberIds', 'array-contains', uid))),
+      getDocs(query(collection(db, 'experiments'), where('authors', 'array-contains', uid))),
+      getDocs(query(collection(db, 'products'), where('authors', 'array-contains', uid))),
+      getDocs(query(collection(db, 'discoveries'), where('authorId', '==', uid))),
+      getDocs(query(collection(db, 'certificates'), where('userId', '==', uid))),
+      getDocs(query(collection(db, 'activityLogs'), where('userId', '==', uid), limit(100))),
+    ]);
+
+    const allProjects = docsFrom(projectsSnap);
+    const projects = allProjects.filter(p => p.projectType === 'STANDARD' || !p.projectType);
+    const researchProjects = allProjects.filter(p => p.projectType === 'RESEARCH');
+    const experiments = docsFrom(experimentsSnap);
+    const products = docsFrom(productsSnap);
+    const discoveries = docsFrom(discoveriesSnap);
+    const certificates = docsFrom(certificatesSnap);
+    const activity = docsFrom(activitySnap);
+
+    // Calculate Impact Score based on contributions
+    const impactScore = this.calculateImpactScore({
+      projects: projects.length,
+      research: researchProjects.length,
+      experiments: experiments.length,
+      products: products.length,
+      discoveries: discoveries.length,
+      certificates: certificates.length,
+      activity: activity.length,
+    });
+
+    return {
+      projects: projects.length,
+      research: researchProjects.length,
+      experiments: experiments.length,
+      products: products.length,
+      discoveries: discoveries.length,
+      certificates: certificates.length,
+      impact: impactScore,
+    };
+  },
+
+  calculateImpactScore(contributions) {
+    // Weighted impact score calculation
+    const weights = {
+      projects: 10,
+      research: 15,
+      experiments: 8,
+      products: 12,
+      discoveries: 20,
+      certificates: 5,
+      activity: 1,
+    };
+
+    return (
+      (contributions.projects * weights.projects) +
+      (contributions.research * weights.research) +
+      (contributions.experiments * weights.experiments) +
+      (contributions.products * weights.products) +
+      (contributions.discoveries * weights.discoveries) +
+      (contributions.certificates * weights.certificates) +
+      (contributions.activity * weights.activity)
+    );
+  },
+};
 
 export const PortfolioService = {
   async regeneratePortfolio(username) {
@@ -31,8 +108,6 @@ export const PortfolioService = {
       productsSnap,
       discoveriesSnap,
       coursesSnap,
-      tutorialsSnap,
-      articlesSnap,
       foundedVenturesSnap,
       joinedVenturesSnap,
       userLearningSnap,
@@ -48,8 +123,6 @@ export const PortfolioService = {
       getDocs(query(collection(db, 'products'), where('authors', 'array-contains', uid))),
       getDocs(query(collection(db, 'discoveries'), where('authorId', '==', uid))),
       getDocs(query(collection(db, 'courseEnrollments'), where('userId', '==', uid), where('status', '==', 'COMPLETED'))),
-      getDocs(query(collection(db, 'tutorials'), where('authorId', '==', uid), where('status', '==', 'PUBLISHED'))),
-      getDocs(query(collection(db, 'knowledgeArticles'), where('authorId', '==', uid), where('status', '==', 'PUBLISHED'))),
       getDocs(query(collection(db, 'ventures'), where('founderId', '==', uid))),
       getDocs(query(collection(db, 'ventures'), where('memberIds', 'array-contains', uid))),
       getDocs(query(collection(db, 'userLearning'), where('userId', '==', uid))),
@@ -70,8 +143,6 @@ export const PortfolioService = {
     const products = docsFrom(productsSnap);
     const discoveries = docsFrom(discoveriesSnap);
     const completedCourses = docsFrom(coursesSnap);
-    const authoredTutorials = docsFrom(tutorialsSnap);
-    const publishedArticles = docsFrom(articlesSnap);
     const foundedVentures = docsFrom(foundedVenturesSnap);
     const joinedVentures = docsFrom(joinedVenturesSnap).filter(v => v.founderId !== uid);
     const successfulVentures = [...foundedVentures, ...joinedVentures].filter(v => v.stage === 'SUCCESSFUL');
@@ -442,5 +513,126 @@ export const PortfolioService = {
     );
 
     return results;
-  }
+  },
+
+  async getUserPortfolio(uid) {
+    try {
+      const portfolioDoc = await getDoc(doc(db, 'portfolios', uid));
+      if (portfolioDoc.exists()) {
+        return portfolioDoc.data();
+      }
+      
+      // If no portfolio exists, create one with default privacy settings
+      const defaultPortfolio = {
+        uid,
+        privacy: {
+          showProjects: true,
+          showResearch: true,
+          showAchievements: true,
+          showStats: true,
+        },
+        stats: await StatsAggregator.aggregateUserStats(uid),
+        projects: [],
+        research: [],
+        achievements: [],
+        updatedAt: new Date().toISOString(),
+      };
+      
+      await setDoc(doc(db, 'portfolios', uid), defaultPortfolio);
+      return defaultPortfolio;
+    } catch (err) {
+      console.error('Failed to get user portfolio:', err);
+      throw err;
+    }
+  },
+
+  async updatePrivacySettings(uid, privacySettings) {
+    try {
+      const portfolioRef = doc(db, 'portfolios', uid);
+      await updateDoc(portfolioRef, {
+        privacy: privacySettings,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Failed to update privacy settings:', err);
+      throw err;
+    }
+  },
+
+  // Share Analytics Tracking
+  async trackShareEvent(uid, shareType, platform = null) {
+    try {
+      const shareRef = doc(db, 'portfolios', uid);
+      await updateDoc(shareRef, {
+        totalShares: increment(1),
+        [`shareStats.${shareType}`]: increment(1),
+        lastSharedAt: serverTimestamp(),
+      });
+
+      // Track platform-specific shares
+      if (platform) {
+        await updateDoc(shareRef, {
+          [`shareStats.platforms.${platform}`]: increment(1),
+        });
+      }
+
+      // Log share event for analytics
+      const shareLogRef = doc(collection(db, 'shareLogs'));
+      await setDoc(shareLogRef, {
+        userId: uid,
+        shareType,
+        platform,
+        timestamp: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('Failed to track share event:', err);
+      throw err;
+    }
+  },
+
+  async getShareAnalytics(uid) {
+    try {
+      const portfolioDoc = await getDoc(doc(db, 'portfolios', uid));
+      if (!portfolioDoc.exists()) {
+        return null;
+      }
+
+      const portfolio = portfolioDoc.data();
+      return {
+        totalShares: portfolio.totalShares || 0,
+        shareStats: portfolio.shareStats || {
+          link: 0,
+          qr: 0,
+          pdf: 0,
+          print: 0,
+          platforms: {
+            linkedin: 0,
+            twitter: 0,
+            facebook: 0,
+            email: 0,
+          },
+        },
+        lastSharedAt: portfolio.lastSharedAt || null,
+      };
+    } catch (err) {
+      console.error('Failed to get share analytics:', err);
+      throw err;
+    }
+  },
+
+  async getShareHistory(uid, limitCount = 50) {
+    try {
+      const shareLogsQuery = query(
+        collection(db, 'shareLogs'),
+        where('userId', '==', uid),
+        orderBy('timestamp', 'desc'),
+        limit(limitCount)
+      );
+      const shareLogsSnap = await getDocs(shareLogsQuery);
+      return docsFrom(shareLogsSnap);
+    } catch (err) {
+      console.error('Failed to get share history:', err);
+      throw err;
+    }
+  },
 };

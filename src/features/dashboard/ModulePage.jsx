@@ -32,14 +32,14 @@ const MODULE_CONFIGS = {
   creative: { title: 'Creative Hub', description: 'A gallery for drawings, crafts, models, posters, design concepts, and visual invention work.', icon: Palette, collection: 'creative_works' },
   skills: { title: 'Skill Ecosystems', description: 'Learning tracks that connect posts, challenges, projects, and discussions to real BeastBuck work.', icon: Brain, collection: 'skills' },
   teams: { title: 'Teams System', description: 'Dedicated spaces for robotics, science, product, and design teams to coordinate projects.', icon: UsersRound, collection: 'teams' },
-  announcements: { title: 'Announcements Center', description: 'A leadership publishing area for updates, challenges, winners, reminders, and company news.', icon: Megaphone, collection: 'announcements' },
-  leaderboards: { title: 'Leaderboards', description: 'Friendly rankings for XP, experiments, products, challenges, and team contributions.', icon: Trophy, collection: 'leaderboards' },
-  notifications: { title: 'Notification Center', description: 'A focused inbox for tasks, mentions, approvals, achievements, announcements, and team updates.', icon: Bell, collection: 'notifications' },
-  analytics: { title: 'Analytics Center', description: 'Operational metrics for member activity, completed tasks, experiments, products, XP, and growth.', icon: BarChart3, collection: 'analytics' },
-  assessment: { title: 'Role Assessment Center', description: 'Strength tests that recommend Scientist, Engineer, Leader, Developer, Inventor, Artist, Researcher, and Marketer badges.', icon: ClipboardCheck, collection: 'assessments' },
-  ai: { title: 'BeastBuck AI Assistant', description: 'A future project helper for science explanations, coding support, reports, and invention brainstorming.', icon: Bot, collection: 'ai_interactions' },
-  profile: { title: 'Member Profile', description: 'A portfolio-style identity page for roles, XP, levels, achievements, skills, products, and experiments.', icon: User, collection: 'profiles' },
-  settings: { title: 'Settings', description: 'Member controls for profile customization, notifications, privacy, and workspace preferences.', icon: Settings, collection: 'settings' },
+  announcements: { title: 'Announcements Center', description: 'A leadership publishing area for updates, challenges, winners, reminders, and company news.', icon: Megaphone, collection: 'organizationAnnouncements' },
+  leaderboards: { title: 'Leaderboards', description: 'Friendly rankings for XP, experiments, products, challenges, and team contributions.', icon: Trophy, collection: 'users' },
+  notifications: { title: 'Notification Center', description: 'A focused inbox for tasks, mentions, approvals, achievements, announcements, and team updates.', icon: Bell, collection: 'users' },
+  analytics: { title: 'Analytics Center', description: 'Operational metrics for member activity, completed tasks, experiments, products, XP, and growth.', icon: BarChart3, collection: 'users' },
+  assessment: { title: 'Role Assessment Center', description: 'Strength tests that recommend Scientist, Engineer, Leader, Developer, Inventor, Artist, Researcher, and Marketer badges.', icon: ClipboardCheck, collection: 'users' },
+  ai: { title: 'BeastBuck AI Assistant', description: 'A future project helper for science explanations, coding support, reports, and invention brainstorming.', icon: Bot, collection: 'aiChatSessions' },
+  profile: { title: 'Member Profile', description: 'A portfolio-style identity page for roles, XP, levels, achievements, skills, products, and experiments.', icon: User, collection: 'users' },
+  settings: { title: 'Settings', description: 'Member controls for profile customization, notifications, privacy, and workspace preferences.', icon: Settings, collection: 'users' },
 };
 
 function StatCard({ value, label }) {
@@ -103,7 +103,12 @@ export default function ModulePage({ type }) {
               detail: item.description || item.summary || 'No description available.',
             })),
             secondaryTitle: `${config.title} Features`,
-            secondary: ['Feature 1', 'Feature 2', 'Feature 3', 'Feature 4'],
+            secondary: [
+              'Real-time data synchronization',
+              'Advanced filtering and search',
+              'Collaborative editing support',
+              'Analytics and reporting',
+            ],
           });
         }
       } catch (error) {

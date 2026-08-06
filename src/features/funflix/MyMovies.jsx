@@ -18,7 +18,8 @@ export default function MyMovies() {
           </select>
         </div>
         
-        <table className="w-full text-left text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-border/50 text-text-muted">
               <th className="py-3 px-4">Movie</th>
@@ -54,6 +55,7 @@ export default function MyMovies() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </PageContainer>
   );

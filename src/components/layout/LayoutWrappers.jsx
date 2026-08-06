@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils';
  */
 export function PageContainer({ children, className }) {
   return (
-    <div className={cn("w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-8 animate-in fade-in duration-500", className)}>
+    <div className={cn("w-full max-w-[1600px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 lg:py-8 pt-20 animate-in fade-in duration-500", className)}>
       {children}
     </div>
   );

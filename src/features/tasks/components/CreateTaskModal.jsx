@@ -6,9 +6,9 @@ import { UsersService } from '../../../services/firebase/users';
 import { useAuth } from '../../auth/AuthContext';
 
 const TASK_TYPES = [
-  { value: 'PERSONAL', label: 'Personal', desc: 'Assigned to one member' },
-  { value: 'TEAM',     label: 'Team',     desc: 'Multiple assignees' },
-  { value: 'GLOBAL',   label: 'Global Mission', desc: 'Open to all members' },
+  { value: 'PERSONAL', label: 'Personal', desc: 'Assigned to one member for individual work' },
+  { value: 'TEAM',     label: 'Team',     desc: 'Multiple members can collaborate together' },
+  { value: 'GLOBAL',   label: 'Global Mission', desc: 'Open to all members - anyone can accept' },
 ];
 
 const PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'];
@@ -95,8 +95,8 @@ export function CreateTaskModal({ onClose, onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim()) { setError('Title is required.'); return; }
-    if (form.type !== 'GLOBAL' && form.assigneeIds.length === 0) {
+    if (!form.title?.trim()) { setError('Title is required.'); return; }
+    if (form.type !== 'GLOBAL' && (!form.assigneeIds || form.assigneeIds.length === 0)) {
       setError('Add at least one assignee, or choose Global Mission.');
       return;
     }
@@ -105,14 +105,14 @@ export function CreateTaskModal({ onClose, onCreated }) {
     try {
       const payload = {
         title: form.title.trim(),
-        description: form.description.trim(),
+        description: form.description?.trim() || '',
         type: form.type,
         priority: form.priority,
-        baseXP: Number(form.baseXP),
+        baseXP: Math.max(0, Number(form.baseXP) || 0),
         assigneeIds: form.type === 'GLOBAL' ? [] : form.assigneeIds,
-        tags: form.tags,
+        tags: form.tags || [],
         dueDate: form.dueDate || null,
-        isRecurring: form.isRecurring,
+        isRecurring: form.isRecurring || false,
         recurrenceType: form.isRecurring ? form.recurrenceType : null,
         attachments: [],
       };
@@ -129,13 +129,13 @@ export function CreateTaskModal({ onClose, onCreated }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto bg-surface border border-border rounded-2xl shadow-2xl custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="relative w-full max-w-xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-surface border border-border rounded-2xl shadow-2xl custom-scrollbar animate-in fade-in slide-in-from-bottom-4 duration-200">
 
         {/* Header */}
-        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-border/50 p-5 flex items-center justify-between">
+        <div className="sticky top-0 z-10 bg-surface/95 backdrop-blur-md border-b border-border/50 p-4 sm:p-5 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Plus className="w-4 h-4 text-accent" />
             <h2 className="font-heading font-bold text-white">Create Task</h2>
@@ -145,7 +145,7 @@ export function CreateTaskModal({ onClose, onCreated }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-5">
 
           {/* Task Type */}
           <div>

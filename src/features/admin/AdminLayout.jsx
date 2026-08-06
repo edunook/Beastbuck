@@ -13,11 +13,11 @@ import {
   Calendar,
   FlaskConical,
   BriefcaseBusiness,
-  GraduationCap,
   PackageOpen,
   Workflow,
   Orbit,
   Headphones,
+  Crown,
 } from 'lucide-react';
 import { PageContainer } from '../../components/layout/LayoutWrappers';
 import { cn } from '../../lib/utils';
@@ -38,6 +38,7 @@ const adminNav = [
   { label: 'Automation', path: '/admin/automation', icon: Workflow, desc: 'Smart ops' },
   { label: 'Universe', path: '/admin/universe', icon: Orbit, desc: 'Intelligence layer' },
   { label: 'Collaboration', path: '/admin/collaboration', icon: Headphones, desc: 'Voice & meetings' },
+  { label: 'Exec Roles', path: '/executive-role-management', icon: Crown, desc: 'CEO & Co-CEO roles' },
 ];
 
 export default function AdminLayout() {

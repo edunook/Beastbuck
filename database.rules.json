@@ -17,7 +17,19 @@
     "documentPresence": {
       "$docId": {
         ".read": "auth != null",
-        ".write": "auth != null",
+        ".write": "auth != null && (newData.child('users').child(auth.uid).exists() || auth.uid == $uid)",
+        "users": {
+          "$uid": {
+            ".read": "auth != null",
+            ".write": "auth != null && auth.uid == $uid"
+          }
+        }
+      }
+    },
+    "chatPresence": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null && newData.child('users').child(auth.uid).exists() || auth.uid == $roomId",
         "users": {
           "$uid": {
             ".read": "auth != null",

@@ -5,6 +5,8 @@
  * Includes built-in token management, retries, and error handling.
  */
 
+import { errorHandler } from '../../utils/errorHandler';
+
 const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.beastbuck.com/v1';
 
 class APIClient {
@@ -41,12 +43,14 @@ class APIClient {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.message || `API Error: ${response.status}`);
+        const error = new Error(data.message || `API Error: ${response.status}`);
+        errorHandler.error(error, 'API Client Request', { endpoint, status: response.status, url });
+        throw error;
       }
 
       return data;
     } catch (error) {
-      console.error('[API Client Error]', error);
+      errorHandler.error(error, 'API Client Request', { endpoint, url }, true);
       throw error;
     }
   }

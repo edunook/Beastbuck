@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, X, Send, Minus, MessageSquare, Trash2, PlusCircle, Sparkles, Zap, Brain, Lightbulb, Target, Rocket } from 'lucide-react';
+import { Bot, X, Send, Minus, MessageSquare, Trash2, PlusCircle, Sparkles, Brain, Lightbulb, Target, Rocket } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAI } from './AIProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
@@ -26,11 +27,15 @@ export default function GlobalAIAssistant() {
     createNewSession,
     deleteSession
   } = useAI();
+  const location = useLocation();
 
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [showQuickPrompts, setShowQuickPrompts] = useState(true);
   const bottomRef = useRef(null);
+
+  // Hide AI assistant entirely on chat page to avoid overlapping with chat input
+  if (location.pathname.startsWith('/chat')) return null;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,7 +57,7 @@ export default function GlobalAIAssistant() {
   if (isMinimized) {
     return (
       <div 
-        className="group fixed bottom-[6rem] right-4 md:bottom-6 md:right-6 z-[9999] flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-accent to-cyan-500 text-black shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all duration-300 hover:scale-110 hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] active:scale-95"
+        className="group fixed bottom-[6rem] right-4 md:bottom-6 md:right-6 z-[1000] flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-accent to-cyan-500 text-black shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all duration-300 hover:scale-110 hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] active:scale-95"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -67,7 +72,7 @@ export default function GlobalAIAssistant() {
   }
 
   return (
-    <Card className="group fixed bottom-[6rem] right-4 md:bottom-6 md:right-6 z-[9999] flex h-[600px] md:h-[650px] max-h-[80vh] md:max-h-[85vh] w-[calc(100vw-2rem)] md:w-[420px] flex-col border-accent/30 bg-gradient-to-br from-background/95 via-background/90 to-background/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-all duration-300">
+    <Card className="group fixed bottom-[6rem] right-4 md:bottom-6 md:right-6 z-[1001] flex h-[600px] md:h-[650px] max-h-[80vh] md:max-h-[85vh] w-[calc(100vw-2rem)] md:w-[420px] flex-col border-accent/30 bg-gradient-to-br from-background/95 via-background/90 to-background/95 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-all duration-300">
       {/* HEADER */}
       <CardHeader className="flex flex-row items-center justify-between border-b border-white/10 p-4 bg-gradient-to-r from-accent/10 via-purple-500/10 to-cyan-500/10">
         <CardTitle className="flex items-center gap-3 text-white">
@@ -216,7 +221,7 @@ export default function GlobalAIAssistant() {
         )}
       </CardContent>
       
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;

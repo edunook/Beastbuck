@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { PageContainer } from '../../components/layout/LayoutWrappers';
 import { PageHeader, EmptyState } from '../../components/ui/UIElements';
-import { FlaskConical, FileText, Quote, BookOpen, Brain, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 export default function ResearchAutomation() {
-  const [stats, setStats] = useState([]);
-  const [capabilities, setCapabilities] = useState([]);
+  const [stats] = useState([]);
+  const [capabilities] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

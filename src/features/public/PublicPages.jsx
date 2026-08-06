@@ -20,7 +20,6 @@ import {
   Heart,
   Star,
 } from 'lucide-react';
-import heroImage from '../../assets/hero.png';
 import { Input } from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import { PublicDataService } from '../../services/firebase/publicData';

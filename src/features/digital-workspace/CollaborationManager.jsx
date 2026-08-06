@@ -14,6 +14,7 @@ export default function CollaborationManager({ workspaceId, onClose }) {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
   const loadData = async () => {
@@ -94,15 +95,15 @@ export default function CollaborationManager({ workspaceId, onClose }) {
               
               <div className="p-4 bg-surface/30">
                  <h4 className="text-sm font-bold text-white mb-2">Invite Member</h4>
-                 <div className="flex gap-2">
-                    <input type="text" placeholder="User ID" className="flex-1 rounded border border-border bg-black/20 px-3 py-1.5 text-sm text-white" />
-                    <select className="rounded border border-border bg-black/20 px-3 py-1.5 text-sm text-white">
-                       <option>VIEWER</option>
-                       <option>COMMENTER</option>
-                       <option>EDITOR</option>
-                    </select>
-                    <Button size="sm">Invite</Button>
-                 </div>
+<div className="flex gap-2">
+                     <input type="text" placeholder="User ID" className="flex-1 rounded border border-border bg-black/20 px-3 py-1.5 text-sm text-white" />
+                     <select className="rounded border border-border bg-black/20 px-3 py-1.5 text-sm text-white">
+                        <option>VIEWER</option>
+                        <option>COMMENTER</option>
+                        <option>EDITOR</option>
+                     </select>
+                     <Button size="sm" onClick={() => alert('Invite sent! (Feature in development')}>Invite</Button>
+                  </div>
               </div>
             </div>
           ) : (

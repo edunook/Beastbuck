@@ -6,76 +6,60 @@ import {
   X,
   LayoutDashboard, 
   Compass, 
-  Activity,
-  CheckSquare, 
   MessageSquare, 
-  FlaskConical, 
-  Package, 
-  PackageOpen,
-  Palette,
-  Lightbulb, 
   Trophy, 
-  Bell,
-  BarChart3,
   Bot,
   User,
   Settings,
-  ClipboardCheck,
-  Megaphone,
   Building2,
   ShieldCheck,
   Brain,
   BriefcaseBusiness,
-  Calendar,
   UserCircle2,
-  GraduationCap,
   BookOpen,
   UsersRound,
   Sparkles,
-  Workflow,
-  Menu,
+  Film,
+  Palette,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useEffect } from 'react';
 
-const BOTTOM_NAV_ITEMS = [
-  { name: 'Home', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Chat', path: '/chat', icon: MessageSquare },
-  { name: 'Ventures', path: '/ventures', icon: BriefcaseBusiness },
-  { name: 'Menu', path: '#', icon: Menu, isDrawerTrigger: true },
-];
+
 
 const DRAWER_NAV_ITEMS = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Portfolio', path: '/portfolio', icon: User },
-  { name: 'Tasks', path: '/tasks', icon: CheckSquare },
-  { name: 'Communities', path: '/communities', icon: UsersRound },
-  { name: 'Discover', path: '/discover', icon: Compass },
-  { name: 'Showcase', path: '/showcase', icon: Sparkles },
-  { name: 'Experiments', path: '/workspace/experiments', icon: FlaskConical },
-  { name: 'Products', path: '/workspace/products', icon: Package },
-  { name: 'Marketplace', path: '/marketplace', icon: PackageOpen },
-  { name: 'Creative Hub', path: '/creative', icon: Palette },
-  { name: 'Skills', path: '/workspace/skills', icon: Lightbulb },
-  { name: 'Organization', path: '/organization', icon: Building2 },
-  { name: 'Innovation', path: '/innovation', icon: FlaskConical },
-  { name: 'Knowledge Hub', path: '/knowledge', icon: BookOpen },
-  { name: 'Automation', path: '/automation', icon: Workflow },
-  { name: 'Events', path: '/events', icon: Calendar },
-  { name: 'Portfolios', path: '/portfolios', icon: UserCircle2 },
-  { name: 'Announcements', path: '/announcements', icon: Megaphone },
-  { name: 'Leaderboards', path: '/leaderboards', icon: Trophy },
-  { name: 'Notifications', path: '/notifications', icon: Bell },
-  { name: 'Analytics', path: '/analytics', icon: BarChart3 },
-  { name: 'Assessment', path: '/assessment', icon: ClipboardCheck },
+  { name: 'Portfolios', path: '/portfolio', icon: User },
+  { name: 'Creativity', path: '/creativity', icon: Palette },
+  { name: 'Challenges', path: '/challenges', icon: Trophy },
+  { name: 'Chat', path: '/chat', icon: MessageSquare },
+  { name: 'FunFlix Home', path: '/funflix', icon: Film },
+  { name: 'My AIs', path: '/ai-studio', icon: Bot },
+  { name: 'AI Marketplace', path: '/ais', icon: Bot },
   { name: 'AI Assistant', path: '/ai', icon: Bot },
+  { name: 'Leaderboards', path: '/leaderboards', icon: Trophy },
 ];
 
 export default function MobileDrawer() {
   const { isMobileDrawerOpen, toggleMobileDrawer } = useGlobalStore();
-  const { roleData } = useAuth();
+  const { roleData, user } = useAuth();
   const role = roleData?.role;
-  const isAdmin = hasPermission(role, 'canAccessCeoPanel');
+  const normalizedRole = role?.toLowerCase().trim();
+  const isAdmin = hasPermission(role, 'canAccessCeoPanel') || 
+                  normalizedRole === 'main ceo' || 
+                  normalizedRole === 'co-ceo' || 
+                  normalizedRole === 'co ceo';
+
+  const isApprovedMember = roleData?.membershipStatus === 'approved' || isAdmin;
+
+  const MEMBER_ONLY_PATHS = ['/dashboard', '/chat', '/workspace', '/workspace/experiments', '/workspace/products'];
+
+  const filteredNavItems = DRAWER_NAV_ITEMS.filter((item) => {
+    if (MEMBER_ONLY_PATHS.includes(item.path)) {
+      return isApprovedMember;
+    }
+    return true;
+  });
 
   // Close drawer on route change or escape key
   useEffect(() => {
@@ -113,12 +97,13 @@ export default function MobileDrawer() {
 
             {/* Scrollable Nav */}
             <div className="flex-1 overflow-y-auto py-4 px-4 space-y-1 custom-scrollbar">
-              {DRAWER_NAV_ITEMS.map((item) => {
+              {filteredNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
                     key={item.name}
                     to={item.path}
+                    end
                     onClick={toggleMobileDrawer}
                     aria-label={item.name}
                     className={({ isActive }) => cn(
@@ -133,6 +118,17 @@ export default function MobileDrawer() {
                   </NavLink>
                 );
               })}
+
+              {!isApprovedMember && user && (
+                <NavLink
+                  to="/membership/apply"
+                  onClick={toggleMobileDrawer}
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl bg-accent/10 border border-accent/30 text-accent font-medium min-h-[44px]"
+                >
+                  <Sparkles className="w-5 h-5 shrink-0" aria-hidden="true" />
+                  <span className="truncate text-badge">Apply for Membership</span>
+                </NavLink>
+              )}
 
               {/* Admin Command Center */}
               {isAdmin && (

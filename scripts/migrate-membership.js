@@ -7,6 +7,7 @@
  * - Adds membershipStatus field to users and publicProfiles collections
  */
 
+/* eslint-disable */
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs, doc, updateDoc, writeBatch, serverTimestamp } = require('firebase/firestore');
 

@@ -22,6 +22,7 @@ export default function WorkspaceDetail() {
 
   useEffect(() => {
     if (user && id) loadWorkspace();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, id]);
 
   const loadWorkspace = async () => {
