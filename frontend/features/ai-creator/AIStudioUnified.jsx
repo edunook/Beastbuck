@@ -245,7 +245,7 @@ export default function AIStudioUnified() {
       description: template.description,
       emoji: template.emoji || '🤖',
       avatarUrl: template.avatarUrl || '',
-      systemPrompt: template.systemPrompt || '',
+      systemPrompt: '', // Always blank — member writes their own custom System Prompt from scratch!
       welcomeMessage: template.welcomeMessage || '',
       starterQuestions: Array.isArray(template.starterQuestions) ? template.starterQuestions.join('\n') : '',
     });
@@ -695,57 +695,53 @@ export default function AIStudioUnified() {
               </div>
             )}
 
-            {/* Step 1: System Prompt (Mandatory & Prominent) */}
+            {/* Step 1: System Prompt (Manual Crafting - Primary Directive) */}
             {createStep === 1 && (
               <div className="space-y-4 sm:space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-                      <FileText className="text-accent" /> System Prompt (Core Directive) <span className="text-status-danger">*</span>
-                    </h2>
-                    <p className="text-text-muted text-sm sm:text-base">
-                      The System Prompt is the **most important part** of your AI. It defines identity, rules, boundaries, and how it responds.
-                    </p>
-                  </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                    <FileText className="text-accent" /> Write Your System Prompt <span className="text-status-danger">*</span>
+                  </h2>
+                  <p className="text-text-muted text-sm sm:text-base mt-1">
+                    The System Prompt is the **core heart** of your AI assistant. Write the full directive, persona, behavioral rules, and constraints yourself.
+                  </p>
                 </div>
 
-                {/* Quick Templates for System Prompt */}
-                <div>
-                  <label className="block text-xs font-bold text-text-muted mb-2 uppercase tracking-widest">
-                    Quick System Prompt Templates
-                  </label>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {SYSTEM_PROMPT_TEMPLATES.map((tmpl, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => handleFormChange('systemPrompt', tmpl.prompt)}
-                        className="px-3 py-1.5 bg-white/5 hover:bg-accent/20 hover:text-accent border border-border rounded-lg text-xs font-bold text-text-soft transition"
-                      >
-                        {tmpl.name}
-                      </button>
-                    ))}
-                  </div>
+                {/* Prompt Writing Tips Banner */}
+                <div className="rounded-xl border border-accent/20 bg-accent/5 p-4 text-xs space-y-2">
+                  <p className="font-bold text-accent text-sm flex items-center gap-1.5">
+                    <Lightbulb className="w-4 h-4" /> Recommended System Prompt Structure:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-text-muted">
+                    <li><strong className="text-white">Role & Persona:</strong> State who the AI is (e.g. <em>"You are an expert Physics tutor named Newton..."</em>)</li>
+                    <li><strong className="text-white">Primary Goal:</strong> Define what it achieves for the user (e.g. <em>"Help students understand concepts intuitively..."</em>)</li>
+                    <li><strong className="text-white">Strict Rules:</strong> What it MUST or MUST NOT do (e.g. <em>"Never give direct answers immediately; ask guiding questions..."</em>)</li>
+                    <li><strong className="text-white">Response Format:</strong> How outputs should be formatted (e.g. <em>"Use Markdown headers, bullet points, and code blocks..."</em>)</li>
+                  </ul>
                 </div>
 
                 <div>
                   <label className="block text-sm font-bold text-white mb-2">
-                    System Instructions & Rules
+                    Custom System Prompt Directive
                   </label>
                   <textarea
                     value={aiForm.systemPrompt}
                     onChange={(e) => handleFormChange('systemPrompt', e.target.value)}
-                    rows={10}
-                    placeholder={`You are a helpful, accurate AI Assistant.
-Rules:
-1. Always maintain a professional, encouraging tone.
-2. Provide step-by-step reasoning for technical questions.
-3. If uncertain, state your assumptions clearly.`}
-                    className="w-full bg-black/60 border border-accent/30 rounded-xl p-4 text-sm text-white font-mono leading-relaxed focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition"
+                    rows={12}
+                    placeholder={`Write your original System Prompt instructions here...
+
+Example format to write:
+1. Role: You are...
+2. Objective: Your goal is to...
+3. Rules & Boundaries: Always... Never...
+4. Response Style: Format output with...`}
+                    className="w-full bg-black/70 border border-accent/40 rounded-xl p-4 text-sm text-white font-mono leading-relaxed focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition shadow-inner"
                   />
                   <div className="mt-2 flex items-center justify-between text-xs text-text-muted">
-                    <span>Write explicit rules, constraints, tone instructions, and behavioral guidelines.</span>
-                    <span>{aiForm.systemPrompt.length} characters</span>
+                    <span>Craft your own custom directive instructions. This dictates all AI responses.</span>
+                    <span className={aiForm.systemPrompt.trim().length > 0 ? "text-accent font-bold" : "text-status-danger"}>
+                      {aiForm.systemPrompt.trim().length} characters
+                    </span>
                   </div>
                 </div>
               </div>
