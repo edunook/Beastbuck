@@ -142,10 +142,10 @@ export default defineConfig({
   plugins: [beastbuckTailwind(), react()],
   resolve: {
     alias: {
-      '@frontend': path.resolve(__dirname, 'frontend'),
-      '@services': path.resolve(__dirname, 'frontend/services'),
-      '@shared': path.resolve(__dirname, 'shared'),
-      '@backend': path.resolve(__dirname, 'backend'),
+      '@frontend': path.resolve(process.cwd(), 'frontend'),
+      '@services': path.resolve(process.cwd(), 'frontend/services'),
+      '@shared': path.resolve(process.cwd(), 'shared'),
+      '@backend': path.resolve(process.cwd(), 'backend'),
     }
   },
   build: {

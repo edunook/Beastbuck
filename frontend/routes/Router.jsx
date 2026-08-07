@@ -372,7 +372,13 @@ const ProtectedRoute = ({ children, requireMember, requireCeo, requireAdmin, req
                   normalizedRole === 'co ceo';
 
   // Check membership status if requireMember is true
-  if (requireMember && membershipStatus !== 'approved' && !isAdmin) {
+  // A user is considered an approved member if:
+  //   1. membershipStatus === 'approved', OR
+  //   2. Their role inherently implies membership (Member, Leader, Co-CEO, Main CEO)
+  const MEMBER_ROLES = ['member', 'leader', 'co-ceo', 'co ceo', 'main ceo'];
+  const isMemberByRole = normalizedRole && MEMBER_ROLES.includes(normalizedRole);
+  const isApprovedMember = membershipStatus === 'approved' || isMemberByRole;
+  if (requireMember && !isApprovedMember && !isAdmin) {
     return <Navigate to="/membership/apply" replace />;
   }
 

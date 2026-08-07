@@ -9,6 +9,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
+import { useAuth } from '../auth/AuthContext';
 import { ROLES } from '@shared/constants/roles';
 import { PERMISSIONS } from '@shared/permissions/permissions';
 import EmptyState from '@frontend/components/ui/EmptyState';

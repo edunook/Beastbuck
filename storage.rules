@@ -43,9 +43,15 @@ service firebase.storage {
       return get(/databases/$(database)/documents/experiments/$(experimentId)).data.authorId == request.auth.uid;
     }
 
-// User Media Storage
+    // User Media Storage
     match /users/{userId}/{allPaths=**} {
       allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Avatar storage
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
@@ -61,30 +67,7 @@ service firebase.storage {
       allow write: if isAuthenticated() && (isProductOwner(productId) || canManageMembers());
     }
 
-    // Generic Read Access for Public Content
-    match /public/{allPaths=**} {
-      allow read: if true;
-    }
-
-    // Avatar storage
-    match /avatars/{userId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    // Team storage - restricted to team members
-    match /teams/{teamId}/{allPaths=**} {
-      allow read: if isAuthenticated() && isTeamMember(teamId);
-      allow write: if isAuthenticated() && (isTeamMember(teamId) || canManageMembers());
-    }
-
-    // Product storage - restricted to product owners
-    match /products/{productId}/{allPaths=**} {
-      allow read: if isAuthenticated() && isProductOwner(productId);
-      allow write: if isAuthenticated() && (isProductOwner(productId) || canManageMembers());
-    }
-
-// Experiment Storage
+    // Experiment Storage
     match /experiments/{experimentId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && (isExperimentAuthor(experimentId) || isLeader());
@@ -129,50 +112,6 @@ service firebase.storage {
       allow write: if canManageMembers();
     }
 
-    // Default deny
-    match /{allPaths=**} {
-      allow read, write: if false;
-    }
-    
-    // Skills storage - restricted to admins only
-    match /skills/{skillId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if canManageMembers();
-    }
-
-    // Creative works storage
-    match /creative/{workId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        get(/databases/$(database)/documents/creative_works/$(workId)).data.creatorId == request.auth.uid ||
-        isLeader()
-      );
-    }
-
-    // FunFlix storage
-    match /funflix/{videoId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        get(/databases/$(database)/documents/funflix_videos/$(videoId)).data.creatorId == request.auth.uid ||
-        isLeader()
-      );
-    }
-
-    // Marketplace storage
-    match /marketplace/{itemId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && (
-        get(/databases/$(database)/documents/marketplace/$(itemId)).data.creatorId == request.auth.uid ||
-        isLeader()
-      );
-    }
-
-    // Certificates storage
-    match /certificates/{certificateId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if canManageMembers();
-    }
-
     // Documents storage
     match /documents/{documentId}/{allPaths=**} {
       allow read: if isAuthenticated();
@@ -188,7 +127,12 @@ service firebase.storage {
       allow write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Default deny for anything outside the structured paths
+    // Generic Read Access for Public Content
+    match /public/{allPaths=**} {
+      allow read: if true;
+    }
+
+    // Default deny for anything outside structured paths
     match /{allPaths=**} {
       allow read, write: if false;
     }

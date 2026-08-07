@@ -149,7 +149,7 @@ exports.onUserWritten = onDocumentWritten('users/{userId}', async (event) => {
 
 // Trigger on project changes
 exports.onProjectWritten = onDocumentWritten('projects/{projectId}', async (event) => {
-  const data = event.data.after.data;
+  const data = event.data && event.data.after ? event.data.after.data() : null;
   if (!data || !data.memberIds) return;
   
   for (const uid of data.memberIds) {
@@ -159,7 +159,7 @@ exports.onProjectWritten = onDocumentWritten('projects/{projectId}', async (even
 
 // Trigger on certificate changes
 exports.onCertificateWritten = onDocumentWritten('certificates/{certificateId}', async (event) => {
-  const data = event.data.after.data;
+  const data = event.data && event.data.after ? event.data.after.data() : null;
   if (!data || !data.userId) return;
   
   await regeneratePortfolioForUser(data.userId);
@@ -167,7 +167,7 @@ exports.onCertificateWritten = onDocumentWritten('certificates/{certificateId}',
 
 // Trigger on venture changes
 exports.onVentureWritten = onDocumentWritten('ventures/{ventureId}', async (event) => {
-  const data = event.data.after.data;
+  const data = event.data && event.data.after ? event.data.after.data() : null;
   if (!data) return;
   
   const uids = [];
@@ -181,7 +181,7 @@ exports.onVentureWritten = onDocumentWritten('ventures/{ventureId}', async (even
 
 // Trigger on discovery changes
 exports.onDiscoveryWritten = onDocumentWritten('discoveries/{discoveryId}', async (event) => {
-  const data = event.data.after.data;
+  const data = event.data && event.data.after ? event.data.after.data() : null;
   if (!data || !data.authorId) return;
   
   await regeneratePortfolioForUser(data.authorId);
@@ -189,7 +189,7 @@ exports.onDiscoveryWritten = onDocumentWritten('discoveries/{discoveryId}', asyn
 
 // Trigger on course enrollment changes
 exports.onCourseEnrollmentWritten = onDocumentWritten('courseEnrollments/{enrollmentId}', async (event) => {
-  const data = event.data.after.data;
+  const data = event.data && event.data.after ? event.data.after.data() : null;
   if (!data || !data.userId || data.status !== 'COMPLETED') return;
   
   await regeneratePortfolioForUser(data.userId);
@@ -197,7 +197,7 @@ exports.onCourseEnrollmentWritten = onDocumentWritten('courseEnrollments/{enroll
 
 // Trigger on marketplace item changes
 exports.onMarketplaceItemWritten = onDocumentWritten('marketplaceItems/{itemId}', async (event) => {
-  const data = event.data.after.data;
+  const data = event.data && event.data.after ? event.data.after.data() : null;
   if (!data || !data.creatorId) return;
   
   await regeneratePortfolioForUser(data.creatorId);

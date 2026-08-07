@@ -63,10 +63,10 @@ async function migrateMembership() {
             membershipStatus: membershipStatus
           });
           
-          // Update public profile document
-          batch.update(publicProfileRef, {
+          // Update public profile document safely
+          batch.set(publicProfileRef, {
             membershipStatus: membershipStatus
-          });
+          }, { merge: true });
           
           migratedCount++;
           console.log(`Migrated user ${userId} with role ${userData.role} -> membershipStatus: ${membershipStatus}`);

@@ -42,8 +42,6 @@ export const hasPermission = (userRole, permissionName) => {
     role?.toLowerCase().trim() === normalizedRole
   );
   
-  console.log('Permission check:', { permissionName, userRole, normalizedRole, exactMatch, caseInsensitiveMatch });
-  
   return exactMatch || caseInsensitiveMatch;
 };
 

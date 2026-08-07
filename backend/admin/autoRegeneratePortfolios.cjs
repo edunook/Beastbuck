@@ -9,7 +9,13 @@ const path = require('path');
 const admin = require('firebase-admin');
 
 // Initialize Firebase Admin with service account
-const serviceAccountPath = path.join(__dirname, '..', 'service-account.json');
+let serviceAccountPath = path.join(__dirname, '..', '..', 'service-account.json');
+if (!fs.existsSync(serviceAccountPath)) {
+  serviceAccountPath = path.join(__dirname, '..', 'service-account.json');
+}
+if (!fs.existsSync(serviceAccountPath) && process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  serviceAccountPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+}
 if (!fs.existsSync(serviceAccountPath)) {
   console.error('Error: service-account.json not found. Please download it from Firebase Console and place it in the project root.');
   process.exit(1);
