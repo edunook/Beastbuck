@@ -159,6 +159,7 @@ function SafeAvatar({ ai }) {
 const CONCISE_SUFFIX = `
 
 RESPONSE STYLE RULES (always follow these):
+- LANGUAGE: Always reply in the EXACT same language and script the user wrote in. If the user writes in Urdu (اردو), reply in Urdu. If in Hindi (हिंदी), reply in Hindi. If in Arabic, French, Spanish, etc., match that exactly. Never switch to English unless the user writes in English.
 - Keep responses SHORT and focused — 2 to 5 sentences max for simple questions.
 - Use bullet points for lists, steps, or comparisons.
 - Use **bold** for key terms only.
