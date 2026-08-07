@@ -96,8 +96,9 @@ function beastbuckTailwind() {
     name: 'beastbuck-tailwind',
     enforce: 'pre',
     async transform(_code, id) {
-      const cleanId = id.replaceAll('\\', '/').split('?')[0]
-      if (!cleanId.endsWith('/frontend/styles/index.css')) return null
+      const cleanId = id.replaceAll('\\', '/').split('?')[0].toLowerCase()
+      const isIndexCss = cleanId.endsWith('frontend/styles/index.css') || cleanId.includes('styles/index.css')
+      if (!isIndexCss) return null
 
       if (!generatedCss) {
         const root = process.cwd()
