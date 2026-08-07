@@ -17,8 +17,10 @@ export function AICoAuthorEditor() {
   const editor = useEditor({
     extensions: [StarterKit],
     content: documentText,
-    onUpdate: ({ editor }) => {
-      setDocumentText(editor.getHTML());
+    onUpdate: ({ editor: currentEditor }) => {
+      if (currentEditor && !currentEditor.isDestroyed) {
+        setDocumentText(currentEditor.getHTML());
+      }
     },
     editorProps: {
       attributes: {

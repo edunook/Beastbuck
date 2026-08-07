@@ -31,9 +31,11 @@ export function ResearchEditor() {
   const editor = useEditor({
     extensions: [StarterKit],
     content: '',
-    onUpdate: ({ editor }) => {
-      const content = editor.getText();
-      updateMilestones(content);
+    onUpdate: ({ editor: currentEditor }) => {
+      if (currentEditor && !currentEditor.isDestroyed) {
+        const content = currentEditor.getText();
+        updateMilestones(content);
+      }
     },
     editorProps: {
       attributes: {

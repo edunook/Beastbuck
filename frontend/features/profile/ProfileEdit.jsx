@@ -657,9 +657,11 @@ export default function ProfileEdit() {
   // Initialize TipTap editor for bio
   const editor = useEditor({
     extensions: [StarterKit],
-    content: formData.bio,
-    onUpdate: ({ editor }) => {
-      handleInputChange('bio', editor.getHTML());
+    content: formData.bio || '',
+    onUpdate: ({ editor: currentEditor }) => {
+      if (currentEditor && !currentEditor.isDestroyed) {
+        handleInputChange('bio', currentEditor.getHTML());
+      }
     },
     editorProps: {
       attributes: {
@@ -670,8 +672,14 @@ export default function ProfileEdit() {
 
   // Update editor content when formData.bio changes externally
   useEffect(() => {
-    if (editor && formData.bio !== editor.getHTML()) {
-      editor.commands.setContent(formData.bio);
+    if (!editor || editor.isDestroyed) return;
+    try {
+      const currentHTML = editor.getHTML();
+      if (formData.bio !== undefined && formData.bio !== currentHTML) {
+        editor.commands.setContent(formData.bio || '');
+      }
+    } catch (err) {
+      // TipTap editor not fully initialized yet
     }
   }, [formData.bio, editor]);
 
