@@ -903,7 +903,7 @@ export default function ProfileEdit() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const profileUid = uid || user.uid;
+      const profileUid = (uid && uid !== user?.uid && (roleData?.role === 'Main CEO' || roleData?.role === 'Co-CEO')) ? uid : user?.uid;
       await UsersService.updateUserProfile(profileUid, {
         displayName: formData.displayName,
         bio: formData.bio,
