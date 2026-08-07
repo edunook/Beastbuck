@@ -96,38 +96,37 @@ function beastbuckTailwind() {
     name: 'beastbuck-tailwind',
     enforce: 'pre',
     async transform(_code, id) {
-      if (!id.replaceAll('\\', '/').endsWith('/frontend/styles/index.css')) return null
+      const cleanId = id.replaceAll('\\', '/').split('?')[0]
+      if (!cleanId.endsWith('/frontend/styles/index.css') && !cleanId.includes('frontend/styles/index.css')) return null
 
-      if (!generatedCss) {
-        const root = process.cwd()
-        const files = (await Promise.all(['index.html', 'frontend'].map((entry) => collectFiles(root, entry)))).flat()
-        const candidates = new Set()
+      const root = process.cwd()
+      const files = (await Promise.all(['index.html', 'frontend'].map((entry) => collectFiles(root, entry)))).flat()
+      const candidates = new Set()
 
-        for (const file of files) {
-          const content = await fs.readFile(file, 'utf8')
-          for (const candidate of extractCandidates(content)) {
-            candidates.add(candidate)
-          }
+      for (const file of files) {
+        const content = await fs.readFile(file, 'utf8')
+        for (const candidate of extractCandidates(content)) {
+          candidates.add(candidate)
         }
-
-        const compiler = await compile(tailwindInput, {
-          base: root,
-          async loadStylesheet(sheetId, baseDir) {
-            const file =
-              sheetId === 'tailwindcss'
-                ? path.join(root, 'node_modules/tailwindcss/index.css')
-                : path.resolve(baseDir, sheetId)
-
-            return {
-              path: file,
-              base: path.dirname(file),
-              content: await fs.readFile(file, 'utf8'),
-            }
-          },
-        })
-
-        generatedCss = `${compiler.build([...candidates])}${customCss}`
       }
+
+      const compiler = await compile(tailwindInput, {
+        base: root,
+        async loadStylesheet(sheetId, baseDir) {
+          const file =
+            sheetId === 'tailwindcss'
+              ? path.join(root, 'node_modules/tailwindcss/index.css')
+              : path.resolve(baseDir, sheetId)
+
+          return {
+            path: file,
+            base: path.dirname(file),
+            content: await fs.readFile(file, 'utf8'),
+          }
+        },
+      })
+
+      generatedCss = `${compiler.build([...candidates])}${customCss}`
 
       return {
         code: generatedCss,
