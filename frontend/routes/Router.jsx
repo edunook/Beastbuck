@@ -24,6 +24,7 @@ const MissionControl = React.lazy(() => import('@frontend/features/mission-contr
 const TasksHub = React.lazy(() => import('@frontend/features/tasks/TasksHub'));
 const ChatPage = React.lazy(() => import('@frontend/features/chat/ChatPage'));
 const ProfilePage = React.lazy(() => import('@frontend/features/profile/ProfilePage'));
+const ProfileEdit = React.lazy(() => import('@frontend/features/profile/ProfileEdit'));
 const LeaderboardsPage = React.lazy(() => import('@frontend/features/leaderboards/LeaderboardsPage'));
 const ExperimentsLab = React.lazy(() => import('@frontend/features/experiments/ExperimentsLab'));
 const ExperimentDetail = React.lazy(() => import('@frontend/features/experiments/ExperimentDetail'));
@@ -460,6 +461,8 @@ export default function AppRouter() {
           <Route path="/notifications" element={<NotificationsCenter />} />
           <Route path="/ai" element={<AIOS />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile/edit" element={<ProfileEdit />} />
+          <Route path="/profile/:uid/edit" element={<ProfileEdit />} />
           <Route path="/profile/:uid" element={<ProfilePage />} />
           <Route path="/settings" element={<ModulePage type="settings" />} />
           

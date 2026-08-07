@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Save, X, Plus, Trash2, User, MapPin, Globe, Briefcase, GraduationCap, Heart, Palette, Layout, Wand2, Upload, Lock, Globe as GlobeIcon, Star, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '@frontend/features/auth/AuthContext';
 import { UsersService } from '@services/firestore/users';
 import { ThemesService } from '@services/firestore/themes';
 import { uploadProofFile, isCloudinaryConfigured } from '@services/storage/cloudinary';
