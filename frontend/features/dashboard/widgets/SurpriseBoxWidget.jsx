@@ -31,7 +31,6 @@ export function SurpriseBoxWidget() {
         const canClaim = await GamificationService.canClaimDailyReward(user.uid);
         setCanOpen(canClaim);
       } catch (err) {
-        console.log('Surprise check failed:', err.message);
       } finally {
         setLoading(false);
       }
@@ -50,7 +49,6 @@ export function SurpriseBoxWidget() {
       await GamificationService.claimDailyReward(user.uid);
       setCanOpen(false);
     } catch (err) {
-      console.log('Surprise claim failed:', err.message);
     } finally {
       setOpening(false);
     }

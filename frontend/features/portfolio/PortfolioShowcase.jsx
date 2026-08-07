@@ -17,9 +17,7 @@ export default function PortfolioShowcase() {
   useEffect(() => {
     async function load() {
       try {
-        console.log('Loading members...');
         const members = await UsersService.getAllMembers();
-        console.log('Members loaded:', members.length, members);
         setAllMembers(members);
         setFilteredMembers(members);
       } catch (err) {
@@ -27,7 +25,6 @@ export default function PortfolioShowcase() {
         try {
           // Fallback to leaderboard if getAllMembers fails
           const topMembers = await GamificationService.getLeaderboard({ type: 'xp', maxCount: 50 });
-          console.log('Leaderboard loaded:', topMembers.length, topMembers);
           setAllMembers(topMembers);
           setFilteredMembers(topMembers);
         } catch (fallbackErr) {

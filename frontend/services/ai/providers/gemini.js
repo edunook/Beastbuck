@@ -19,7 +19,6 @@ export const geminiProvider = {
   async chat({ messages, systemPrompt, signal }) {
     if (!API_KEY) throw new Error('Gemini API key is not configured.');
 
-    console.log('[AI] Attempting provider: Gemini...');
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -51,7 +50,6 @@ export const geminiProvider = {
     for (const model of modelsToTry) {
       for (const version of versionsToTry) {
         try {
-          console.log(`[AI] Trying Gemini model: ${model} with API version: ${version}`);
           const response = await fetch(
             `https://generativelanguage.googleapis.com/${version}/models/${model}:generateContent?key=${API_KEY}`,
             {
@@ -67,7 +65,6 @@ export const geminiProvider = {
           const payload = await response.json();
           if (!response.ok) {
             const errorMsg = payload?.error?.message || `Gemini request failed with status ${response.status}`;
-            console.log(`[AI] Gemini request failed for ${model} (${version}): ${errorMsg}`);
             // If model not found for this version, try next version/model
             if (errorMsg.includes('not found for API version') || response.status === 404) {
               lastError = new Error(errorMsg);
@@ -79,7 +76,6 @@ export const geminiProvider = {
             }
             throw new Error(errorMsg);
           }
-          console.log(`[AI] Gemini request successful with model: ${model} (${version})`);
           return payload?.candidates?.[0]?.content?.parts?.map(part => part.text).join('\n') || '';
         } catch (err) {
           clearTimeout(timeoutId);
@@ -95,7 +91,6 @@ export const geminiProvider = {
       }
     }
 
-    console.log('[AI] Provider Gemini failed: All models and versions exhausted');
     throw lastError || new Error('Gemini request failed.');
   },
 };

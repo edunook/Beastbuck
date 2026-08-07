@@ -203,11 +203,6 @@ export const AuthService = {
     localStorage.setItem('lastLoginAttempt', Date.now().toString());
 
     const authEmail = this.getAuthEmailForUsername(normalizedUsername);
-    console.log('Sign in attempt:', {
-      username: normalizedUsername,
-      authEmail,
-      passwordLength: sanitizedPassword?.length
-    });
     return await signInWithEmailAndPassword(auth, authEmail, sanitizedPassword);
   },
 

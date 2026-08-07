@@ -29,7 +29,6 @@ export function PersonalGoalsWidget() {
         const data = await GamificationService.getPersonalGoals(user.uid);
         setGoals(data || []);
       } catch (err) {
-        console.log('Goals load failed:', err.message);
       } finally {
         setLoading(false);
       }

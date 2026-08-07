@@ -21,7 +21,6 @@ export function ExperimentsWidget() {
         const data = await GamificationService.getActiveExperiments(user.uid);
         setExperiments(data || []);
       } catch (err) {
-        console.log('Experiments load failed:', err.message);
       } finally {
         setLoading(false);
       }

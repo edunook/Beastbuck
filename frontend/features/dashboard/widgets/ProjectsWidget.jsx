@@ -21,7 +21,6 @@ export function ProjectsWidget() {
         const data = await GamificationService.getUserProjects(user.uid);
         setProjects(data || []);
       } catch (err) {
-        console.log('Projects load failed:', err.message);
       } finally {
         setLoading(false);
       }

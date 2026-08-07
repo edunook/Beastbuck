@@ -21,7 +21,6 @@ export function MySquadWidget() {
         const data = await GamificationService.getMySquad(user.uid);
         setSquad(data || []);
       } catch (err) {
-        console.log('Squad load failed:', err.message);
       } finally {
         setLoading(false);
       }

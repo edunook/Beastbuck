@@ -21,7 +21,6 @@ export function FriendsActivityWidget() {
         const friendActivities = await GamificationService.getFriendsActivity(user.uid);
         setActivities(friendActivities || []);
       } catch (err) {
-        console.log('Friends activity load failed:', err.message);
       } finally {
         setLoading(false);
       }

@@ -24,7 +24,6 @@ export const groqProvider = {
   async chat({ messages, systemPrompt, signal }) {
     if (!API_KEY) throw new Error('Groq API key is not configured.');
 
-    console.log('[AI] Attempting provider: Groq...');
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -34,7 +33,6 @@ export const groqProvider = {
     }
 
     try {
-      console.log(`[AI] Trying Groq model: ${MODEL}`);
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -55,18 +53,14 @@ export const groqProvider = {
 
       const payload = await response.json();
       if (!response.ok) {
-        console.log(`[AI] Groq request failed: ${payload?.error?.message || 'Groq request failed.'}`);
         throw new Error(payload?.error?.message || 'Groq request failed.');
       }
-      console.log(`[AI] Groq request successful with model: ${MODEL}`);
       return payload?.choices?.[0]?.message?.content || '';
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        console.log('[AI] Groq request timed out');
         throw new Error('Groq request timed out. Please try again.', { cause: err });
       }
-      console.log(`[AI] Groq provider failed: ${err.message}`);
       throw err;
     }
   },

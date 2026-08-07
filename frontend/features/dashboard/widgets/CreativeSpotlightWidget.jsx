@@ -22,7 +22,6 @@ export function CreativeSpotlightWidget() {
         const spotlight = (data || []).filter(p => p.featured || p.progress >= 80).slice(0, 3);
         setItems(spotlight);
       } catch (err) {
-        console.log('Creative spotlight load failed:', err.message);
       } finally {
         setLoading(false);
       }

@@ -48,7 +48,6 @@ export default function AITrainingCenter() {
   };
 
   const handleUpload = (type) => {
-    console.log('Uploading:', type);
     setUploadedFiles([...uploadedFiles, { id: Date.now(), type, name: `New ${type} file`, status: 'processing' }]);
   };
 

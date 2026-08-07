@@ -39,7 +39,6 @@ export default function MembershipApply() {
       const application = await MembershipService.getUserApplication(user.uid);
       setExistingApplication(application);
     } catch (err) {
-      console.log('Membership applications not accessible:', err.message);
       setExistingApplication(null);
     } finally {
       setLoading(false);
@@ -51,9 +50,6 @@ export default function MembershipApply() {
     setSubmitting(true);
     setError(null);
 
-    console.log('User submitting application:', user?.uid);
-    console.log('User email:', user?.email);
-    console.log('Form data:', formData);
 
     try {
       await MembershipService.submitApplication(user.uid, formData);

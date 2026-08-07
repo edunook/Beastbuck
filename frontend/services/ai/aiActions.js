@@ -35,7 +35,6 @@ export const AIActionsService = {
     // However, the user requires an Action Review Modal. 
     // This service only provides the schema definition for execution.
     // Actual execution is handled by the component layer interacting with the DB services.
-    console.log("Staging action execution:", action, context);
     return true; 
   }
 };

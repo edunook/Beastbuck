@@ -133,7 +133,6 @@ export default function AIStudioUnified() {
             setStats(statsSnap.docs[0].data());
           }
         } catch (statsError) {
-          console.log('Stats collection not yet created:', statsError.message);
           // Don't set error, just continue without stats
         }
 
@@ -149,7 +148,6 @@ export default function AIStudioUnified() {
 
           setMyAIs(aisSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         } catch (aisError) {
-          console.log('Custom AIs collection not yet created:', aisError.message);
           // Don't set error, just continue without AIs
         }
       } catch (error) {

@@ -53,7 +53,6 @@ export const CertificateService = {
     );
 
     if (!existingSnap.empty) {
-      console.log(`Certificate "${title}" already exists and is active for user ${userId}`);
       return existingSnap.docs[0].id;
     }
 

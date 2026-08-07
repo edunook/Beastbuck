@@ -24,7 +24,6 @@ export function FunFlixWidget() {
         const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setVideos(items || []);
       } catch (err) {
-        console.log('FunFlix load failed:', err.message);
       } finally {
         setLoading(false);
       }

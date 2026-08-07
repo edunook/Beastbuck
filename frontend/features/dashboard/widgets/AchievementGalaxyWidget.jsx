@@ -23,7 +23,6 @@ export function AchievementGalaxyWidget() {
         const data = await GamificationService.getRecentAchievements(user.uid, 6);
         setAchievements(data || []);
       } catch (err) {
-        console.log('Achievement galaxy load failed:', err.message);
       } finally {
         setLoading(false);
       }

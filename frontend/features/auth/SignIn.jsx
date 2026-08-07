@@ -18,7 +18,6 @@ export default function SignIn() {
     setError(null);
 
     try {
-      console.log('Sign in attempt with username:', username);
       await AuthService.signIn(username, password);
       navigate('/dashboard');
     } catch (err) {

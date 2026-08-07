@@ -23,7 +23,6 @@ export function DailyMissionWidget() {
         setMissions(userMissions || []);
         setCompleted(roleData?.completedMissions || {});
       } catch (err) {
-        console.log('Daily missions load failed:', err.message);
       } finally {
         setLoading(false);
       }

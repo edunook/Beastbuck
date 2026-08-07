@@ -109,7 +109,6 @@ export default function Sidebar() {
   const role = roleData?.role;
   
   // Debug logging to check role value
-  console.log('Sidebar - Role:', role, 'RoleData:', roleData);
   
   // Case-insensitive role matching for robustness
   const normalizedRole = role?.toLowerCase().trim();

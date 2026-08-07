@@ -21,7 +21,6 @@ export function TrendingWidget() {
         const trendingData = await GamificationService.getTrendingAcrossPlatform();
         setTrending(trendingData || []);
       } catch (err) {
-        console.log('Trending load failed:', err.message);
       } finally {
         setLoading(false);
       }

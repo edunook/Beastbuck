@@ -33,7 +33,6 @@ export function DailyHighlightsWidget() {
         const data = await GamificationService.getDailyHighlights(user.uid);
         setHighlights(data || []);
       } catch (err) {
-        console.log('Daily highlights failed:', err.message);
       } finally {
         setLoading(false);
       }

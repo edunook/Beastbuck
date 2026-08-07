@@ -71,7 +71,6 @@ export function WelcomePanel() {
           }
         }, 30);
       } catch (err) {
-        console.log('Dashboard data load failed:', err.message);
       }
     };
 
@@ -89,7 +88,6 @@ export function WelcomePanel() {
         const userMissions = await GamificationService.getUserDailyMissions(user.uid);
         setMissions(userMissions || []);
       } catch (err) {
-        console.log('Welcome missions load failed:', err.message);
       } finally {
         setLoadingMissions(false);
       }

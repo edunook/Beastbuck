@@ -704,7 +704,6 @@ export default function ProfileEdit() {
     // Fetch public custom themes from Firestore
     ThemesService.getPublicThemes()
       .then(themes => {
-        console.log('Public themes loaded:', themes);
         setCustomThemes(prev => {
           // Remove duplicates by ID
           const existingIds = new Set(prev.map(t => t.id));
@@ -721,7 +720,6 @@ export default function ProfileEdit() {
     if (user?.uid) {
       ThemesService.getUserThemes(user.uid)
         .then(themes => {
-          console.log('User themes loaded:', themes);
           setCustomThemes(prev => {
             // Remove duplicates by ID
             const existingIds = new Set(prev.map(t => t.id));

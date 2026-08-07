@@ -32,7 +32,6 @@ export function NotificationsWidget() {
         const data = await GamificationService.getNotifications(user.uid, 5);
         setNotifications(data || []);
       } catch (err) {
-        console.log('Notifications failed:', err.message);
       } finally {
         setLoading(false);
       }

@@ -32,11 +32,9 @@ const MembershipBanner = () => {
             const app = await MembershipService.getUserApplication(user.uid);
             setApplication(app);
           } catch (appErr) {
-            console.log('Membership applications not accessible:', appErr.message);
           }
         }
       } catch (err) {
-        console.log('Membership check failed, defaulting to non-member:', err.message);
       } finally {
         setLoading(false);
       }
@@ -105,7 +103,6 @@ const DailyLoginReward = ({ onClaimSuccess }) => {
         const canClaimReward = await GamificationService.canClaimDailyReward(user.uid);
         setCanClaim(canClaimReward);
       } catch (err) {
-        console.log('Daily reward check failed:', err.message);
       }
     };
 
@@ -122,7 +119,6 @@ const DailyLoginReward = ({ onClaimSuccess }) => {
       setCanClaim(false);
       onClaimSuccess?.();
     } catch (err) {
-      console.log('Reward claim failed:', err.message);
     } finally {
       setClaiming(false);
     }

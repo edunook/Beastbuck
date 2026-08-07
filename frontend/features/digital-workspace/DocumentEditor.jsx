@@ -112,7 +112,6 @@ export default function DocumentEditor({ workspaceId, docId, onClose }) {
       setLastSaved(new Date());
     } else {
        // In complete implementation we generate ID and update parent state
-       console.log('Would create new doc:', data);
     }
     
     setSaving(false);

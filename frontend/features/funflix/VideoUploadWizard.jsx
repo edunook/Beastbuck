@@ -75,7 +75,6 @@ export function VideoUploadWizard() {
 
   const handleSubmit = () => {
     // In production, save to Firestore
-    console.log('Video metadata:', formData);
     alert('Video uploaded successfully!');
   };
 

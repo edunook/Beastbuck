@@ -20,6 +20,7 @@ export default function Topbar() {
       <div className="flex items-center gap-3 md:hidden">
         <button
           onClick={toggleMobileDrawer}
+          aria-label="Open mobile navigation menu"
           className="p-3 -ml-3 text-text-muted hover:text-text rounded-lg hover:bg-surface transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <Menu className="w-6 h-6" />
@@ -33,6 +34,7 @@ export default function Topbar() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <Input
             type="text"
+            aria-label="Search experiments, skills, members"
             placeholder="Search experiments, skills, members..."
             className="w-full pl-10 bg-surface border-border hover:border-border-100 focus:bg-surface-100 rounded-full h-10"
           />
@@ -43,6 +45,7 @@ export default function Topbar() {
       <div className="flex items-center gap-2 sm:gap-4 ml-auto">
         <button
           onClick={togglePresencePanel}
+          aria-label="Toggle Live Presence panel"
           className="relative p-3 text-text-muted hover:text-text rounded-full hover:bg-surface transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
           title="Live Presence"
         >

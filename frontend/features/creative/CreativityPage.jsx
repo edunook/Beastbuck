@@ -184,7 +184,6 @@ function UploadModal({ isOpen, onClose, onSubmit }) {
   const updateField = (field, value) => setForm(current => ({ ...current, [field]: value }));
 
   const uploadFiles = async (files) => {
-    console.log('Starting file upload:', files);
     if (!files.length) return;
     
     // Limit to one file per post
@@ -213,12 +212,10 @@ function UploadModal({ isOpen, onClose, onSubmit }) {
       const uploaded = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        console.log(`Uploading file ${i + 1}/${files.length}:`, file.name, file.type, file.size);
         setUploadProgress(Math.round(((i) / files.length) * 100));
         
         try {
           const result = await uploadCreativeMedia(file);
-          console.log('Upload successful for:', file.name, result);
           uploaded.push(result);
           setUploadProgress(Math.round(((i + 1) / files.length) * 100));
         } catch (err) {
@@ -227,7 +224,6 @@ function UploadModal({ isOpen, onClose, onSubmit }) {
         }
       }
 
-      console.log('Upload complete. Total uploaded:', uploaded.length);
       if (uploaded.length > 0) {
         updateField('media', [...form.media, ...uploaded]);
         setUploadSuccess(true);
@@ -246,7 +242,6 @@ function UploadModal({ isOpen, onClose, onSubmit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submission started. Form data:', form);
     
     // Check membership status before allowing upload
     const isApprovedMember = await MembershipService.isApprovedMember(user?.uid);
@@ -269,9 +264,7 @@ function UploadModal({ isOpen, onClose, onSubmit }) {
         name: roleData?.displayName || roleData?.username || user?.displayName || 'Member',
         username: roleData?.username || user?.displayName || '',
       };
-      console.log('Submitting to Firestore with creator:', creator);
       await onSubmit({ ...form, creator });
-      console.log('Firestore submission successful');
       onClose();
       setForm(EMPTY_FORM);
     } catch (err) {

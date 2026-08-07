@@ -51,7 +51,6 @@ export const AIService = {
         { id: 5, type: 'community', title: 'Explore the community', description: 'Discover what others are building' },
       ];
     } catch (err) {
-      console.log('AI recommendations failed:', err.message);
       return [];
     }
   },

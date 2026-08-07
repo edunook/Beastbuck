@@ -21,7 +21,6 @@ export function EventsWidget() {
         const upcomingEvents = await EventService.getUpcomingEvents(3);
         setEvents(upcomingEvents || []);
       } catch (err) {
-        console.log('Events load failed:', err.message);
       } finally {
         setLoading(false);
       }

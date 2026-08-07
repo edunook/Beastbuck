@@ -32,7 +32,6 @@ export function ContinueJourneyWidget() {
         const activity = await GamificationService.getRecentlyAccessed(user.uid);
         setRecentlyAccessed(activity || []);
       } catch (err) {
-        console.log('Continue journey load failed:', err.message);
       } finally {
         setLoading(false);
       }

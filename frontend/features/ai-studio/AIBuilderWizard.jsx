@@ -69,7 +69,6 @@ export function AIBuilderWizard() {
 
   const handleSubmit = () => {
     // In production, save to Firestore
-    console.log('AI Agent Configuration:', formData);
     alert('AI Agent created successfully!');
   };
 

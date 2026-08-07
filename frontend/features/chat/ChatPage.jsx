@@ -110,7 +110,6 @@ const ChatPage = React.memo(function ChatPage() {
         }
       } catch (err) {
         if (err?.code !== 'permission-denied') {
-          console.log('Chat settings load failed:', err.message);
         }
       }
     };
@@ -128,7 +127,6 @@ const ChatPage = React.memo(function ChatPage() {
       await setDoc(doc(db, 'users', user.uid, 'chatSettings', 'preferences'), next, { merge: true });
     } catch (err) {
       if (err?.code !== 'permission-denied') {
-        console.log('Chat settings save failed:', err.message);
       }
     }
   }, [chatSettings, user?.uid]);
@@ -466,12 +464,10 @@ const ChatPage = React.memo(function ChatPage() {
   const handleFileSelect = useCallback((files) => {
     // Files are already processed in MessageInput; parent can inspect or upload here
     if (!files?.length) return;
-    console.log('Files selected in chat:', files.length);
   }, []);
 
   const handleVoiceRecord = useCallback(() => {
     // Placeholder for future voice recording implementation
-    console.log('Voice record requested');
   }, []);
 
   const handleReply = useCallback((message) => {
@@ -579,7 +575,6 @@ const ChatPage = React.memo(function ChatPage() {
     if (!msgId) return;
     try {
       // Log report cleanly
-      console.log('Report logged for message:', msgId, reason);
     } catch (error) {
       console.error('Failed to report message:', error);
       setError('Failed to report message');
@@ -822,7 +817,6 @@ const ChatPage = React.memo(function ChatPage() {
         celebrations={celebrations}
         onClose={(id) => dismissCelebration(id)}
         onClaim={(celebration) => {
-          console.log('Celebration claimed:', celebration);
         }}
       />
 

@@ -33,7 +33,6 @@ export function DailyStreakWidget() {
           (history || []).some(date => date === new Date().toDateString())
         );
       } catch (err) {
-        console.log('Streak load failed:', err.message);
       } finally {
         setLoading(false);
       }
@@ -58,7 +57,6 @@ export function DailyStreakWidget() {
         return [...prev, today].slice(-DAYS_TO_SHOW);
       });
     } catch (err) {
-      console.log('Streak claim failed:', err.message);
     } finally {
       setClaiming(false);
     }

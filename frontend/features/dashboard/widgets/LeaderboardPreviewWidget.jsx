@@ -27,7 +27,6 @@ export function LeaderboardPreviewWidget() {
         const data = await GamificationService.getTopLeaderboard(3);
         setLeaders(data || []);
       } catch (err) {
-        console.log('Leaderboard load failed:', err.message);
       } finally {
         setLoading(false);
       }

@@ -20,7 +20,6 @@ export function CreativeEnergyCrystalWidget() {
         const data = await GamificationService.getCreativeEnergy(user.uid);
         setEnergy(data?.energy || 0);
       } catch (err) {
-        console.log('Creative energy load failed:', err.message);
       } finally {
         setLoading(false);
       }

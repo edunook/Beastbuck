@@ -23,7 +23,6 @@ export default function RichMessageComposer() {
 
   const handleSend = () => {
     if (!message.trim()) return;
-    console.log('Sending message:', message);
     setMessage('');
     setIsDraft(false);
   };

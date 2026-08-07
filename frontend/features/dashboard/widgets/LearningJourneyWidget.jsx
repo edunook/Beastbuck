@@ -21,7 +21,6 @@ export function LearningJourneyWidget() {
         const data = await GamificationService.getLearningJourney(user.uid);
         setJourney(data);
       } catch (err) {
-        console.log('Learning journey failed:', err.message);
       } finally {
         setLoading(false);
       }

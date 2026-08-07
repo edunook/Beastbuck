@@ -59,7 +59,6 @@ export function AIProvider({ children }) {
         setActiveSessionId(s[0].id);
       }
     } catch (err) {
-      console.log('AI chat history not accessible:', err.message);
       setSessions([]);
     }
   };
@@ -69,7 +68,6 @@ export function AIProvider({ children }) {
       const msgs = await AIChatHistoryService.getSessionMessages(sid);
       setMessages(msgs);
     } catch (err) {
-      console.log('AI session messages not accessible:', err.message);
       setMessages([]);
     }
   };
@@ -80,7 +78,6 @@ export function AIProvider({ children }) {
       setActiveSessionId(sid);
       await loadSessions();
     } catch (err) {
-      console.log('Cannot create AI session:', err.message);
     }
   };
 
@@ -90,7 +87,6 @@ export function AIProvider({ children }) {
       if (activeSessionId === sid) setActiveSessionId(null);
       await loadSessions();
     } catch (err) {
-      console.log('Cannot delete AI session:', err.message);
     }
   };
 
@@ -116,7 +112,6 @@ export function AIProvider({ children }) {
     try {
       await AIChatHistoryService.addMessageToSession(activeSessionId, 'user', text);
     } catch (err) {
-      console.log('Cannot save user message to history:', err.message);
     }
 
     setLoading(true);
@@ -140,7 +135,6 @@ export function AIProvider({ children }) {
       try {
         await AIChatHistoryService.addMessageToSession(activeSessionId, 'assistant', plainText);
       } catch (err) {
-        console.log('Cannot save AI message to history:', err.message);
       }
 
       // Stage action if one exists
@@ -168,7 +162,6 @@ export function AIProvider({ children }) {
     try {
       await AIChatHistoryService.addMessageToSession(activeSessionId, 'assistant', msg.content);
     } catch (err) {
-      console.log('Cannot save action message to history:', err.message);
     }
   };
 

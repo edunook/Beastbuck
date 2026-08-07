@@ -872,7 +872,6 @@ function ShareActions({ profile, theme }) {
           url: shareUrl,
         });
       } catch (err) {
-        console.log('Share failed:', err);
       }
     } else {
       navigator.clipboard.writeText(shareUrl);

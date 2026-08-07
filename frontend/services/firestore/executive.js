@@ -34,7 +34,6 @@ export async function assignFirstCEO(uid, userData) {
   try {
     const ceoExists = await checkCEOExists();
     if (ceoExists) {
-      console.log('CEO already exists, skipping auto-assignment');
       return { success: false, reason: 'CEO already exists' };
     }
 

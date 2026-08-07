@@ -33,7 +33,6 @@ export function DiscoveryCarouselWidget() {
         const discoveries = await GamificationService.getDailyDiscoveries(user.uid);
         setItems(discoveries || []);
       } catch (err) {
-        console.log('Discovery load failed:', err.message);
       } finally {
         setLoading(false);
       }

@@ -67,7 +67,6 @@ async function retryWithBackoff(fn, retries = MAX_RETRIES) {
       if (isNonRetryableError(err)) throw err;
       if (i === retries - 1) throw err;
       const delay = RETRY_DELAYS[i] || 1000;
-      console.log(`[AI] Retry ${i + 1}/${retries} after ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -159,13 +158,11 @@ export const AIService = {
     // Try each provider with retry logic
     for (const providerId of configuredProviders) {
       const provider = providers[providerId];
-      console.log(`[AI] Attempting provider: ${provider.name}...`);
 
       try {
         const result = await retryWithBackoff(async () => {
           return await provider.chat({ messages, systemPrompt, signal });
         });
-        console.log(`[AI] Success with provider: ${provider.name}`);
         return result;
       } catch (err) {
         console.warn(`[AI] Provider ${provider.name} failed:`, err.message);

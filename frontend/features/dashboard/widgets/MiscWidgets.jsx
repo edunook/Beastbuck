@@ -128,7 +128,6 @@ export function TrendingExperimentsPanel() {
         const nextExperiments = await ExperimentsService.searchExperiments({});
         if (!cancelled) setExperiments(nextExperiments.slice(0, 5));
       } catch (err) {
-        console.log('Trending experiments not accessible:', err.message);
       }
     }
 

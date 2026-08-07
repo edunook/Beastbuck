@@ -28,7 +28,6 @@ export function PersonalGrowthTreeWidget() {
         const stats = await GamificationService.getUserStats(user.uid);
         setLevel(stats?.level || 1);
       } catch (err) {
-        console.log('Growth tree load failed:', err.message);
       } finally {
         setLoading(false);
       }

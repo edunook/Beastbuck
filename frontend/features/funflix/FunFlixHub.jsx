@@ -279,7 +279,6 @@ export default function FunFlixHub() {
           setMyMovies(myMoviesData);
         }
       } catch (error) {
-        console.log('FunFlix: using sample data (Firebase unavailable)');
         setFeaturedMovies(SAMPLE_MOVIES.slice(0, 4));
         setTrendingMovies(SAMPLE_MOVIES);
         setTop10Movies(SAMPLE_MOVIES.slice(0, 10));
