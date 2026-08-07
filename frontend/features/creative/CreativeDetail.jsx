@@ -11,32 +11,32 @@ import { CREATIVE_CATEGORIES, CREATIVE_STATUSES, CreativeService } from '@servic
 
 import { isCloudinaryConfigured, uploadCreativeMedia } from '@services/storage/cloudinary';
 import { AIContextPanel } from '../ai/AIContextPanel';
-
-function formatDate(timestamp) {
-  const date = timestamp?.toDate?.();
-  if (!date) return 'Recently';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(date);
-}
-
-function textBlock(value, empty = 'Not documented yet.') {
-  return <p className="whitespace-pre-wrap text-sm leading-7 text-text-soft">{value || empty}</p>;
-}
+import { SafeImage } from './CreativityPage';
 
 function MediaItem({ item }) {
-  if (item.type === 'image') {
-    return <img src={item.url} alt={item.name || ''} className="h-56 w-full rounded-xl object-cover" />;
+  const url = typeof item === 'string' ? item : (item?.url || item?.src || item?.path || '');
+  const type = typeof item === 'object' ? item.type : undefined;
+  const isVideo = type === 'video' || /\.(mp4|webm|ogg|mov)($|\?)/i.test(url);
+  const isDoc = type === 'document' || /\.(pdf|doc|docx|txt|csv)($|\?)/i.test(url);
+
+  if (isVideo) {
+    return <video src={url} controls className="h-56 w-full rounded-xl bg-black object-contain" />;
   }
 
-  if (item.type === 'video') {
-    return <video src={item.url} controls className="h-56 w-full rounded-xl bg-black object-contain" />;
+  if (isDoc) {
+    return (
+      <a href={url} target="_blank" rel="noreferrer" className="flex min-h-32 items-center gap-3 rounded-xl border border-border bg-white/[0.03] p-4 text-text-soft hover:text-white">
+        <FileText className="h-6 w-6 text-accent" />
+        <span className="min-w-0 truncate">{typeof item === 'object' ? item.name || 'Document' : 'Document'}</span>
+      </a>
+    );
   }
 
-  return (
-    <a href={item.url} target="_blank" rel="noreferrer" className="flex min-h-32 items-center gap-3 rounded-xl border border-border bg-white/[0.03] p-4 text-text-soft hover:text-white">
-      <FileText className="h-6 w-6 text-accent" />
-      <span className="min-w-0 truncate">{item.name || 'Document'}</span>
-    </a>
-  );
+  if (url) {
+    return <SafeImage src={url} alt={typeof item === 'object' ? item.name || '' : ''} className="h-72 w-full rounded-xl object-cover" />;
+  }
+
+  return null;
 }
 
 export default function CreativeDetail() {

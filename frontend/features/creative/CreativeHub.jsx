@@ -11,6 +11,7 @@ import { hasPermission } from '@shared/permissions/permissions';
 import { CREATIVE_CATEGORIES, CreativeService } from '@services/firestore/creative';
 import { isCloudinaryConfigured, uploadCreativeMedia } from '@services/storage/cloudinary';
 import { cn } from '@shared/lib/utils';
+import { getCreativeMediaList, SafeImage } from './CreativityPage';
 
 const EMPTY_FORM = {
   title: '',
@@ -161,11 +162,14 @@ function CreativeForm({ onCancel, onSubmit, submitting }) {
 }
 
 function CreativeCard({ work, canModerate, onArchive, onFeature }) {
-  const firstImage = work.media?.find(item => item.type === 'image');
+  const mediaList = getCreativeMediaList(work);
+  const firstMedia = mediaList[0];
 
   return (
     <Card className="rounded-lg">
-      {firstImage && <img src={firstImage.url} alt={work.title} className="h-44 w-full object-cover" />}
+      {firstMedia?.url && (
+        <SafeImage src={firstMedia.url} alt={work.title} className="h-44 w-full object-cover" />
+      )}
       <CardContent className="p-5">
         <div className="mb-3 flex flex-wrap gap-2">
           <span className="rounded-lg bg-accent/10 px-2 py-1 text-xs font-bold text-accent">{work.category}</span>

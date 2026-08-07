@@ -91,10 +91,81 @@ const animations = `
   }
 `;
 
+const PUBLIC_GATEWAYS = [
+  'https://gateway.pinata.cloud/ipfs/',
+  'https://ipfs.io/ipfs/',
+  'https://dweb.link/ipfs/',
+  'https://cloudflare-ipfs.com/ipfs/'
+];
+
+export function getCreativeMediaList(work) {
+  if (!work) return [];
+  const items = [];
+
+  if (Array.isArray(work.media) && work.media.length > 0) {
+    for (const m of work.media) {
+      if (!m) continue;
+      if (typeof m === 'string') {
+        const isVid = /\.(mp4|webm|ogg|mov)($|\?)/i.test(m);
+        items.push({ url: m, type: isVid ? 'video' : 'image' });
+      } else if (typeof m === 'object') {
+        const url = m.url || m.src || m.path || m.href || '';
+        if (url) {
+          const type = m.type || (/\.(mp4|webm|ogg|mov)($|\?)/i.test(url) ? 'video' : 'image');
+          items.push({ url, type, name: m.name || '' });
+        }
+      }
+    }
+  }
+
+  if (items.length === 0) {
+    const singleUrl = work.imageUrl || work.coverUrl || work.mediaUrl || work.url || work.image;
+    if (singleUrl && typeof singleUrl === 'string') {
+      const isVid = /\.(mp4|webm|ogg|mov)($|\?)/i.test(singleUrl);
+      items.push({ url: singleUrl, type: isVid ? 'video' : 'image' });
+    }
+  }
+
+  return items;
+}
+
+export function SafeImage({ src, alt, className }) {
+  const [currentSrc, setCurrentSrc] = useState(src);
+  const [gatewayIndex, setGatewayIndex] = useState(0);
+
+  useEffect(() => {
+    setCurrentSrc(src);
+    setGatewayIndex(0);
+  }, [src]);
+
+  const handleError = () => {
+    if (currentSrc && currentSrc.includes('/ipfs/')) {
+      const cid = currentSrc.split('/ipfs/').pop();
+      if (cid && gatewayIndex + 1 < PUBLIC_GATEWAYS.length) {
+        const nextIndex = gatewayIndex + 1;
+        setGatewayIndex(nextIndex);
+        setCurrentSrc(`${PUBLIC_GATEWAYS[nextIndex]}${cid}`);
+      }
+    }
+  };
+
+  if (!currentSrc) return null;
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt || ''}
+      className={className}
+      onError={handleError}
+    />
+  );
+}
+
 function CreativeCard({ work, index, onLike, hasLiked }) {
-  const firstMedia = work.media?.[0];
+  const mediaList = getCreativeMediaList(work);
+  const firstMedia = mediaList[0];
   const isVideo = firstMedia?.type === 'video';
-  const isImage = firstMedia?.type === 'image';
+  const isImage = firstMedia?.type === 'image' || Boolean(firstMedia?.url);
 
   return (
     <div
@@ -105,23 +176,27 @@ function CreativeCard({ work, index, onLike, hasLiked }) {
       style={{ animationDelay: `${index * 0.1}s` }}
     >
       {/* Media */}
-      <div className="relative w-full overflow-hidden">
-        {isImage && (
-          <img
-            src={firstMedia.url}
-            alt={work.title}
-            className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110"
-          />
-        )}
-        {isVideo && (
+      <div className="relative w-full aspect-square overflow-hidden bg-black/40 flex items-center justify-center">
+        {isVideo ? (
           <video
             src={firstMedia.url}
-            className="w-full h-auto object-cover"
+            className="w-full h-full object-cover"
             muted
             loop
             onMouseEnter={(e) => e.target.play()}
             onMouseLeave={(e) => e.target.pause()}
           />
+        ) : isImage && firstMedia?.url ? (
+          <SafeImage
+            src={firstMedia.url}
+            alt={work.title}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center p-6 text-text-muted">
+            <Palette className="h-12 w-12 mb-2 opacity-40 text-accent" />
+            <span className="text-xs">Creative Work</span>
+          </div>
         )}
         
         {/* Overlay */}
