@@ -1,21 +1,3 @@
-@import "tailwindcss";
-
-@theme {
-  --color-background: #050507;
-  --color-surface: rgba(15, 15, 20, 0.78);
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-text: #ffffff;
-  --color-text-muted: #a8a8b8;
-  --color-text-soft: #c8c9d6;
-  --color-accent: #00f0ff;
-  --color-accent-alt: #b026ff;
-  --color-status-success: #00ff88;
-  --color-status-warning: #ffaa00;
-  --color-status-danger: #ff2a2a;
-  --font-sans: Inter, sans-serif;
-  --font-heading: Orbitron, sans-serif;
-}
-
 @layer base {
   body {
     background-color: #050507;
