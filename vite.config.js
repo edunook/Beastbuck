@@ -146,6 +146,7 @@ function beastbuckTailwind() {
 
 // https://vite.dev/config/
 export default defineConfig({
+  plugins: [beastbuckTailwind(), react()],
   server: {
     host: true,
     strictPort: false,
