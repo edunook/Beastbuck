@@ -504,7 +504,7 @@ export default function AIStudioUnified() {
                         <span>{ai.totalChats?.toLocaleString() || '0'} chats</span>
                       </div>
                       <div className="flex gap-2 mt-3 sm:mt-4">
-                        <Link to={`/ai-os`} className="flex-1 bg-accent/20 hover:bg-accent/30 text-accent text-[10px] sm:text-xs font-bold py-2.5 rounded-lg text-center transition flex items-center justify-center gap-1.5">
+                        <Link to={`/ais/${ai.id}/chat`} className="flex-1 bg-accent/20 hover:bg-accent/30 text-accent text-[10px] sm:text-xs font-bold py-2.5 rounded-lg text-center transition flex items-center justify-center gap-1.5">
                           <MessageSquare className="w-3.5 h-3.5" /> Launch Chat
                         </Link>
                       </div>
