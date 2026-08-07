@@ -96,11 +96,11 @@ function beastbuckTailwind() {
     name: 'beastbuck-tailwind',
     enforce: 'pre',
     async transform(_code, id) {
-      if (!id.replaceAll('\\', '/').endsWith('/src/styles/index.css')) return null
+      if (!id.replaceAll('\\', '/').endsWith('/frontend/styles/index.css')) return null
 
       if (!generatedCss) {
         const root = process.cwd()
-        const files = (await Promise.all(['index.html', 'src'].map((entry) => collectFiles(root, entry)))).flat()
+        const files = (await Promise.all(['index.html', 'frontend'].map((entry) => collectFiles(root, entry)))).flat()
         const candidates = new Set()
 
         for (const file of files) {
@@ -140,6 +140,14 @@ function beastbuckTailwind() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [beastbuckTailwind(), react()],
+  resolve: {
+    alias: {
+      '@frontend': path.resolve(__dirname, 'frontend'),
+      '@services': path.resolve(__dirname, 'frontend/services'),
+      '@shared': path.resolve(__dirname, 'shared'),
+      '@backend': path.resolve(__dirname, 'backend'),
+    }
+  },
   build: {
     rollupOptions: {
       output: {

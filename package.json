@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "firebase:admin-check": "node scripts/firebase-admin-init.mjs"
+    "firebase:admin-check": "node backend/admin/firebase-admin-init.mjs"
   },
   "dependencies": {
     "@tiptap/pm": "^3.24.0",
