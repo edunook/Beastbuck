@@ -23,7 +23,13 @@ service firebase.storage {
     }
     
     function isMember() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.membershipStatus == 'approved';
+      return isAuthenticated() && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.membershipStatus == 'approved' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Member' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Leader' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Co-CEO' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Main CEO'
+      );
     }
 
     function canManageMembers() {

@@ -30,11 +30,23 @@ service cloud.firestore {
     }
     
     function isMember() {
-      return isAuthenticated() && getUserData().membershipStatus == 'approved';
+      return isAuthenticated() && (
+        getUserData().membershipStatus == 'approved' ||
+        getUserData().role == 'Member' ||
+        getUserData().role == 'Leader' ||
+        getUserData().role == 'Co-CEO' ||
+        getUserData().role == 'Main CEO'
+      );
     }
 
     function isApprovedMember() {
-      return isAuthenticated() && getUserData().membershipStatus == 'approved';
+      return isAuthenticated() && (
+        getUserData().membershipStatus == 'approved' ||
+        getUserData().role == 'Member' ||
+        getUserData().role == 'Leader' ||
+        getUserData().role == 'Co-CEO' ||
+        getUserData().role == 'Main CEO'
+      );
     }
 
     // Role-based centralized checks
