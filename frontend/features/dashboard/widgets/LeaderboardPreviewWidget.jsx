@@ -24,7 +24,7 @@ export function LeaderboardPreviewWidget() {
 
     const loadLeaderboard = async () => {
       try {
-        const data = await GamificationService.getTopLeaderboard(3);
+        const data = await GamificationService.getLeaderboard({ type: 'xp', maxCount: 5 });
         setLeaders(data || []);
       } catch (err) {
       } finally {
@@ -43,7 +43,7 @@ export function LeaderboardPreviewWidget() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[...Array(3)].map((_, i) => (
+            {[1, 2, 3].map(i => (
               <div key={i} className="h-16 animate-pulse rounded-xl bg-white/5" />
             ))}
           </div>
@@ -53,10 +53,10 @@ export function LeaderboardPreviewWidget() {
   }
 
   return (
-    <Card className="h-full border border-white/10 bg-gradient-to-br from-yellow-500/5 to-orange-500/5 backdrop-blur-sm transition-all duration-500 hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/20">
+    <Card className="h-full border border-white/10 bg-gradient-to-br from-yellow-500/5 to-orange-500/5 backdrop-blur-sm hover:border-yellow-500/30 transition-all duration-300 shadow-depth-1">
       <CardHeader>
-        <CardTitle className="text-sm font-bold uppercase tracking-wider text-text-muted flex items-center gap-2">
-          <Trophy className="text-yellow-400 animate-pulse" />
+        <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-yellow-400">
+          <Trophy className="text-yellow-400 text-lg" />
           Leaderboard Arena
         </CardTitle>
       </CardHeader>
@@ -68,17 +68,17 @@ export function LeaderboardPreviewWidget() {
             <div className="flex items-end justify-center gap-4 mb-4">
               {leaders.slice(0, 3).map((member, index) => (
                 <div
-                  key={member.id}
+                  key={`podium-${member.id || index}`}
                   className={`flex flex-col items-center gap-2 ${index === 0 ? 'mb-4' : index === 1 ? 'mb-2' : ''}`}
                   style={{ animation: `fadeInUp 0.5s ease-out ${index * 100}ms both` }}
                 >
                   <div className={`relative h-12 w-12 rounded-full bg-gradient-to-br ${PODIUM_COLORS[index]} flex items-center justify-center shadow-lg ${index === 0 ? 'animate-bounce' : ''}`}>
                     {index === 0 && <Crown className="absolute -top-3 text-yellow-300 text-xl animate-pulse" />}
-                    <span className="text-lg font-black text-white">{member.initials || '?'}</span>
+                    <span className="text-lg font-black text-white">{member.displayName?.[0] || member.username?.[0] || member.initials || '?'}</span>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs font-bold text-white truncate max-w-[60px]">{member.name || '???'}</p>
-                    <p className="text-[10px] text-text-muted font-bold">Lvl {member.level || 1}</p>
+                    <p className="text-xs font-bold text-white truncate max-w-[60px]">{member.displayName || member.username || member.name || '???'}</p>
+                    <p className="text-[10px] text-text-muted font-bold">Lvl {member.level || calculateLevel(member.xp || 0)}</p>
                   </div>
                   {index === 0 && <Medal className="text-yellow-400 text-lg animate-pulse" />}
                 </div>
@@ -87,7 +87,7 @@ export function LeaderboardPreviewWidget() {
             <div className="space-y-2">
               {leaders.map((member, index) => (
                 <div
-                  key={member.id}
+                  key={`list-${member.id || index}`}
                   className="flex items-center gap-3 p-2 rounded-xl border border-white/10 bg-white/[0.03] hover:border-yellow-500/50 transition-all duration-300"
                   style={{ animation: `fadeInUp 0.5s ease-out ${index * 100}ms both` }}
                 >
@@ -96,7 +96,7 @@ export function LeaderboardPreviewWidget() {
                     <Flame className="text-orange-400 text-sm" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{member.name || '???'}</p>
+                    <p className="text-xs font-bold text-white truncate">{member.displayName || member.username || member.name || '???'}</p>
                     <p className="text-[10px] text-text-muted">{member.xp || 0} XP</p>
                   </div>
                 </div>
