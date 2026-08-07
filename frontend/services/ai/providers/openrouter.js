@@ -1,5 +1,5 @@
 const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-const MODEL = import.meta.env.VITE_OPENROUTER_MODEL || 'google/gemma-2-9b-it:free';
+const MODEL = import.meta.env.VITE_OPENROUTER_MODEL || 'meta-llama/llama-3.1-8b-instruct:free';
 const TIMEOUT_MS = 30000; // 30 second timeout
 
 export const openrouterProvider = {

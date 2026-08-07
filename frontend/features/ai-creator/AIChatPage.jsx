@@ -1,9 +1,36 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, ArrowLeft, Sparkles, Copy, RotateCcw, Bot, Loader2, AlertCircle } from 'lucide-react';
+import { Send, ArrowLeft, Sparkles, Copy, Bot, Loader2, AlertCircle } from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
 import { geminiProvider } from '@frontend/services/ai/providers/gemini';
+import { groqProvider } from '@frontend/services/ai/providers/groq';
+import { openrouterProvider } from '@frontend/services/ai/providers/openrouter';
+
+// Try providers in order: Gemini → Groq → OpenRouter
+async function smartChat({ messages, systemPrompt }) {
+  const providers = [
+    geminiProvider,
+    groqProvider,
+    openrouterProvider,
+  ].filter(p => p.configured);
+
+  if (providers.length === 0) {
+    throw new Error('No AI provider is configured. Please check your API keys in .env.');
+  }
+
+  let lastError;
+  for (const provider of providers) {
+    try {
+      const result = await provider.chat({ messages, systemPrompt });
+      return result;
+    } catch (err) {
+      console.warn(`[${provider.name}] failed, trying next provider:`, err.message);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('All AI providers failed.');
+}
 
 function SafeAvatar({ ai }) {
   if (!ai) return <Bot className="w-5 h-5 text-accent" />;
@@ -83,7 +110,7 @@ export default function AIChatPage() {
     history.push({ role: 'user', content: text });
 
     try {
-      const reply = await geminiProvider.chat({
+      const reply = await smartChat({
         messages: history,
         systemPrompt: aiData.systemPrompt || `You are ${aiData.name}. ${aiData.description || ''}`,
       });

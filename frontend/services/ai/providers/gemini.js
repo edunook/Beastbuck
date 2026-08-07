@@ -1,7 +1,7 @@
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-2.0-flash-exp';
+const MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
 const API_VERSION = import.meta.env.VITE_GEMINI_API_VERSION || 'v1beta';
-const MODEL_FALLBACKS = (import.meta.env.VITE_GEMINI_MODEL_FALLBACKS || 'gemini-2.0-flash-exp,gemini-2.0-flash,gemini-1.5-pro,gemini-1.5-flash,gemini-1.0-pro,gemini-pro').split(',').map(s => s.trim()).filter(Boolean);
+const MODEL_FALLBACKS = (import.meta.env.VITE_GEMINI_MODEL_FALLBACKS || 'gemini-1.5-flash,gemini-1.5-pro,gemini-2.0-flash').split(',').map(s => s.trim()).filter(Boolean);
 const TIMEOUT_MS = 30000; // 30 second timeout
 
 function toGeminiMessages(messages) {
