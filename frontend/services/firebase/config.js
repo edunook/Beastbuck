@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 import { getDatabase } from 'firebase/database';
 
 /** Client SDK config only — never put service account keys here. */
@@ -19,5 +18,7 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+// NOTE: Firebase Storage is NOT used. All file uploads use IPFS via Pinata (free).
+// Storage uploads: see frontend/services/storage/ipfs.js
 export const rtdb = getDatabase(app);
+
