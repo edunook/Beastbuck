@@ -109,8 +109,22 @@ service cloud.firestore {
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                       'displayName',
                       'avatar',
+                      'photoURL',
                       'phoneNumber',
-                      'profileCustomization'
+                      'bio',
+                      'tagline',
+                      'location',
+                      'website',
+                      'company',
+                      'education',
+                      'interests',
+                      'skills',
+                      'socialLinks',
+                      'coverImage',
+                      'customSections',
+                      'theme',
+                      'profileCustomization',
+                      'updatedAt'
                     ]);
 
       // Task reviewers can award XP and derived progress without receiving full profile-admin powers.

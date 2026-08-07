@@ -67,18 +67,19 @@ export const UsersService = {
    */
   async updateUserProfile(uid, data) {
     const docRef = doc(db, 'users', uid);
-    await updateDoc(docRef, {
-      displayName: data.displayName,
-      bio: data.bio,
-      location: data.location,
-      website: data.website,
-      company: data.company,
-      education: data.education,
-      interests: data.interests,
-      customSections: data.customSections || [],
-      theme: data.theme || 'default',
-      updatedAt: new Date()
-    });
+    const updates = {};
+    if (data.displayName !== undefined) updates.displayName = data.displayName;
+    if (data.bio !== undefined) updates.bio = data.bio;
+    if (data.location !== undefined) updates.location = data.location;
+    if (data.website !== undefined) updates.website = data.website;
+    if (data.company !== undefined) updates.company = data.company;
+    if (data.education !== undefined) updates.education = data.education;
+    if (data.interests !== undefined) updates.interests = data.interests;
+    if (data.customSections !== undefined) updates.customSections = data.customSections || [];
+    if (data.theme !== undefined) updates.theme = data.theme || 'default';
+    updates.updatedAt = new Date();
+
+    await updateDoc(docRef, updates);
   },
 
   async getSpecializations() {
