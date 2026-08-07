@@ -145,6 +145,11 @@ export const MembershipService = {
     const snap = await getDoc(userRef);
     if (!snap.exists()) return false;
     const userData = snap.data();
-    return userData.membershipStatus === 'approved' && userData.role === ROLES.MEMBER;
+    if (userData.membershipStatus === 'approved') return true;
+    if (userData.role) {
+      const normalized = userData.role.toLowerCase().trim();
+      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'member'].includes(normalized);
+    }
+    return false;
   },
 };

@@ -24,6 +24,7 @@ import {
   MoreVertical
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 import { useAI } from './AIProvider';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { Card, CardContent } from '@frontend/components/ui/Card';
@@ -97,7 +98,7 @@ function speak(text) {
 export default function AIOS() {
   const navigate = useNavigate();
   const { user, roleData } = useAuth();
-  const isApprovedMember = roleData?.membershipStatus === 'approved';
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
   const {
     messages: globalMessages,
     sendMessage: globalSend,

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { useGlobalStore } from '@frontend/store/useGlobalStore';
 import { useAuth } from '@frontend/features/auth/AuthContext';
-import { hasPermission } from '@shared/permissions/permissions';
+import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import { 
   X,
   LayoutDashboard, 
@@ -50,7 +50,7 @@ export default function MobileDrawer() {
                   normalizedRole === 'co-ceo' || 
                   normalizedRole === 'co ceo';
 
-  const isApprovedMember = roleData?.membershipStatus === 'approved' || isAdmin;
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
 
   const MEMBER_ONLY_PATHS = ['/dashboard', '/chat', '/workspace', '/workspace/experiments', '/workspace/products'];
 

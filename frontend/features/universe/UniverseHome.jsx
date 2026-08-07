@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 import { useAI } from '../ai/AIProvider';
 import { UniverseService } from '@services/firestore/universe';
 import { PageContainer, SectionWrapper } from '@frontend/components/layout/LayoutWrappers';
@@ -25,7 +26,7 @@ import Button from '@frontend/components/ui/Button';
 
 export default function UniverseHome() {
   const { user, roleData } = useAuth();
-  const isApprovedMember = roleData?.membershipStatus === 'approved';
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
   const { openAssistant } = useAI();
   const [data, setData] = useState(null);
   const [collections, setCollections] = useState({});

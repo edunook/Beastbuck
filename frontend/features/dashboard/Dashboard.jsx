@@ -7,6 +7,7 @@ import { createSafeWidget } from './widgets/SafeLazyWidget';
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { MembershipService } from '@services/firestore/membership';
 import { ROLES } from '@shared/constants/roles';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 import { Sparkles, ArrowRight, X, Sliders, Gift, Zap } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
@@ -44,7 +45,7 @@ const MembershipBanner = () => {
   }, [user]);
 
   if (loading || dismissed) return null;
-  if (roleData?.membershipStatus === 'approved' || roleData?.role === ROLES.MAIN_CEO || roleData?.role === ROLES.CO_CEO) return null;
+  if (PERMISSIONS.isApprovedMember(roleData)) return null;
 
   return (
     <div className="membership-banner animate-slide-up">

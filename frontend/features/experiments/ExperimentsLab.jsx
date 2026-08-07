@@ -7,7 +7,7 @@ import { PageHeader, LoadingState } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
 import { Input } from '@frontend/components/ui/Input';
-import { hasPermission } from '@shared/permissions/permissions';
+import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import {
   EXPERIMENT_CATEGORIES,
   EXPERIMENT_DIFFICULTIES,
@@ -315,7 +315,7 @@ export default function ExperimentsLab() {
   const [error, setError] = useState('');
   const [templateData, setTemplateData] = useState(null);
   const canModerate = hasPermission(roleData?.role, 'canDeleteContent');
-  const isApprovedMember = roleData?.membershipStatus === 'approved';
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
   const isCEO = roleData?.role === 'Main CEO' || roleData?.role === 'Co-CEO';
   const canCreateExperiment = isApprovedMember || isCEO;
 

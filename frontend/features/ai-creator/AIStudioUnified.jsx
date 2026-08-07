@@ -7,6 +7,7 @@ import { collection, query, where, orderBy, limit, getDocs, addDoc, serverTimest
 import { db } from '@services/firebase/config';
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { ROLES } from '@shared/constants/roles';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 import EmptyState from '@frontend/components/ui/EmptyState';
 import Button from '@frontend/components/ui/Button';
 
@@ -94,7 +95,7 @@ const GUIDE_STEPS = [
 
 export default function AIStudioUnified() {
   const { user, roleData } = useAuth();
-  const isApprovedMember = roleData?.membershipStatus === 'approved' || roleData?.role === ROLES.MAIN_CEO || roleData?.role === ROLES.CO_CEO;
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
   const [activeTab, setActiveTab] = useState('my-ais');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);

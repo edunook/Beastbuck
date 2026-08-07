@@ -50,7 +50,27 @@ export const hasPermission = (userRole, permissionName) => {
 export const PERMISSIONS = {
   canAccessCeoPanel: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO].includes(role),
   canManageUsers: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO].includes(role),
-  isOfficialMember: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER].includes(role),
+  isOfficialMember: (roleData) => {
+    if (!roleData) return false;
+    const role = typeof roleData === 'string' ? roleData : roleData?.role;
+    const status = typeof roleData === 'object' ? roleData?.membershipStatus : null;
+    if (status === 'approved') return true;
+    if (role) {
+      const normalized = role.toLowerCase().trim();
+      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'member'].includes(normalized);
+    }
+    return false;
+  },
   isAuthenticated: (role) => role !== ROLES.GUEST,
-  isApprovedMember: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER].includes(role),
+  isApprovedMember: (roleData) => {
+    if (!roleData) return false;
+    const role = typeof roleData === 'string' ? roleData : roleData?.role;
+    const status = typeof roleData === 'object' ? roleData?.membershipStatus : null;
+    if (status === 'approved') return true;
+    if (role) {
+      const normalized = role.toLowerCase().trim();
+      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'member'].includes(normalized);
+    }
+    return false;
+  },
 };

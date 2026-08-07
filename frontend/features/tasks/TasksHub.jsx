@@ -11,7 +11,7 @@ import { SubmissionReviewModal } from './components/SubmissionReviewModal';
 import { CreateTaskModal } from './components/CreateTaskModal';
 import { TasksService } from '@services/firestore/tasks';
 import { useAuth } from '../auth/AuthContext';
-import { hasPermission } from '@shared/permissions/permissions';
+import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import { AlertCircle, Plus, RefreshCw, Search, X } from 'lucide-react';
 
 const TABS = [
@@ -24,7 +24,7 @@ const TasksHub = React.memo(function TasksHub() {
   const { user, roleData } = useAuth();
 
   const isLeader   = hasPermission(roleData?.role, 'canAssignTasks');
-  const isApprovedMember = roleData?.membershipStatus === 'approved';
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
   const canCreate  = isLeader || (isApprovedMember && hasPermission(roleData?.role, 'canAssignTasks'));
 
   const [tasks, setTasks]                 = useState([]);

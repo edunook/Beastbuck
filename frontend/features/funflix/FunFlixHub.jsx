@@ -9,8 +9,8 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
-import { useAuth } from '../auth/AuthContext';
 import { ROLES } from '@shared/constants/roles';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 import EmptyState from '@frontend/components/ui/EmptyState';
 
 const CATEGORIES = [
@@ -162,7 +162,7 @@ const SAMPLE_MOVIES = [
 export default function FunFlixHub() {
   const { user, roleData } = useAuth();
   const navigate = useNavigate();
-  const isApprovedMember = roleData?.membershipStatus === 'approved' || roleData?.role === ROLES.MAIN_CEO || roleData?.role === ROLES.CO_CEO;
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('browse');

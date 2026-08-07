@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { UsersService } from '@services/firestore/users';
-import { hasPermission } from '@shared/permissions/permissions';
+import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import { getLevelProgress } from '@services/firestore/gamification';
 import { OrganizationService } from '@services/firestore/organization';
 import { UniverseService } from '@services/firestore/universe';
@@ -720,7 +720,7 @@ function MembershipCard({ userId, role }) {
     checkMembership();
   }, [userId]);
 
-  if (loading || role === ROLES.MAIN_CEO || role === ROLES.CO_CEO || role === ROLES.MEMBER) return null;
+  if (loading || PERMISSIONS.isApprovedMember(role)) return null;
 
   return (
     <Card className="border-accent/30 bg-gradient-to-br from-accent/10 via-purple-500/10 to-cyan-500/10">

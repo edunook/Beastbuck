@@ -1,7 +1,7 @@
 import { NavLink, Link } from 'react-router-dom';
 import { useGlobalStore } from '@frontend/store/useGlobalStore';
 import { useAuth } from '@frontend/features/auth/AuthContext';
-import { hasPermission } from '@shared/permissions/permissions';
+import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import { ROLES } from '@shared/constants/roles';
 import { 
   LayoutDashboard, 
@@ -117,10 +117,7 @@ export default function Sidebar() {
                   normalizedRole === 'co-ceo' || 
                   normalizedRole === 'co ceo';
   
-  const isApprovedMember = roleData?.membershipStatus === 'approved' || isAdmin || 
-                          normalizedRole === 'main ceo' || 
-                          normalizedRole === 'co-ceo' || 
-                          normalizedRole === 'co ceo';
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
 
   const filteredNavItems = NAV_ITEMS.filter(item => {
     // Completely hide member-only items for non-members

@@ -7,7 +7,7 @@ import { PageHeader, LoadingState } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
 import { Input } from '@frontend/components/ui/Input';
-import { hasPermission } from '@shared/permissions/permissions';
+import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import { PRODUCT_CATEGORIES, PRODUCT_STATUSES, ProductsService } from '@services/firestore/products';
 import { UsersService } from '@services/firestore/users';
 import { isCloudinaryConfigured, uploadProductMedia } from '@services/storage/cloudinary';
@@ -239,7 +239,7 @@ export default function ProductsMarketplace() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const canModerate = hasPermission(roleData?.role, 'canDeleteContent');
-  const isApprovedMember = roleData?.membershipStatus === 'approved';
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
   const isCEO = roleData?.role === 'Main CEO' || roleData?.role === 'Co-CEO';
   const canCreateProduct = isApprovedMember || isCEO;
 
