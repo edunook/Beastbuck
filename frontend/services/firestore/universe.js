@@ -142,9 +142,13 @@ export const UniverseService = {
   async getMemberGoals(uid) {
     try {
       const snap = await getDocs(
-        query(collection(db, 'memberGoals'), where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(50))
+        query(collection(db, 'memberGoals'), where('userId', '==', uid), limit(50))
       );
-      return docsFrom(snap);
+      return docsFrom(snap).sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
     } catch {
       const snap = await getDocs(query(collection(db, 'memberGoals'), where('userId', '==', uid), limit(50)));
       return docsFrom(snap);

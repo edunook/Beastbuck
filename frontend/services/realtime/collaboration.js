@@ -31,11 +31,19 @@ export const CollaborationService = {
   // VOICE ROOMS
   // ---------------------------------------------------------------------------
   subscribeToVoiceRooms({ onRooms, type }) {
-    let q = query(collection(db, 'voiceRooms'), where('archived', '==', false), orderBy('createdAt', 'desc'), limit(50));
+    let q = query(collection(db, 'voiceRooms'), where('archived', '==', false), limit(50));
     if (type) {
       q = query(collection(db, 'voiceRooms'), where('type', '==', type), limit(50));
     }
-    return onSnapshot(q, (snap) => onRooms(docsFrom(snap)), (err) => {
+    return onSnapshot(q, (snap) => {
+      const rooms = docsFrom(snap).filter(r => r.archived === false);
+      const sorted = rooms.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
+      onRooms(sorted);
+    }, (err) => {
       errorHandler.error(err, 'Voice Rooms Listener');
       onRooms([]);
     });
@@ -207,9 +215,13 @@ export const CollaborationService = {
 
   async getMeetingNotes(meetingId) {
     const snap = await getDocs(
-      query(collection(db, 'meetingNotes'), where('meetingId', '==', meetingId), orderBy('createdAt', 'desc'))
+      query(collection(db, 'meetingNotes'), where('meetingId', '==', meetingId))
     );
-    return docsFrom(snap);
+    return docsFrom(snap).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   subscribeToMeetings({ onMeetings, status }) {

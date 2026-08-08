@@ -34,9 +34,13 @@ export const InnovationService = {
 
   async getResearchLogs(projectId) {
     const snap = await getDocs(
-      query(collection(db, 'researchLogs'), where('projectId', '==', projectId), orderBy('timestamp', 'desc'))
+      query(collection(db, 'researchLogs'), where('projectId', '==', projectId))
     );
-    return docsFrom(snap);
+    return docsFrom(snap).sort((a, b) => {
+      const aTime = a.timestamp?.toMillis?.() || 0;
+      const bTime = b.timestamp?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   // ----------------------------------------

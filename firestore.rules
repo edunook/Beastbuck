@@ -1547,7 +1547,7 @@ service cloud.firestore {
     }
 
     match /courseEnrollments/{enrollmentId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow read: if isAuthenticated(); // Allow reading for public portfolio viewing
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
       allow delete: if canManageOrganization();
@@ -1619,7 +1619,7 @@ service cloud.firestore {
     }
 
     match /userLearning/{learningId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || canManageOrganization());
+      allow read: if isAuthenticated(); // Allow reading for public portfolio viewing
       allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow delete: if canManageOrganization();
     }
@@ -1679,7 +1679,7 @@ service cloud.firestore {
     }
 
     match /marketplaceDownloads/{downloadId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || resource.data.creatorId == request.auth.uid || canManageOrganization());
+      allow read: if isAuthenticated(); // Allow reading for public portfolio viewing
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if canManageOrganization();
     }

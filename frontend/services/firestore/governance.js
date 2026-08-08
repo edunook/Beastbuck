@@ -121,8 +121,12 @@ export const GovernanceService = {
   },
 
   async getDepartments() {
-    const snap = await getDocs(query(collection(db, 'departments'), where('status', '==', 'active'), orderBy('createdAt', 'desc')));
-    return docsFrom(snap);
+    const snap = await getDocs(query(collection(db, 'departments')));
+    return docsFrom(snap).filter(dept => dept.status === 'active').sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async updateDepartment(departmentId, data) {
@@ -169,13 +173,17 @@ export const GovernanceService = {
   },
 
   async getTeams() {
-    const snap = await getDocs(query(collection(db, 'teams'), where('status', '==', 'active'), orderBy('createdAt', 'desc')));
-    return docsFrom(snap);
+    const snap = await getDocs(query(collection(db, 'teams')));
+    return docsFrom(snap).filter(team => team.status === 'active').sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async getTeamsByDepartment(departmentId) {
-    const snap = await getDocs(query(collection(db, 'teams'), where('departmentId', '==', departmentId), where('status', '==', 'active')));
-    return docsFrom(snap);
+    const snap = await getDocs(query(collection(db, 'teams'), where('departmentId', '==', departmentId)));
+    return docsFrom(snap).filter(team => team.status === 'active');
   },
 
   async updateTeam(teamId, data) {
@@ -226,8 +234,9 @@ export const GovernanceService = {
   // TRUST ENGINE
   // ---------------------------------------------------------------------------
   async calculateTrustLevel(userId, reputationScore) {
-    const verifications = await getDocs(query(collection(db, 'memberVerifications'), where('userId', '==', userId), where('status', '==', 'VERIFIED')));
-    const verificationBonus = verifications.size * 500;
+    const verifications = await getDocs(query(collection(db, 'memberVerifications'), where('userId', '==', userId)));
+    const verifiedCount = verifications.docs.filter(doc => doc.data().status === 'VERIFIED').length;
+    const verificationBonus = verifiedCount * 500;
     
     const totalScore = reputationScore + verificationBonus;
     
@@ -272,8 +281,12 @@ export const GovernanceService = {
   },
 
   async getActiveProposals() {
-    const snap = await getDocs(query(collection(db, 'governanceProposals'), where('status', '==', 'ACTIVE'), orderBy('createdAt', 'desc')));
-    return docsFrom(snap);
+    const snap = await getDocs(query(collection(db, 'governanceProposals')));
+    return docsFrom(snap).filter(proposal => proposal.status === 'ACTIVE').sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async getAllProposals() {

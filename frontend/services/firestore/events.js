@@ -23,15 +23,22 @@ export const EventService = {
   // EVENTS
   // ---------------------------------------------------------------------------
   async getEvents({ status, limitCount = 50 } = {}) {
-    let q = query(collection(db, 'events'), orderBy('startDate', 'asc'), limit(limitCount));
-    
-    // We can filter by status or rely on client-side filtering
-    if (status) {
-      q = query(collection(db, 'events'), where('status', '==', status), orderBy('startDate', 'asc'), limit(limitCount));
-    }
+    let q = query(collection(db, 'events'), limit(limitCount));
     
     const snap = await getDocs(q);
-    return docsFrom(snap);
+    let events = docsFrom(snap);
+    
+    // Client-side filtering for status
+    if (status) {
+      events = events.filter(event => event.status === status);
+    }
+    
+    // Sort by startDate asc
+    return events.sort((a, b) => {
+      const aTime = a.startDate?.toMillis?.() || 0;
+      const bTime = b.startDate?.toMillis?.() || 0;
+      return aTime - bTime;
+    });
   },
 
   async getEvent(eventId) {

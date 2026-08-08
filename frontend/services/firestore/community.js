@@ -227,10 +227,14 @@ export const CommunityService = {
     for (let i = 0; i < postIds.length; i += 10) chunks.push(postIds.slice(i, i + 10));
     const results = [];
     for (const chunk of chunks) {
-      const snap = await getDocs(query(collection(db, 'communityComments'), where('postId', 'in', chunk), orderBy('createdAt', 'asc'), limit(100)));
+      const snap = await getDocs(query(collection(db, 'communityComments'), where('postId', 'in', chunk), limit(100)));
       results.push(...snap.docs.map(item => ({ id: item.id, ...item.data() })));
     }
-    return results.filter(item => item.status !== 'REMOVED');
+    return results.filter(item => item.status !== 'REMOVED').sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return aTime - bTime;
+    });
   },
 
   async addComment({ postId, communityId, parentCommentId = null, text, author }) {

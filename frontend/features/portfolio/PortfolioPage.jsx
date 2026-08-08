@@ -132,16 +132,32 @@ export default function PortfolioPage() {
         }
 
         const userProfile = await UsersService.getUserProfile(uid);
+        if (!userProfile) {
+          console.error('User profile not found for uid:', uid);
+          setLoading(false);
+          return;
+        }
+        
         setProfile(userProfile);
         setSelectedTheme(userProfile?.theme || 'default');
 
         // Load portfolio data with full information
-        const portfolio = await PortfolioService.getPortfolioData(username);
-        setPortfolioData(portfolio);
+        try {
+          const portfolio = await PortfolioService.getPortfolioData(username);
+          setPortfolioData(portfolio);
+        } catch (portfolioErr) {
+          console.error('Failed to load portfolio data:', portfolioErr);
+          setPortfolioData(null); // Set to null to handle error state
+        }
 
-        // Load presence status
-        const presence = await PresenceService.getUserPresence(uid);
-        setStatus(presence);
+        // Load presence status (with error handling)
+        try {
+          const presence = await PresenceService.getUserPresence(uid);
+          setStatus(presence);
+        } catch (presenceErr) {
+          console.warn('Failed to load presence status:', presenceErr);
+          setStatus({ state: 'offline' }); // Default to offline if presence fails
+        }
 
         setLoading(false);
       } catch (err) {

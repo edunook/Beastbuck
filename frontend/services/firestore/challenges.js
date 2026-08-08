@@ -26,12 +26,17 @@ export const ChallengeService = {
   // CHALLENGES
   // ---------------------------------------------------------------------------
   async getChallenges(eventId = null) {
-    let q = query(collection(db, 'challenges'), orderBy('createdAt', 'desc'));
-    if (eventId) {
-      q = query(collection(db, 'challenges'), where('eventId', '==', eventId), orderBy('createdAt', 'desc'));
-    }
+    let q = query(collection(db, 'challenges'));
     const snap = await getDocs(q);
-    return docsFrom(snap);
+    let challenges = docsFrom(snap);
+    if (eventId) {
+      challenges = challenges.filter(c => c.eventId === eventId);
+    }
+    return challenges.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async getChallenge(challengeId) {
@@ -78,9 +83,13 @@ export const ChallengeService = {
 
   async getSubmissions(challengeId) {
     const snap = await getDocs(
-      query(collection(db, 'challengeSubmissions'), where('challengeId', '==', challengeId), orderBy('createdAt', 'desc'))
+      query(collection(db, 'challengeSubmissions'), where('challengeId', '==', challengeId))
     );
-    const submissions = docsFrom(snap);
+    const submissions = docsFrom(snap).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
 
     if (submissions.length === 0) return [];
 
@@ -184,18 +193,24 @@ export const ChallengeService = {
   },
 
   async getCommunityChallenges(filters = {}) {
-    let q = query(collection(db, 'communityChallenges'), orderBy('createdAt', 'desc'));
-    
-    // Only use where clauses for indexed fields
-    if (filters.creatorId) {
-      q = query(collection(db, 'communityChallenges'), where('creatorId', '==', filters.creatorId), orderBy('createdAt', 'desc'));
-    }
-    if (filters.type) {
-      q = query(collection(db, 'communityChallenges'), where('type', '==', filters.type), orderBy('createdAt', 'desc'));
-    }
-
+    let q = query(collection(db, 'communityChallenges'));
     const snap = await getDocs(q);
     let challenges = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Client-side filtering to avoid index requirements
+    if (filters.creatorId) {
+      challenges = challenges.filter(c => c.creatorId === filters.creatorId);
+    }
+    if (filters.type) {
+      challenges = challenges.filter(c => c.type === filters.type);
+    }
+    
+    // Sort by createdAt desc
+    challenges = challenges.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
     
     // Client-side filtering for status to avoid index requirement
     if (filters.status) {
@@ -253,18 +268,22 @@ export const ChallengeService = {
 
   async getChallengeResponses(challengeId) {
     const snap = await getDocs(
-      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId), orderBy('submittedAt', 'desc'))
+      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId))
     );
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => {
+      const aTime = a.submittedAt?.toMillis?.() || 0;
+      const bTime = b.submittedAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async getUserResponse(challengeId, userId) {
     const snap = await getDocs(
-      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId), where('userId', '==', userId))
+      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId))
     );
-    if (snap.empty) return null;
-    const doc = snap.docs[0];
-    return { id: doc.id, ...doc.data() };
+    const userResponse = snap.docs.find(doc => doc.data().userId === userId);
+    if (!userResponse) return null;
+    return { id: userResponse.id, ...userResponse.data() };
   },
 
   async reviewResponse(responseId, reviewData) {
@@ -287,9 +306,10 @@ export const ChallengeService = {
 
   async getChallengeLeaderboard(challengeId) {
     const snap = await getDocs(
-      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId), orderBy('score', 'desc'))
+      query(collection(db, 'challengeResponses'), where('challengeId', '==', challengeId))
     );
-    return snap.docs.map((doc, index) => ({ 
+    const responses = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => (b.score || 0) - (a.score || 0));
+    return responses.map((doc, index) => ({ 
       id: doc.id, 
       ...doc.data(),
       rank: index + 1

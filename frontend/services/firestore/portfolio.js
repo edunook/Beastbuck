@@ -48,7 +48,11 @@ export const StatsAggregator = {
     const products = docsFrom(productsSnap);
     const discoveries = docsFrom(discoveriesSnap);
     const certificates = docsFrom(certificatesSnap);
-    const activity = docsFrom(activitySnap);
+    const activity = docsFrom(activitySnap).sort((a, b) => {
+      const aTime = a.timestamp?.toMillis?.() || 0;
+      const bTime = b.timestamp?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
 
     // Calculate Impact Score based on contributions
     const impactScore = this.calculateImpactScore({
@@ -122,11 +126,11 @@ export const PortfolioService = {
       getDocs(query(collection(db, 'experiments'), where('authors', 'array-contains', uid))),
       getDocs(query(collection(db, 'products'), where('authors', 'array-contains', uid))),
       getDocs(query(collection(db, 'discoveries'), where('authorId', '==', uid))),
-      getDocs(query(collection(db, 'courseEnrollments'), where('userId', '==', uid), where('status', '==', 'COMPLETED'))),
+      getDocs(query(collection(db, 'courseEnrollments'), where('userId', '==', uid))),
       getDocs(query(collection(db, 'ventures'), where('founderId', '==', uid))),
       getDocs(query(collection(db, 'ventures'), where('memberIds', 'array-contains', uid))),
       getDocs(query(collection(db, 'userLearning'), where('userId', '==', uid))),
-      getDocs(query(collection(db, 'learningPaths'), where('status', '==', 'PUBLISHED'))),
+      getDocs(query(collection(db, 'learningPaths'))),
       getDocs(query(collection(db, 'marketplaceItems'), where('creatorId', '==', uid))),
       getDocs(query(collection(db, 'marketplaceCollections'), where('creatorId', '==', uid))),
       getDocs(query(collection(db, 'marketplaceDownloads'), where('creatorId', '==', uid))),
@@ -142,12 +146,12 @@ export const PortfolioService = {
     const experiments = docsFrom(experimentsSnap);
     const products = docsFrom(productsSnap);
     const discoveries = docsFrom(discoveriesSnap);
-    const completedCourses = docsFrom(coursesSnap);
+    const completedCourses = docsFrom(coursesSnap).filter(course => course.status === 'COMPLETED');
     const foundedVentures = docsFrom(foundedVenturesSnap);
     const joinedVentures = docsFrom(joinedVenturesSnap).filter(v => v.founderId !== uid);
     const successfulVentures = [...foundedVentures, ...joinedVentures].filter(v => v.stage === 'SUCCESSFUL');
     const userLearning = docsFrom(userLearningSnap);
-    const learningPaths = docsFrom(learningPathsSnap);
+    const learningPaths = docsFrom(learningPathsSnap).filter(path => path.status === 'PUBLISHED');
     const marketplaceResources = docsFrom(marketplaceResourcesSnap);
     const marketplaceCollections = docsFrom(marketplaceCollectionsSnap);
     const marketplaceDownloads = docsFrom(marketplaceDownloadsSnap);
@@ -313,16 +317,16 @@ export const PortfolioService = {
       getDocs(query(collection(db, 'projects'), where('memberIds', 'array-contains', uid))),
       getDocs(query(collection(db, 'experiments'), where('authors', 'array-contains', uid))),
       getDocs(query(collection(db, 'products'), where('authors', 'array-contains', uid))),
-      getDocs(query(collection(db, 'activityLogs'), where('userId', '==', uid), orderBy('timestamp', 'desc'), limit(50))),
+      getDocs(query(collection(db, 'activityLogs'), where('userId', '==', uid), limit(50))),
       CertificateService.getUserCertificates(uid),
       getDocs(query(collection(db, 'discoveries'), where('authorId', '==', uid))),
-      getDocs(query(collection(db, 'courseEnrollments'), where('userId', '==', uid), where('status', '==', 'COMPLETED'))),
-      getDocs(query(collection(db, 'tutorials'), where('authorId', '==', uid), where('status', '==', 'PUBLISHED'))),
-      getDocs(query(collection(db, 'knowledgeArticles'), where('authorId', '==', uid), where('status', '==', 'PUBLISHED'))),
+      getDocs(query(collection(db, 'courseEnrollments'), where('userId', '==', uid))),
+      getDocs(query(collection(db, 'tutorials'), where('authorId', '==', uid))),
+      getDocs(query(collection(db, 'knowledgeArticles'), where('authorId', '==', uid))),
       getDocs(query(collection(db, 'ventures'), where('founderId', '==', uid))),
       getDocs(query(collection(db, 'ventures'), where('memberIds', 'array-contains', uid))),
       getDocs(query(collection(db, 'userLearning'), where('userId', '==', uid))),
-      getDocs(query(collection(db, 'learningPaths'), where('status', '==', 'PUBLISHED'))),
+      getDocs(query(collection(db, 'learningPaths'))),
       getDocs(query(collection(db, 'marketplaceItems'), where('creatorId', '==', uid))),
       getDocs(query(collection(db, 'marketplaceCollections'), where('creatorId', '==', uid))),
       getDocs(query(collection(db, 'marketplaceDownloads'), where('creatorId', '==', uid))),
@@ -337,16 +341,20 @@ export const PortfolioService = {
     const prototypes = allProjects.filter(p => p.projectType === 'PROTOTYPE');
     const experiments = docsFrom(experimentsSnap);
     const products = docsFrom(productsSnap);
-    const activity = docsFrom(activitySnap);
+    const activity = docsFrom(activitySnap).sort((a, b) => {
+      const aTime = a.timestamp?.toMillis?.() || 0;
+      const bTime = b.timestamp?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
     const discoveries = docsFrom(discoveriesSnap);
-    const completedCourses = docsFrom(coursesSnap);
-    const authoredTutorials = docsFrom(tutorialsSnap);
-    const publishedArticles = docsFrom(articlesSnap);
+    const completedCourses = docsFrom(coursesSnap).filter(course => course.status === 'COMPLETED');
+    const authoredTutorials = docsFrom(tutorialsSnap).filter(tutorial => tutorial.status === 'PUBLISHED');
+    const publishedArticles = docsFrom(articlesSnap).filter(article => article.status === 'PUBLISHED');
     const foundedVentures = docsFrom(foundedVenturesSnap);
     const joinedVentures = docsFrom(joinedVenturesSnap).filter(v => v.founderId !== uid);
     const successfulVentures = [...foundedVentures, ...joinedVentures].filter(v => v.stage === 'SUCCESSFUL');
     const userLearning = docsFrom(userLearningSnap);
-    const learningPaths = docsFrom(learningPathsSnap);
+    const learningPaths = docsFrom(learningPathsSnap).filter(path => path.status === 'PUBLISHED');
     const marketplaceResources = docsFrom(marketplaceResourcesSnap);
     const marketplaceCollections = docsFrom(marketplaceCollectionsSnap);
     const marketplaceDownloads = docsFrom(marketplaceDownloadsSnap);

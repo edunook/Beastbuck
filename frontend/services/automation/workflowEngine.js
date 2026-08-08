@@ -181,17 +181,21 @@ export const WorkflowEngine = {
    */
   async getActiveAgents() {
     try {
-      const { getDocs, query, collection, where, orderBy } = await import('firebase/firestore');
+      const { getDocs, query, collection, where } = await import('firebase/firestore');
       const { db } = await import('../firebase/config');
       
       const agentsRef = collection(db, 'automation_agents');
-      const q = query(agentsRef, where('status', '==', 'active'), orderBy('createdAt', 'desc'));
+      const q = query(agentsRef, where('status', '==', 'active'));
       const snapshot = await getDocs(q);
       
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-      }));
+      })).sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
     } catch (error) {
       console.error('Failed to fetch active agents:', error);
       return [];
@@ -225,21 +229,20 @@ export const WorkflowEngine = {
    */
   async getRecommendations(userId) {
     try {
-      const { getDocs, query, collection, where, orderBy } = await import('firebase/firestore');
+      const { getDocs, query, collection, where } = await import('firebase/firestore');
       const { db } = await import('../firebase/config');
       
       const recommendationsRef = collection(db, 'automation_recommendations');
       const q = query(
         recommendationsRef,
-        where('userId', '==', userId),
-        orderBy('confidence', 'desc')
+        where('userId', '==', userId)
       );
       const snapshot = await getDocs(q);
       
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-      }));
+      })).sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
     } catch (error) {
       console.error('Failed to fetch recommendations:', error);
       return [];

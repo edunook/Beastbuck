@@ -1,5 +1,5 @@
 import { ref, onValue, onDisconnect, set, serverTimestamp, get } from 'firebase/database';
-import { doc, setDoc, onSnapshot, serverTimestamp as firestoreTimestamp } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc, serverTimestamp as firestoreTimestamp } from 'firebase/firestore';
 import { rtdb, db } from '@services/firebase/config';
 import { errorHandler } from '@shared/utils/errorHandler';
 
@@ -230,5 +230,32 @@ export const PresenceService = {
     );
 
     return () => unsubs.forEach(u => u());
+  },
+
+  async getUserPresence(uid) {
+    try {
+      const presenceDoc = await getDoc(doc(db, 'presence', uid));
+      if (presenceDoc.exists()) {
+        return presenceDoc.data();
+      }
+      // Fallback to RTDB if Firestore doesn't have the data
+      const richRef = rtdbPresenceRef(uid);
+      const richSnap = await get(richRef);
+      if (richSnap.exists()) {
+        const rich = richSnap.val();
+        return {
+          state: rich.state || 'offline',
+          activity: rich.activity,
+          activeWorkspace: rich.activeWorkspace,
+          activeProject: rich.activeProject,
+          last_changed: rich.last_changed,
+          uid,
+        };
+      }
+      return { state: 'offline', uid };
+    } catch (err) {
+      errorHandler.warn('Failed to get user presence', 'Presence Get', { error: err.message });
+      return { state: 'offline', uid };
+    }
   },
 };

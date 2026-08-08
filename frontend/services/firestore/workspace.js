@@ -66,8 +66,12 @@ export const WorkspaceService = {
   // Documents
   // ---------------------------------------------------------------------------
   async getDocuments(workspaceId) {
-    const snap = await getDocs(query(collection(db, 'documents'), where('workspaceId', '==', workspaceId), orderBy('lastEditedAt', 'desc')));
-    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    const snap = await getDocs(query(collection(db, 'documents'), where('workspaceId', '==', workspaceId)));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => {
+      const aTime = a.lastEditedAt?.toMillis?.() || 0;
+      const bTime = b.lastEditedAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async getDocument(docId) {
@@ -105,16 +109,24 @@ export const WorkspaceService = {
   },
   
   async getDocumentVersions(documentId) {
-    const snap = await getDocs(query(collection(db, 'documentVersions'), where('documentId', '==', documentId), orderBy('timestamp', 'desc')));
-    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    const snap = await getDocs(query(collection(db, 'documentVersions'), where('documentId', '==', documentId)));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => {
+      const aTime = a.timestamp?.toMillis?.() || 0;
+      const bTime = b.timestamp?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   // ---------------------------------------------------------------------------
   // Notes
   // ---------------------------------------------------------------------------
   async getNotes(workspaceId) {
-    const snap = await getDocs(query(collection(db, 'notes'), where('workspaceId', '==', workspaceId), orderBy('createdAt', 'desc')));
-    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    const snap = await getDocs(query(collection(db, 'notes'), where('workspaceId', '==', workspaceId)));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async saveNote(noteId, workspaceId, data, isNew = false, userId) {
@@ -141,8 +153,12 @@ export const WorkspaceService = {
   // Research Notebooks
   // ---------------------------------------------------------------------------
   async getNotebooks(workspaceId) {
-    const snap = await getDocs(query(collection(db, 'researchNotebooks'), where('workspaceId', '==', workspaceId), orderBy('createdAt', 'desc')));
-    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    const snap = await getDocs(query(collection(db, 'researchNotebooks'), where('workspaceId', '==', workspaceId)));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
   
   async createNotebook(workspaceId, data, userId) {
@@ -177,8 +193,12 @@ export const WorkspaceService = {
   // Whiteboards & Mind Maps (Simple)
   // ---------------------------------------------------------------------------
   async getWhiteboards(workspaceId) {
-    const snap = await getDocs(query(collection(db, 'whiteboards'), where('workspaceId', '==', workspaceId), orderBy('createdAt', 'desc')));
-    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    const snap = await getDocs(query(collection(db, 'whiteboards'), where('workspaceId', '==', workspaceId)));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async saveWhiteboard(boardId, workspaceId, data, isNew = false) {
@@ -191,8 +211,12 @@ export const WorkspaceService = {
   },
 
   async getMindMaps(workspaceId) {
-    const snap = await getDocs(query(collection(db, 'mindMaps'), where('workspaceId', '==', workspaceId), orderBy('createdAt', 'desc')));
-    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    const snap = await getDocs(query(collection(db, 'mindMaps'), where('workspaceId', '==', workspaceId)));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async saveMindMap(mapId, workspaceId, data, isNew = false) {
@@ -235,7 +259,11 @@ export const WorkspaceService = {
   },
   
   async getActivity(workspaceId) {
-    const snap = await getDocs(query(collection(db, 'workspaceActivity'), where('workspaceId', '==', workspaceId), orderBy('timestamp', 'desc'), limit(50)));
-    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    const snap = await getDocs(query(collection(db, 'workspaceActivity'), where('workspaceId', '==', workspaceId), limit(50)));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id })).sort((a, b) => {
+      const aTime = a.timestamp?.toMillis?.() || 0;
+      const bTime = b.timestamp?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   }
 };

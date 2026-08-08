@@ -70,17 +70,16 @@ export const SeasonService = {
 
     // Fetch all XP logs within the season dates
     let xpQuery = query(collection(db, 'xpLogs'));
-    if (startDate) {
-      xpQuery = query(xpQuery, where('timestamp', '>=', startDate), where('timestamp', '<=', endDate));
-    }
-
     const logsSnap = await getDocs(xpQuery);
     const userTotals = {};
 
     logsSnap.forEach(log => {
       const data = log.data();
       if (data.userId) {
-        userTotals[data.userId] = (userTotals[data.userId] || 0) + (data.amount || 0);
+        const logTime = data.timestamp?.toMillis?.() || 0;
+        if (!startDate || (logTime >= startDate && logTime <= endDate)) {
+          userTotals[data.userId] = (userTotals[data.userId] || 0) + (data.amount || 0);
+        }
       }
     });
 

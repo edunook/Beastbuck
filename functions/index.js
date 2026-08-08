@@ -37,13 +37,13 @@ async function regeneratePortfolioForUser(uid) {
       db.collection('experiments').where('authors', 'array-contains', uid).get(),
       db.collection('products').where('authors', 'array-contains', uid).get(),
       db.collection('discoveries').where('authorId', '==', uid).get(),
-      db.collection('courseEnrollments').where('userId', '==', uid).where('status', '==', 'COMPLETED').get(),
-      db.collection('tutorials').where('authorId', '==', uid).where('status', '==', 'PUBLISHED').get(),
-      db.collection('knowledgeArticles').where('authorId', '==', uid).where('status', '==', 'PUBLISHED').get(),
+      db.collection('courseEnrollments').where('userId', '==', uid).get(),
+      db.collection('tutorials').where('authorId', '==', uid).get(),
+      db.collection('knowledgeArticles').where('authorId', '==', uid).get(),
       db.collection('ventures').where('founderId', '==', uid).get(),
       db.collection('ventures').where('memberIds', 'array-contains', uid).get(),
       db.collection('userLearning').where('userId', '==', uid).get(),
-      db.collection('learningPaths').where('status', '==', 'PUBLISHED').get(),
+      db.collection('learningPaths').get(),
       db.collection('marketplaceItems').where('creatorId', '==', uid).get(),
       db.collection('marketplaceCollections').where('creatorId', '==', uid).get(),
       db.collection('marketplaceDownloads').where('creatorId', '==', uid).get(),
@@ -59,14 +59,14 @@ async function regeneratePortfolioForUser(uid) {
     const experiments = experimentsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const products = productsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const discoveries = discoveriesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const completedCourses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const authoredTutorials = tutorialsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const publishedArticles = articlesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const completedCourses = coursesSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(c => c.status === 'COMPLETED');
+    const authoredTutorials = tutorialsSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.status === 'PUBLISHED');
+    const publishedArticles = articlesSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(a => a.status === 'PUBLISHED');
     const foundedVentures = foundedVenturesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const joinedVentures = joinedVenturesSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(v => v.founderId !== uid);
     const successfulVentures = [...foundedVentures, ...joinedVentures].filter(v => v.stage === 'SUCCESSFUL');
     const userLearning = userLearningSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const learningPaths = learningPathsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const learningPaths = learningPathsSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => l.status === 'PUBLISHED');
     const marketplaceResources = marketplaceResourcesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const marketplaceCollections = marketplaceCollectionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const marketplaceDownloads = marketplaceDownloadsSnap.docs.map(d => ({ id: d.id, ...d.data() }));

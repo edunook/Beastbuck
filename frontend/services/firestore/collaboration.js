@@ -53,10 +53,15 @@ export const CollaborationService = {
 
   async getVoiceRooms(type = null) {
     try {
-      let q = query(collection(db, 'voiceRooms'), where('active', '==', true), orderBy('createdAt', 'desc'), limit(50));
-      if (type) q = query(collection(db, 'voiceRooms'), where('type', '==', type), where('active', '==', true), limit(50));
+      let q = query(collection(db, 'voiceRooms'), where('active', '==', true), limit(50));
+      if (type) q = query(collection(db, 'voiceRooms'), where('type', '==', type), limit(50));
       const snap = await getDocs(q);
-      return docsFrom(snap);
+      const rooms = docsFrom(snap).filter(r => r.active === true);
+      return rooms.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
     } catch {
       const snap = await getDocs(query(collection(db, 'voiceRooms'), limit(50)));
       return docsFrom(snap).filter(r => r.active !== false && !r.archived);
@@ -64,9 +69,17 @@ export const CollaborationService = {
   },
 
   subscribeToVoiceRooms({ onRooms, type }) {
-    let q = query(collection(db, 'voiceRooms'), where('active', '==', true), orderBy('createdAt', 'desc'), limit(50));
+    let q = query(collection(db, 'voiceRooms'), where('active', '==', true), limit(50));
     if (type) q = query(collection(db, 'voiceRooms'), where('type', '==', type), limit(50));
-    return onSnapshot(q, (snap) => onRooms(docsFrom(snap)), () => onRooms([]));
+    return onSnapshot(q, (snap) => {
+      const rooms = docsFrom(snap).filter(r => r.active === true);
+      const sorted = rooms.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() || 0;
+        const bTime = b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
+      onRooms(sorted);
+    }, () => onRooms([]));
   },
 
   subscribeToVoiceRoom(roomId, { onRoom }) {

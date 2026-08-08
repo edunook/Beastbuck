@@ -47,13 +47,15 @@ export const CertificateService = {
       query(
         collection(db, 'certificates'),
         where('userId', '==', userId),
-        where('title', '==', title),
         where('status', '==', 'ACTIVE')
       )
     );
+    
+    // Filter by title client-side to avoid composite index
+    const existingByTitle = existingSnap.docs.filter(doc => doc.data().title === title);
 
-    if (!existingSnap.empty) {
-      return existingSnap.docs[0].id;
+    if (existingByTitle.length > 0) {
+      return existingByTitle[0].id;
     }
 
     const certRef = doc(collection(db, 'certificates'));
@@ -108,22 +110,24 @@ export const CertificateService = {
       query(
         collection(db, 'certificates'),
         where('userId', '==', userId),
-        where('status', '==', 'ACTIVE'),
-        orderBy('issuedAt', 'desc')
+        where('status', '==', 'ACTIVE')
       )
     );
-    return docsFrom(snap);
+    return docsFrom(snap).sort((a, b) => {
+      const aTime = a.issuedAt?.toMillis?.() || 0;
+      const bTime = b.issuedAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   async getAvailableCertificates() {
     const snap = await getDocs(
       query(
         collection(db, 'certificatePrograms'),
-        where('status', '==', 'PUBLISHED'),
-        orderBy('title', 'asc')
+        where('status', '==', 'PUBLISHED')
       )
     );
-    return docsFrom(snap);
+    return docsFrom(snap).sort((a, b) => (a.title || '').localeCompare(b.title || ''));
   },
 
   async getInProgressCertificates(userId) {
@@ -131,10 +135,13 @@ export const CertificateService = {
       query(
         collection(db, 'certificateProgress'),
         where('userId', '==', userId),
-        where('status', '==', 'IN_PROGRESS'),
-        orderBy('updatedAt', 'desc')
+        where('status', '==', 'IN_PROGRESS')
       )
     );
-    return docsFrom(snap);
+    return docsFrom(snap).sort((a, b) => {
+      const aTime = a.updatedAt?.toMillis?.() || 0;
+      const bTime = b.updatedAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   }
 };

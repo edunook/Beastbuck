@@ -200,13 +200,19 @@ export const MarketplaceService = {
   async getResourceDetail(resourceId, userId) {
     const [resource, reviewsSnap, bookmarkSnap, relatedSnap] = await Promise.all([
       this.getResource(resourceId),
-      getDocs(query(collection(db, 'marketplaceReviews'), where('resourceId', '==', resourceId), orderBy('createdAt', 'desc'), limit(30))),
+      getDocs(query(collection(db, 'marketplaceReviews'), where('resourceId', '==', resourceId), limit(30))),
       userId ? getDoc(doc(db, 'marketplaceBookmarks', `${resourceId}_${userId}`)) : Promise.resolve(null),
-      getDocs(query(collection(db, 'marketplaceItems'), where('status', '==', 'PUBLISHED'), limit(20))),
+      getDocs(query(collection(db, 'marketplaceItems'), limit(20))),
     ]);
+    const reviews = docsFrom(reviewsSnap).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
+    const related = docsFrom(relatedSnap).filter(item => item.status === 'PUBLISHED');
     return {
       resource,
-      reviews: docsFrom(reviewsSnap),
+      reviews,
       isBookmarked: bookmarkSnap?.exists?.() || false,
       related: docsFrom(relatedSnap).filter(item => item.id !== resourceId && (item.category === resource?.category || item.type === resource?.type)).slice(0, 6),
     };
@@ -431,10 +437,14 @@ export const MarketplaceService = {
   },
 
   async getTransactionHistory(userId) {
-    const sent = await getDocs(query(collection(db, 'marketplaceTransactions'), where('senderId', '==', userId), orderBy('createdAt', 'desc'), limit(50)));
-    const received = await getDocs(query(collection(db, 'marketplaceTransactions'), where('receiverId', '==', userId), orderBy('createdAt', 'desc'), limit(50)));
+    const sent = await getDocs(query(collection(db, 'marketplaceTransactions'), where('senderId', '==', userId), limit(50)));
+    const received = await getDocs(query(collection(db, 'marketplaceTransactions'), where('receiverId', '==', userId), limit(50)));
     const all = [...docsFrom(sent), ...docsFrom(received)];
-    return all.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 50);
+    return all.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    }).slice(0, 50);
   },
 
   // ---------------------------------------------------------------------------
@@ -462,8 +472,12 @@ export const MarketplaceService = {
   },
 
   async getServices(limitCount = 50) {
-    const snap = await getDocs(query(collection(db, 'marketplaceServices'), where('status', '==', 'PUBLISHED'), orderBy('createdAt', 'desc'), limit(limitCount)));
-    return docsFrom(snap);
+    const snap = await getDocs(query(collection(db, 'marketplaceServices'), limit(limitCount)));
+    return docsFrom(snap).filter(service => service.status === 'PUBLISHED').sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   },
 
   // ---------------------------------------------------------------------------
@@ -489,8 +503,8 @@ export const MarketplaceService = {
   },
 
   async getUserWishlist(userId) {
-    const snap = await getDocs(query(collection(db, 'marketplaceWishlist'), where('userId', '==', userId), where('status', '==', 'ACTIVE')));
-    return docsFrom(snap);
+    const snap = await getDocs(query(collection(db, 'marketplaceWishlist'), where('userId', '==', userId)));
+    return docsFrom(snap).filter(item => item.status === 'ACTIVE');
   },
 
   // ---------------------------------------------------------------------------
@@ -514,7 +528,11 @@ export const MarketplaceService = {
   },
 
   async getBundles() {
-    const snap = await getDocs(query(collection(db, 'marketplaceBundles'), where('status', '==', 'PUBLISHED'), orderBy('createdAt', 'desc')));
-    return docsFrom(snap);
+    const snap = await getDocs(query(collection(db, 'marketplaceBundles')));
+    return docsFrom(snap).filter(bundle => bundle.status === 'PUBLISHED').sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   }
 };

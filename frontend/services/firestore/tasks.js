@@ -25,8 +25,8 @@ export const TasksService = {
   async getTasksForUser(uid) {
     const tasksRef = collection(db, 'tasks');
     const [globalSnap, assignedSnap] = await Promise.all([
-      getDocs(query(tasksRef, where('isArchived', '==', false), where('type', '==', 'GLOBAL'))),
-      getDocs(query(tasksRef, where('isArchived', '==', false), where('assigneeIds', 'array-contains', uid))),
+      getDocs(query(tasksRef, where('isArchived', '==', false))),
+      getDocs(query(tasksRef, where('assigneeIds', 'array-contains', uid))),
     ]);
 
     const byId = new Map();
@@ -34,7 +34,9 @@ export const TasksService = {
       byId.set(task.id, task);
     }
 
-    return sortTasks([...byId.values()]);
+    return sortTasks([...byId.values()].filter(task => 
+      (task.type === 'GLOBAL' || task.assigneeIds?.includes(uid)) && !task.isArchived
+    ));
   },
 
   /**

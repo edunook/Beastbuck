@@ -21,9 +21,9 @@ export const MentorshipService = {
   // EXPERT DIRECTORY (Hybrid classification)
   // ---------------------------------------------------------------------------
   async getExperts() {
-    const q = query(collection(db, 'expertProfiles'), where('isPublic', '==', true), orderBy('expertiseScore', 'desc'));
+    const q = query(collection(db, 'expertProfiles'), where('isPublic', '==', true));
     const snap = await getDocs(q);
-    return docsFrom(snap);
+    return docsFrom(snap).sort((a, b) => (b.expertiseScore || 0) - (a.expertiseScore || 0));
   },
 
   async confirmExpertise(userId, confirmedSkills) {

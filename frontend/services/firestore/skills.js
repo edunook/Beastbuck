@@ -136,12 +136,20 @@ export const SkillsService = {
   async getSkillNetwork(skillId) {
     const [skill, postsSnap, resourcesSnap] = await Promise.all([
       this.getSkill(skillId),
-      getDocs(query(postsRef(), where('skillId', '==', skillId), orderBy('createdAt', 'desc'), limit(100))),
-      getDocs(query(resourcesRef(), where('skillId', '==', skillId), orderBy('createdAt', 'desc'), limit(100))),
+      getDocs(query(postsRef(), where('skillId', '==', skillId), limit(100))),
+      getDocs(query(resourcesRef(), where('skillId', '==', skillId), limit(100))),
     ]);
 
-    const posts = postsSnap.docs.map(item => ({ id: item.id, ...item.data() }));
-    const resources = resourcesSnap.docs.map(item => ({ id: item.id, ...item.data() }));
+    const posts = postsSnap.docs.map(item => ({ id: item.id, ...item.data() })).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
+    const resources = resourcesSnap.docs.map(item => ({ id: item.id, ...item.data() })).sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
 
     return {
       skill,
