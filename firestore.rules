@@ -2049,6 +2049,20 @@ service cloud.firestore {
     }
 
     // ----------------------------------------
+    // AI CREATOR STUDIO & CUSTOM AIS
+    // ----------------------------------------
+    match /custom_ais/{aiId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (resource.data.creatorId == request.auth.uid || canManageMembers());
+    }
+
+    match /ai_studio_stats/{statId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid || canManageMembers());
+    }
+
+    // ----------------------------------------
     // FUNFLIX OS COLLECTIONS
     // ----------------------------------------
     match /funflix_videos/{videoId} {
