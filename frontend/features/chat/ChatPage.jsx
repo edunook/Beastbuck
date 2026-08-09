@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { AlertCircle, X, Pin, MessageSquareReply, Settings, Flag, Forward } from 'lucide-react';
+import { CircleAlert as AlertCircle, X, Pin, MessageSquareReply, Settings, Flag, Forward } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { ChatService, SUPPORTED_REACTIONS } from '@services/firestore/chat';
 import { UsersService } from '@services/firestore/users';
@@ -1114,9 +1114,9 @@ const ChatPage = React.memo(function ChatPage() {
           padding: 0;
         }
         .chat-toggle-switch.active {
-          background: linear-gradient(135deg, #8338ec, #ff006e);
-          box-shadow: 0 0 15px rgba(255, 0, 110, 0.4);
-          border-color: rgba(255, 0, 110, 0.5);
+          background: var(--background-image-gradient-premium-1);
+          box-shadow: var(--shadow-glow-sm);
+          border-color: var(--color-accent-0);
         }
         .chat-toggle-thumb {
           position: absolute;
@@ -1232,9 +1232,9 @@ const ChatPage = React.memo(function ChatPage() {
           padding: 0;
         }
         .chat-toggle-switch.active {
-          background: linear-gradient(135deg, #8338ec, #ff006e);
-          box-shadow: 0 0 20px rgba(255, 0, 110, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
-          border-color: rgba(255, 0, 110, 0.5);
+          background: var(--background-image-gradient-premium-1);
+          box-shadow: var(--shadow-glow-sm), inset 0 1px 0 rgba(255,255,255,0.2);
+          border-color: var(--color-accent-0);
         }
         .chat-toggle-thumb {
           position: absolute;

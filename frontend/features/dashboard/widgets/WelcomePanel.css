@@ -310,15 +310,15 @@
   height: 100%;
   background: linear-gradient(
     90deg,
-    #8338ec 0%,
-    #ff006e 50%,
-    #3a86ff 100%
+    var(--color-accent-0) 0%,
+    var(--color-accent-alt-0) 50%,
+    var(--color-accent-0) 100%
   );
   background-size: 200% 100%;
   animation: gradient-shift 2s linear infinite;
   border-radius: 9999px;
   position: relative;
-  box-shadow: 0 0 20px rgba(131, 56, 236, 0.6);
+  box-shadow: var(--shadow-glow-purple);
   transition: width 1s var(--ease-bounce);
 }
 

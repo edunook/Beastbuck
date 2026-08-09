@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import './CelebrationOverlay.css';
 
 const EMOJIS = ['⭐', '✨', '🎉', '🎊', '💫', '🌟', '💎', '🏆', '🚀', '🔥'];
-const COLORS = ['#00f5ff', '#8338ec', '#ff006e', '#ff5400', '#39ff14', '#fff01f', '#3a86ff'];
+const COLORS = ['#00f0ff', '#b026ff', '#ff2a90', '#ff5400', '#00ff88', '#ffaa00', '#3a86ff'];
 
 function randomBetween(min, max) {
   return Math.random() * (max - min) + min;
