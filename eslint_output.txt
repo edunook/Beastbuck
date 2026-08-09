@@ -1,4 +1,4 @@
-﻿
+
 C:\Users\hp\Desktop\BeastBuck\src\components\background\AnimatedBackground.jsx
   6:9  error  'animationRef' is assigned a value but never used  no-unused-vars
 
