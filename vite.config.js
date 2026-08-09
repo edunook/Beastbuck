@@ -261,6 +261,20 @@ const customCss = String.raw`
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
+@keyframes floatAnim {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-12px) rotate(2deg); }
+  66% { transform: translateY(-6px) rotate(-2deg); }
+}
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
 
 .animate-fade-in {
   animation: fadeIn var(--transition-duration-slow) var(--ease-base) both;
@@ -270,6 +284,64 @@ const customCss = String.raw`
 }
 .animate-slide-in {
   animation: slideIn var(--transition-duration-slow) var(--ease-base) both;
+}
+.animate-float {
+  animation: floatAnim 4s ease-in-out infinite;
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  background-size: 1000px 100%;
+  animation: shimmer 2.5s infinite;
+}
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Dark-themed scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-surface-100);
+  border-radius: 9999px;
+  border: 2px solid var(--color-background);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-0);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-100) var(--color-background);
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  height: 5px;
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-accent-0);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent-1);
+}
+::selection {
+  background: var(--color-accent-0);
+  color: var(--color-background);
 }
 
 @keyframes enter {
