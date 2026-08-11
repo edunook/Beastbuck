@@ -29,6 +29,7 @@ import { FadeIn, StaggeredChildren, ScaleIn, SlideIn } from '@frontend/component
 import { InteractiveCard } from '@frontend/components/ui/InteractiveCard';
 import { cn } from '@shared/lib/utils';
 import { useAuth } from '@frontend/features/auth/AuthContext';
+import LandingHome from './LandingHome';
 
 function PublicContainer({ children, className = '' }) {
   return <div className={`mx-auto w-full max-w-7xl px-5 py-12 md:px-8 md:py-16 ${className}`}>{children}</div>;
@@ -90,83 +91,7 @@ function filteredItems(items, search, fields) {
 }
 
 export function PublicHome() {
-  return (
-    <>
-      <section className="relative isolate min-h-screen overflow-hidden flex items-center">
-        {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-purple-950/30 to-slate-950" />
-        <div className="absolute inset-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/20 rounded-full blur-[128px] animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-[128px] animate-pulse delay-1000" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-[200px]" />
-        </div>
-
-        {/* Floating Particles */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {[...Array(30)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-white/30 rounded-full animate-float"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${5 + Math.random() * 10}s`,
-              }}
-            />
-          ))}
-        </div>
-
-        <PublicContainer className="relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            {/* Logo */}
-            <div className="mb-8 flex justify-center">
-              <div className="relative">
-                <div className="absolute inset-0 bg-accent blur-xl opacity-50 animate-pulse" />
-                <img src="/logo.png" alt="BeastBuck" className="relative h-20 w-auto" />
-              </div>
-            </div>
-
-            {/* Badge */}
-            <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-accent/30 bg-accent/10 px-6 py-3 backdrop-blur-sm">
-              <Sparkles className="h-5 w-5 text-accent" />
-              <span className="text-sm font-bold uppercase tracking-[0.2em] text-accent">Public Invention Network</span>
-            </div>
-
-            {/* Main Heading */}
-            <h1 className="font-heading text-5xl font-black leading-tight tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl mb-6">
-              <span className="block bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent">
-                Build Inventions
-              </span>
-              <span className="block mt-2 bg-gradient-to-r from-accent via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-                Run Missions
-              </span>
-              <span className="block mt-2 bg-gradient-to-r from-cyan-400 via-purple-400 to-accent bg-clip-text text-transparent">
-                Grow Your Portfolio
-              </span>
-            </h1>
-
-            <p className="mt-8 max-w-2xl mx-auto text-xl leading-relaxed text-text-soft">
-              A kid-friendly creative company OS where young creators can experiment, build products, complete missions, earn XP, and showcase their work to the world.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="mt-12 flex flex-col gap-4 sm:flex-row justify-center">
-              <Link 
-                to="/signup" 
-                className="group relative inline-flex items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-accent via-purple-500 to-cyan-500 px-10 py-5 font-black text-white text-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-accent/25"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-accent via-purple-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-30" />
-                <span className="relative">Create Account</span>
-                <ArrowRight className="relative h-6 w-6 group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-          </div>
-        </PublicContainer>
-      </section>
-    </>
-  );
+  return <LandingHome />;
 }
 
 export function PublicAbout() {

@@ -24,9 +24,19 @@ import {
   Zap,
   ArrowRight,
   Edit,
+  TrendingUp,
+  Download,
+  Lock,
+  Mail,
+  Phone,
+  Briefcase,
+  ExternalLink,
+  Crown,
+  Code,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { UsersService } from '@services/firestore/users';
+import { PortfolioService } from '@services/firestore/portfolio';
 import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import { getLevelProgress } from '@services/firestore/gamification';
 import { OrganizationService } from '@services/firestore/organization';
@@ -53,6 +63,15 @@ function formatDate(timestamp) {
 
 // Theme Templates
 const THEME_TEMPLATES = [
+  {
+    id: 'sunset-red',
+    name: 'Sunset Red',
+    description: 'Warm reddish sunset theme with orange accents',
+    background: 'linear-gradient(135deg, #2d1f3f 0%, #4a2c2a 50%, #6b3a3a 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff6b6b',
+    cardBg: 'rgba(255, 107, 107, 0.1)',
+  },
   {
     id: 'default',
     name: 'Default Dark',
@@ -696,6 +715,98 @@ function getStats(profile, activityCount) {
   ];
 }
 
+function getVerificationHalo(role, badges) {
+  if (role === ROLES.MAIN_CEO) {
+    return {
+      color: '#ffd700',
+      glow: '0 0 20px rgba(255, 215, 0, 0.6)',
+      label: 'CEO'
+    };
+  }
+  if (role === ROLES.CO_CEO) {
+    return {
+      color: '#c0c0c0',
+      glow: '0 0 20px rgba(192, 192, 192, 0.6)',
+      label: 'Co-CEO'
+    };
+  }
+  if (badges?.includes('mentor')) {
+    return {
+      color: '#00ff87',
+      glow: '0 0 20px rgba(0, 255, 135, 0.6)',
+      label: 'Mentor'
+    };
+  }
+  if (badges?.includes('innovator')) {
+    return {
+      color: '#ff6b6b',
+      glow: '0 0 20px rgba(255, 107, 107, 0.6)',
+      label: 'Innovator'
+    };
+  }
+  return null;
+}
+
+// Portfolio Helper Components
+function StatCard({ icon: Icon, label, value, theme }) {
+  return (
+    <div 
+      className="rounded-2xl border p-6 transition-all hover:scale-105"
+      style={{ 
+        borderColor: `${theme.accentColor}40`, 
+        background: theme.cardBg || 'rgba(255, 255, 255, 0.05)'
+      }}
+    >
+      <Icon className="mb-3 h-6 w-6" style={{ color: theme.accentColor }} />
+      <div className="text-2xl font-black" style={{ color: theme.textColor }}>{value}</div>
+      <div className="text-sm font-bold" style={{ color: theme.textColor }}>{label}</div>
+    </div>
+  );
+}
+
+function QuickInfoCard({ icon: Icon, label, value, theme }) {
+  return (
+    <div 
+      className="rounded-xl border p-4 transition-all hover:scale-105"
+      style={{ 
+        borderColor: `${theme.accentColor}40`, 
+        background: theme.cardBg || 'rgba(255, 255, 255, 0.05)'
+      }}
+    >
+      <Icon className="mb-2 h-5 w-5" style={{ color: theme.accentColor }} />
+      <div className="text-lg font-black" style={{ color: theme.textColor }}>{value}</div>
+      <div className="text-xs font-bold opacity-70" style={{ color: theme.textColor }}>{label}</div>
+    </div>
+  );
+}
+
+function PortfolioSection({ title, icon: Icon, items, theme }) {
+  return (
+    <Card style={{ borderColor: `${theme.accentColor}40`, background: theme.cardBg || 'rgba(255, 255, 255, 0.05)' }}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2" style={{ color: theme.textColor }}>
+          <Icon className="h-5 w-5" style={{ color: theme.accentColor }} />
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {items?.slice(0, 4).map((item, index) => (
+            <div 
+              key={index}
+              className="rounded-xl border p-4 transition-all hover:scale-105"
+              style={{ borderColor: `${theme.accentColor}40` }}
+            >
+              <h3 className="mb-2 font-bold" style={{ color: theme.textColor }}>{item.title || item.name}</h3>
+              <p className="text-sm line-clamp-2" style={{ color: theme.textColor }}>{item.description}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function MembershipCard({ userId, role }) {
   const [application, setApplication] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -934,8 +1045,8 @@ function ProfileHero({ profile, status, isOwnProfile }) {
       <div className="relative flex flex-col gap-6 sm:gap-8 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-5 sm:gap-6 sm:flex-row sm:items-center md:flex-row md:items-center w-full">
           <div className="relative h-28 w-28 sm:h-36 sm:w-36 md:h-44 md:w-44 shrink-0 overflow-hidden rounded-2xl sm:rounded-3xl border-4 shadow-2xl transition-all duration-300 hover:scale-105" style={{ borderColor: theme.accentColor }}>
-            {profile.avatar ? (
-              <img src={profile.avatar} alt={`Avatar of ${profile.displayName || profile.username}`} className="h-full w-full object-cover" />
+            {profile.photoURL || profile.avatar ? (
+              <img src={profile.photoURL || profile.avatar} alt={`Avatar of ${profile.displayName || profile.username}`} className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-4xl sm:text-5xl md:text-6xl font-black" style={{ color: theme.accentColor }}>
                 {getInitials(profile)}
@@ -1017,7 +1128,7 @@ function ProfileHero({ profile, status, isOwnProfile }) {
 
         <div className="flex flex-col gap-3 shrink-0">
           <ShareActions profile={profile} theme={theme} />
-          {isOwnProfile && (
+          {(isOwnProfile || canManageMembers) && (
             <Link
               to={`/profile/${profile.id}/edit`}
               className="inline-flex items-center gap-2 rounded-xl border-2 px-5 py-3 text-sm sm:text-base font-bold transition-all hover:scale-105 shadow-lg"
@@ -1028,7 +1139,7 @@ function ProfileHero({ profile, status, isOwnProfile }) {
               }}
             >
               <Edit className="h-4 w-4 sm:h-5 sm:w-5" />
-              Edit Profile
+              {isOwnProfile ? 'Edit Profile' : 'Manage Profile'}
             </Link>
           )}
         </div>
@@ -1409,6 +1520,7 @@ export default function ProfilePage() {
   const [activity, setActivity] = useState([]);
   const [affiliations, setAffiliations] = useState({ departments: [], labs: [], activeProjects: [] });
   const [universeSummary, setUniverseSummary] = useState(null);
+  const [portfolioData, setPortfolioData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [managing, setManaging] = useState(false);
@@ -1526,6 +1638,35 @@ export default function ProfilePage() {
   }, [profileUid]);
 
   useEffect(() => {
+    if (!profileUid || !profile) return;
+    let cancelled = false;
+
+    // Build portfolio data from profile and already-loaded data
+    // This avoids complex queries that cause permission/index errors
+    const buildPortfolioData = () => {
+      if (!cancelled) {
+        setPortfolioData({
+          profile: profile,
+          stats: {
+            projectsJoined: affiliations?.activeProjects?.length || 0,
+            researchProjectsCount: 0,
+            achievementsEarned: normalizeAchievements(profile).length,
+            impact: profile?.stats?.impact || 0,
+            level: profile?.level || 1,
+            totalXP: profile?.xp || 0
+          },
+          projects: affiliations?.activeProjects || [],
+          researchProjects: [],
+          achievements: normalizeAchievements(profile)
+        });
+      }
+    };
+
+    buildPortfolioData();
+    return () => { cancelled = true; };
+  }, [profileUid, profile, affiliations]);
+
+  useEffect(() => {
     if (!canManageMembers || !user?.uid) return;
 
     UsersService.seedDefaultSpecializations(user.uid).catch((err) => {
@@ -1591,142 +1732,321 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
-      <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        .animate-fade-in-up {
-          animation: fadeInUp 0.6s ease-out forwards;
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.8s ease-out forwards;
-        }
-        .animate-scale-in {
-          animation: scaleIn 0.5s ease-out forwards;
-        }
-        @media print {
-          .no-print {
-            display: none !important;
-          }
-        }
-      `}</style>
-      <div className="flex flex-col gap-2 animate-fade-in">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">Identity</p>
-        <h1 className="font-heading text-2xl font-bold text-white md:text-3xl">{pageTitle}</h1>
-        <p className="text-sm text-text-muted">
-          {isOwnProfile ? 'Your BeastBuck identity, progress, and reputation.' : 'Member identity, progress, and reputation.'}
-        </p>
-      </div>
-
-      {error && (
-        <div className="rounded-xl border border-status-danger/20 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">
-          {error}
-        </div>
-      )}
-
-      <ProfileHero profile={profile} status={presence} isOwnProfile={isOwnProfile} />
-
-      <CustomSectionsCard profile={profile} theme={profileTheme} />
-
-      <EducationInterestsCard profile={profile} theme={profileTheme} />
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-        <div className="space-y-5">
-          <SpecializationsCard
-            profile={profile}
-            specializations={specializations}
-            canManage={canManageMembers}
-            managing={managing}
-            onAssign={assignSpecialization}
-            onRemove={removeSpecialization}
-          />
-          <AffiliationsCard affiliations={affiliations} />
-          {universeSummary && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Sparkles className="h-5 w-5 text-accent" />
-                  Universe Profile
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-text-soft">
-                <p>
-                  Journey milestones:{' '}
-                  <span className="font-bold text-white">
-                    {Object.keys(universeSummary.journey?.milestones || {}).length}
-                  </span>
-                </p>
-                <p>
-                  Active goals:{' '}
-                  <span className="font-bold text-white">
-                    {(universeSummary.goals || []).filter(g => g.status === 'ACTIVE').length}
-                  </span>
-                </p>
-                {isOwnProfile && (
-                  <a href="/universe" className="inline-block font-bold text-accent hover:underline">
-                    Open Universe OS →
-                  </a>
+    <div className="min-h-screen bg-background">
+      {/* Portfolio Cover Section with Dynamic Styling */}
+      <section 
+        className="relative overflow-hidden border-b-2 p-8 md:p-12 lg:p-16 transition-all duration-500"
+        style={{ 
+          background: profileTheme.background,
+          borderColor: profileTheme.accentColor,
+          color: profileTheme.textColor
+        }}
+      >
+        {/* Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/20" />
+        <div className="absolute -right-32 -top-32 h-64 w-64 rounded-full opacity-30 blur-3xl transition-all duration-700 animate-pulse" style={{ background: profileTheme.accentColor }} />
+        <div className="absolute -left-32 -bottom-32 h-64 w-64 rounded-full opacity-30 blur-3xl transition-all duration-700 animate-pulse" style={{ background: profileTheme.accentColor }} />
+        
+        <div className="relative mx-auto max-w-6xl">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            {/* Avatar with Glowing Halo */}
+            <div className="flex items-center gap-6">
+              <div 
+                className="relative h-32 w-32 md:h-40 md:w-40 shrink-0 overflow-hidden rounded-2xl border-4 shadow-2xl transition-all duration-300 hover:scale-105"
+                style={{ 
+                  borderColor: profileTheme.accentColor,
+                  boxShadow: getVerificationHalo(profile?.role, profile?.badges)?.glow || 'none'
+                }}
+              >
+                {profile.photoURL || profile.avatar ? (
+                  <img src={profile.photoURL || profile.avatar} alt={profile.displayName} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-4xl font-black" style={{ color: profileTheme.accentColor }}>
+                    {profile.displayName?.[0] || 'M'}
+                  </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
-          <AchievementsCard profile={profile} />
-          <ActivityFeed activity={activity} />
+                <span className={`absolute bottom-3 right-3 h-4 w-4 rounded-full border-2 ${PresenceService.getPresenceColor(presence?.state || 'offline')}`} style={{ borderColor: profileTheme.textColor }} />
+                {getVerificationHalo(profile?.role, profile?.badges) && (
+                  <div className="absolute -top-2 -right-2 rounded-full p-2" style={{ background: getVerificationHalo(profile?.role, profile?.badges)?.color }}>
+                    <Crown className="h-4 w-4 text-black" />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h1 className="font-heading text-3xl font-black md:text-4xl lg:text-5xl">
+                  {profile.displayName || profile.username}
+                </h1>
+                <p className="mt-2 text-lg opacity-80">@{profile.username}</p>
+                <div className="mt-2 flex items-center gap-2 opacity-70">
+                  <span className={`h-2.5 w-2.5 rounded-full ${PresenceService.getPresenceColor(presence?.state || 'offline')}`} />
+                  <span className="text-sm">{PresenceService.getPresenceLabel(presence?.state || 'offline')}</span>
+                  {presence?.activity && <span className="text-sm"> · {presence.activity}</span>}
+                </div>
+                {getVerificationHalo(profile?.role, profile?.badges) && (
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-bold" style={{ background: `${getVerificationHalo(profile?.role, profile?.badges)?.color}30`, color: getVerificationHalo(profile?.role, profile?.badges)?.color }}>
+                    <Shield className="h-4 w-4" />
+                    {getVerificationHalo(profile?.role, profile?.badges)?.label}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              {isOwnProfile && (
+                <Link
+                  to={`/profile/${profile.uid}/edit`}
+                  className="inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 font-bold transition-all hover:scale-105"
+                  style={{ 
+                    borderColor: profileTheme.accentColor,
+                    background: `${profileTheme.accentColor}20`,
+                    color: profileTheme.accentColor 
+                  }}
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Portfolio
+                </Link>
+              )}
+              <button
+                onClick={() => navigator.clipboard.writeText(window.location.href)}
+                className="inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 font-bold transition-all hover:scale-105"
+                style={{ 
+                  borderColor: profileTheme.accentColor,
+                  background: `${profileTheme.accentColor}20`,
+                  color: profileTheme.accentColor 
+                }}
+              >
+                <Share2 className="h-4 w-4" />
+                Share
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Portfolio Content - Show user's own data */}
+      <div className="mx-auto max-w-6xl space-y-8 p-6 md:p-8">
+        {/* Quick Info Cards */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <QuickInfoCard 
+            icon={Briefcase}
+            label="Role"
+            value={profile?.role || 'Member'}
+            theme={profileTheme}
+          />
+          <QuickInfoCard 
+            icon={GraduationCap}
+            label="Level"
+            value={`Level ${portfolioData?.stats?.level || profile?.level || 1}`}
+            theme={profileTheme}
+          />
+          <QuickInfoCard 
+            icon={Star}
+            label="Total XP"
+            value={portfolioData?.stats?.totalXP || profile?.xp || 0}
+            theme={profileTheme}
+          />
+          <QuickInfoCard 
+            icon={Zap}
+            label="Impact"
+            value={portfolioData?.stats?.impact || profile?.stats?.impact || 0}
+            theme={profileTheme}
+          />
         </div>
 
-        <aside className="space-y-5">
-          {isOwnProfile && <MembershipCard userId={profileUid} role={profile.role} />}
-          <XPLevelCard profile={profile} />
-          <SkillExpertiseCard profile={profile} />
-          <StatsCard profile={profile} activityCount={activity.length} />
-          <Card>
+        {/* Skills Section */}
+        {specializations?.length > 0 && (
+          <Card style={{ borderColor: `${profileTheme.accentColor}40`, background: profileTheme.cardBg || 'rgba(255, 255, 255, 0.05)' }}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Star className="h-5 w-5 text-accent" />
-                Reputation Summary
+              <CardTitle className="flex items-center gap-2" style={{ color: profileTheme.textColor }}>
+                <Code className="h-5 w-5" style={{ color: profileTheme.accentColor }} />
+                Specializations
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 text-sm text-text-soft">
-                <div className="flex justify-between gap-3">
-                  <span>Role</span>
-                  <span className="font-bold text-white">{profile.role || 'Member'}</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span>Specializations</span>
-                  <span className="font-bold text-white">{(profile.specializations || []).length}</span>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <span>Achievements</span>
-                  <span className="font-bold text-white">{normalizeAchievements(profile).length}</span>
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {specializations.map((spec, index) => (
+                  <span
+                    key={index}
+                    className="rounded-full px-4 py-2 text-sm font-bold transition-all hover:scale-105"
+                    style={{
+                      background: `${profileTheme.accentColor}20`,
+                      color: profileTheme.accentColor,
+                      border: `1px solid ${profileTheme.accentColor}40`
+                    }}
+                  >
+                    {spec.name}
+                  </span>
+                ))}
               </div>
             </CardContent>
           </Card>
-        </aside>
+        )}
+
+        {/* Stats Section */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard 
+            icon={FolderKanban} 
+            label="Projects" 
+            value={portfolioData?.stats?.projectsJoined || affiliations?.activeProjects?.length || 0}
+            theme={profileTheme}
+          />
+          <StatCard 
+            icon={FlaskConical} 
+            label="Research" 
+            value={portfolioData?.stats?.researchProjectsCount || 0}
+            theme={profileTheme}
+          />
+          <StatCard 
+            icon={Award} 
+            label="Achievements" 
+            value={portfolioData?.stats?.achievementsEarned || normalizeAchievements(profile).length}
+            theme={profileTheme}
+          />
+          <StatCard 
+            icon={TrendingUp} 
+            label="Impact Score" 
+            value={portfolioData?.stats?.impact || profile?.stats?.impact || 0}
+            theme={profileTheme}
+          />
+        </div>
+
+        {/* Projects Section */}
+        {portfolioData?.projects?.length > 0 && (
+          <PortfolioSection 
+            title="Featured Projects" 
+            icon={FolderKanban}
+            items={portfolioData.projects}
+            theme={profileTheme}
+          />
+        )}
+
+        {/* Research Section */}
+        {portfolioData?.researchProjects?.length > 0 && (
+          <PortfolioSection 
+            title="Research Papers" 
+            icon={FlaskConical}
+            items={portfolioData.researchProjects}
+            theme={profileTheme}
+          />
+        )}
+
+        {/* Achievements Section */}
+        {portfolioData?.achievements?.length > 0 && (
+          <PortfolioSection 
+            title="Achievements" 
+            icon={Award}
+            items={portfolioData.achievements}
+            theme={profileTheme}
+          />
+        )}
+
+        {/* Contact Section */}
+        <Card style={{ borderColor: `${profileTheme.accentColor}40`, background: profileTheme.cardBg || 'rgba(255, 255, 255, 0.05)' }}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2" style={{ color: profileTheme.textColor }}>
+              <Mail className="h-5 w-5" style={{ color: profileTheme.accentColor }} />
+              Contact Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {profile?.email && (
+                <div className="flex items-center gap-3 rounded-xl border p-4 transition-all hover:scale-105" style={{ borderColor: `${profileTheme.accentColor}40` }}>
+                  <div className="rounded-lg p-2" style={{ background: `${profileTheme.accentColor}20` }}>
+                    <Mail className="h-5 w-5" style={{ color: profileTheme.accentColor }} />
+                  </div>
+                  <span className="text-sm" style={{ color: profileTheme.textColor }}>{profile.email}</span>
+                </div>
+              )}
+              {profile?.phoneNumber && (
+                <div className="flex items-center gap-3 rounded-xl border p-4 transition-all hover:scale-105" style={{ borderColor: `${profileTheme.accentColor}40` }}>
+                  <div className="rounded-lg p-2" style={{ background: `${profileTheme.accentColor}20` }}>
+                    <Phone className="h-5 w-5" style={{ color: profileTheme.accentColor }} />
+                  </div>
+                  <span className="text-sm" style={{ color: profileTheme.textColor }}>{profile.phoneNumber}</span>
+                </div>
+              )}
+              {profile?.location && (
+                <div className="flex items-center gap-3 rounded-xl border p-4 transition-all hover:scale-105" style={{ borderColor: `${profileTheme.accentColor}40` }}>
+                  <div className="rounded-lg p-2" style={{ background: `${profileTheme.accentColor}20` }}>
+                    <MapPin className="h-5 w-5" style={{ color: profileTheme.accentColor }} />
+                  </div>
+                  <span className="text-sm" style={{ color: profileTheme.textColor }}>{profile.location}</span>
+                </div>
+              )}
+              {profile?.education && (
+                <div className="flex items-center gap-3 rounded-xl border p-4 transition-all hover:scale-105" style={{ borderColor: `${profileTheme.accentColor}40` }}>
+                  <div className="rounded-lg p-2" style={{ background: `${profileTheme.accentColor}20` }}>
+                    <GraduationCap className="h-5 w-5" style={{ color: profileTheme.accentColor }} />
+                  </div>
+                  <span className="text-sm" style={{ color: profileTheme.textColor }}>{profile.education}</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Education & Interests Section */}
+        {(profile?.education || profile?.interests) && (
+          <Card style={{ borderColor: `${profileTheme.accentColor}40`, background: profileTheme.cardBg || 'rgba(255, 255, 255, 0.05)' }}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2" style={{ color: profileTheme.textColor }}>
+                <GraduationCap className="h-5 w-5" style={{ color: profileTheme.accentColor }} />
+                Education & Interests
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {profile?.education && (
+                <div>
+                  <h3 className="mb-2 font-bold" style={{ color: profileTheme.textColor }}>Education</h3>
+                  <p className="text-sm opacity-80" style={{ color: profileTheme.textColor }}>{profile.education}</p>
+                </div>
+              )}
+              {profile?.interests && (
+                <div>
+                  <h3 className="mb-2 font-bold" style={{ color: profileTheme.textColor }}>Interests</h3>
+                  <p className="text-sm opacity-80" style={{ color: profileTheme.textColor }}>{profile.interests}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Activity Feed */}
+        {activity?.length > 0 && (
+          <Card style={{ borderColor: `${profileTheme.accentColor}40`, background: profileTheme.cardBg || 'rgba(255, 255, 255, 0.05)' }}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2" style={{ color: profileTheme.textColor }}>
+                <Activity className="h-5 w-5" style={{ color: profileTheme.accentColor }} />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {activity.slice(0, 10).map((activity, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start gap-3 rounded-lg border p-3 transition-all hover:scale-[1.01]"
+                    style={{ borderColor: `${profileTheme.accentColor}40` }}
+                  >
+                    <div className="rounded-lg p-2" style={{ background: `${profileTheme.accentColor}20` }}>
+                      <Activity className="h-4 w-4" style={{ color: profileTheme.accentColor }} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold" style={{ color: profileTheme.textColor }}>{activity.type}</p>
+                      <p className="text-xs opacity-70" style={{ color: profileTheme.textColor }}>
+                        {activity.timestamp?.toDate?.()?.toLocaleString() || 'Unknown time'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
-    </main>
+    </div>
   );
 }

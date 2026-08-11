@@ -118,7 +118,7 @@ export function MessageInput({
   const handleEmojiClick = useCallback((emoji) => {
     setText(current => current + emoji);
     textareaRef.current?.focus();
-  }, []);
+  }, [setText]);
 
   const handleFileSelect = useCallback(async (e) => {
     const files = Array.from(e.target.files || []);
@@ -134,7 +134,7 @@ export function MessageInput({
     setAttachments(prev => [...prev, ...newAttachments]);
     setShowFileMenu(false);
     onFileSelect?.(processed);
-  }, [onFileSelect]);
+  }, [onFileSelect, setAttachments, setShowFileMenu]);
 
   const removeAttachment = useCallback((id) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
@@ -144,7 +144,7 @@ export function MessageInput({
     setText(reply);
     setShowSmartRepliesPanel(false);
     textareaRef.current?.focus();
-  }, []);
+  }, [setShowSmartRepliesPanel, setText]);
 
   const submit = async (event) => {
     event.preventDefault();

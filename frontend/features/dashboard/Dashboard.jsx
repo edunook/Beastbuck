@@ -57,7 +57,7 @@ const MembershipBanner = () => {
           </div>
           <div>
             <h3 className="font-heading text-xl font-black text-white mb-1">Apply for Membership</h3>
-            <p className="text-sm text-text-soft">
+            <p className="text-sm text-text-muted">
               {application?.status === 'pending'
                 ? 'Your application is under review'
                 : 'Unlock internal collaboration, projects, and research labs'}
@@ -66,13 +66,13 @@ const MembershipBanner = () => {
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {application?.status === 'pending' ? (
-            <span className="px-5 py-2.5 rounded-xl bg-status-warning/10 text-status-warning text-sm font-bold uppercase tracking-wider border border-status-warning/30">
+            <span className="px-5 py-2.5 rounded-xl bg-yellow-500/10 text-yellow-400 text-sm font-bold uppercase tracking-wider border border-yellow-500/30">
               Pending Review
             </span>
           ) : (
             <Link
               to="/membership/apply"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent to-purple-500 text-background font-black hover:shadow-lg hover:shadow-accent/50 transition-all duration-300 hover:-translate-y-1 hover:scale-105"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent to-cyan-500 text-background font-black hover:shadow-lg hover:shadow-accent/50 transition-all duration-300 hover:-translate-y-1 hover:scale-105"
             >
               Apply Now
               <ArrowRight className="h-4 w-4" />
@@ -141,7 +141,7 @@ const DailyLoginReward = ({ onClaimSuccess }) => {
         <button
           onClick={handleClaim}
           disabled={claiming}
-          className="reward-btn"
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-background font-black hover:shadow-lg hover:shadow-yellow-400/50 transition-all duration-300 hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {claiming ? (
             <span className="flex items-center gap-2">
@@ -149,7 +149,10 @@ const DailyLoginReward = ({ onClaimSuccess }) => {
               Claiming...
             </span>
           ) : (
-            'Claim Now'
+            <>
+              Claim Now
+              <Zap className="h-4 w-4 ml-1" />
+            </>
           )}
         </button>
       </div>
@@ -306,7 +309,7 @@ const Dashboard = React.memo(function Dashboard() {
   return (
     <PageContainer>
       {/* Animated Background Particles */}
-      <div className="particles-container">
+      <div className="particles-container scrollbar-hide">
         {particles.map(particle => (
           <div
             key={particle.id}
@@ -322,7 +325,7 @@ const Dashboard = React.memo(function Dashboard() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between gap-4 mb-8">
+      <div className="flex items-center justify-between gap-4 mb-8 animate-fade-in" style={{ animationDelay: '0ms' }}>
         <PageHeader
           title="Command Center"
           description="Your personal headquarters in the BeastBuck ecosystem."
@@ -334,7 +337,7 @@ const Dashboard = React.memo(function Dashboard() {
         >
           <Sliders className="h-5 w-5" />
           <span className="hidden sm:inline">Personalize</span>
-          <Zap className="h-4 w-4 ml-1" />
+          <Zap className="h-4 w-4 ml-1 text-accent" />
         </button>
       </div>
 

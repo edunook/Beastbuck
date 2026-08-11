@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   MoreVertical, MessageSquareReply, Pin, Trash2, Bookmark, BookmarkCheck, 
-  Edit3, Check, X, Forward, Paperclip, Flag
+  Edit3, Check, X, Paperclip, Flag
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SUPPORTED_REACTIONS } from '@services/firestore/chat';
@@ -71,18 +72,18 @@ export const MessageItem = memo(function MessageItem({
   onEdit,
   onDelete,
   onBookmark,
-  onForward,
   onShare,
   onShowProfile,
   onMediaOpen,
-  onOpenThread,
   onReport,
   showAvatar = true,
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text || '');
   const [showMenu, setShowMenu] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef(null);
+  const menuButtonRef = useRef(null);
   const editRef = useRef(null);
 
   useEffect(() => {
@@ -99,6 +100,17 @@ export const MessageItem = memo(function MessageItem({
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showMenu, isEditing]);
+
+  const handleMenuToggle = () => {
+    if (!showMenu && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: isOwnMessage ? rect.right - 192 : rect.left
+      });
+    }
+    setShowMenu(prev => !prev);
+  };
 
   if (message.deleted || message.archived) return null;
 
@@ -192,128 +204,118 @@ export const MessageItem = memo(function MessageItem({
             </div>
 
             {/* ALWAYS VISIBLE 3-Dots Menu Button inside Bubble Header */}
-            <div className="relative shrink-0 ml-1" ref={menuRef}>
+            <div className="relative shrink-0 ml-1">
               <button
                 type="button"
-                onClick={() => setShowMenu(prev => !prev)}
+                ref={menuButtonRef}
+                onClick={handleMenuToggle}
                 className="p-1 rounded-md text-white/60 hover:text-white hover:bg-white/15 transition active:scale-95"
                 aria-label="Message actions"
                 title="Actions menu"
               >
                 <MoreVertical className="h-3.5 w-3.5" />
               </button>
-
-              {/* Clean Options Popover Overlay */}
-              {showMenu && (
-                <div className={`absolute top-full mt-1 ${isOwnMessage ? 'right-0' : 'left-0'} w-48 rounded-xl border border-white/15 bg-slate-950 shadow-2xl z-[100] p-1.5 backdrop-blur-2xl animate-fade-in-up`}>
-                  
-                  {/* Quick Emoji Reaction Row */}
-                  <div className="flex items-center justify-between px-2 py-1.5 mb-1 border-b border-white/10">
-                    {SUPPORTED_REACTIONS.slice(0, 5).map(r => {
-                      const isUserActive = getReactionUsers(message, r.key).includes(currentUserId);
-                      return (
-                        <button
-                          key={r.key}
-                          type="button"
-                          onClick={() => {
-                            onToggleReaction?.(message, r.key, isUserActive);
-                            setShowMenu(false);
-                          }}
-                          className="text-base hover:scale-125 transition active:scale-95 p-1 rounded hover:bg-white/10"
-                          title={r.label}
-                        >
-                          {r.emoji}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Menu Items */}
-                  <button
-                    type="button"
-                    onClick={() => { onReply?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                  >
-                    <MessageSquareReply className="h-3.5 w-3.5 text-blue-400" />
-                    <span>Reply</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { onOpenThread?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                  >
-                    <MessageSquareReply className="h-3.5 w-3.5 text-cyan-400" />
-                    <span>Thread</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { onBookmark?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                  >
-                    <Bookmark className="h-3.5 w-3.5 text-amber-400" />
-                    <span>{message.bookmarked ? 'Unbookmark' : 'Bookmark'}</span>
-                  </button>
-
-                  {canManageAnnouncements && (
-                    <button
-                      type="button"
-                      onClick={() => { onTogglePin?.(message); setShowMenu(false); }}
-                      className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                    >
-                      <Pin className="h-3.5 w-3.5 text-yellow-400" />
-                      <span>{message.pinned ? 'Unpin' : 'Pin'}</span>
-                    </button>
-                  )}
-
-                  {onForward && (
-                    <button
-                      type="button"
-                      onClick={() => { onForward?.(message); setShowMenu(false); }}
-                      className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                    >
-                      <Forward className="h-3.5 w-3.5 text-indigo-400" />
-                      <span>Forward</span>
-                    </button>
-                  )}
-
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => { setIsEditing(true); setShowMenu(false); }}
-                      className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                    >
-                      <Edit3 className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>Edit</span>
-                    </button>
-                  )}
-
-                  {canDelete && (
-                    <button
-                      type="button"
-                      onClick={() => { onDelete?.(message); setShowMenu(false); }}
-                      className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-                      <span>Delete</span>
-                    </button>
-                  )}
-
-                  {!isOwnMessage && onReport && (
-                    <button
-                      type="button"
-                      onClick={() => { onReport?.(message); setShowMenu(false); }}
-                      className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 rounded-lg transition"
-                    >
-                      <Flag className="h-3.5 w-3.5 text-red-400" />
-                      <span>Report</span>
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           </div>
+
+          {/* Portal for Menu - renders outside stacking context */}
+          {showMenu &&
+            createPortal(
+              <div
+                ref={menuRef}
+                className="fixed z-[9999] w-48 rounded-xl border border-white/15 bg-slate-950 shadow-2xl p-1.5 backdrop-blur-2xl animate-fade-in-up"
+                style={{
+                  top: `${menuPosition.top}px`,
+                  left: `${menuPosition.left}px`
+                }}
+              >
+                {/* Quick Emoji Reaction Row */}
+                <div className="flex items-center justify-between px-2 py-1.5 mb-1 border-b border-white/10">
+                  {SUPPORTED_REACTIONS.slice(0, 5).map(r => {
+                    const isUserActive = getReactionUsers(message, r.key).includes(currentUserId);
+                    return (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => {
+                          onToggleReaction?.(message, r.key, isUserActive);
+                          setShowMenu(false);
+                        }}
+                        className="text-base hover:scale-125 transition active:scale-95 p-1 rounded hover:bg-white/10"
+                        title={r.label}
+                      >
+                        {r.emoji}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Menu Items */}
+                <button
+                  type="button"
+                  onClick={() => { onReply?.(message); setShowMenu(false); }}
+                  className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                >
+                  <MessageSquareReply className="h-3.5 w-3.5 text-blue-400" />
+                  <span>Reply</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { onBookmark?.(message); setShowMenu(false); }}
+                  className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                >
+                  <Bookmark className="h-3.5 w-3.5 text-amber-400" />
+                  <span>{message.bookmarked ? 'Unbookmark' : 'Bookmark'}</span>
+                </button>
+
+                {canManageAnnouncements && (
+                  <button
+                    type="button"
+                    onClick={() => { onTogglePin?.(message); setShowMenu(false); }}
+                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                  >
+                    <Pin className="h-3.5 w-3.5 text-yellow-400" />
+                    <span>{message.pinned ? 'Unpin' : 'Pin'}</span>
+                  </button>
+                )}
+
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => { setIsEditing(true); setShowMenu(false); }}
+                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                  >
+                    <Edit3 className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>Edit</span>
+                  </button>
+                )}
+
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => { onDelete?.(message); setShowMenu(false); }}
+                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+                    <span>Delete</span>
+                  </button>
+                )}
+
+                {!isOwnMessage && onReport && (
+                  <button
+                    type="button"
+                    onClick={() => { onReport?.(message); setShowMenu(false); }}
+                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                  >
+                    <Flag className="h-3.5 w-3.5 text-red-400" />
+                    <span>Report</span>
+                  </button>
+                )}
+              </div>,
+              document.body
+            )
+          }
 
           {/* Reply Quote Block */}
           {message.replyTo && (

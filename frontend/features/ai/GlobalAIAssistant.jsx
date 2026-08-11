@@ -34,12 +34,13 @@ export default function GlobalAIAssistant() {
   const [showQuickPrompts, setShowQuickPrompts] = useState(true);
   const bottomRef = useRef(null);
 
-  // Hide AI assistant entirely on chat page to avoid overlapping with chat input
-  if (location.pathname.startsWith('/chat')) return null;
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isMinimized]);
+
+  // Hide AI assistant entirely on chat page to avoid overlapping with chat input.
+  // This must remain after hooks to preserve hook order on route changes.
+  if (location.pathname.startsWith('/chat')) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();

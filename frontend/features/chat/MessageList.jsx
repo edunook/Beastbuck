@@ -18,11 +18,9 @@ export const MessageList = memo(forwardRef(function MessageList({
   onEdit,
   onDelete,
   onBookmark,
-  onForward,
   onShare,
   onShowProfile,
   onMediaOpen,
-  onOpenThread,
   onAIAction,
   compact = false,
   fontSize = 'medium',
@@ -197,11 +195,9 @@ export const MessageList = memo(forwardRef(function MessageList({
               onEdit={onEdit}
               onDelete={onDelete}
               onBookmark={onBookmark}
-              onForward={onForward}
               onShare={onShare}
               onShowProfile={onShowProfile}
               onMediaOpen={onMediaOpen}
-              onOpenThread={onOpenThread}
               onAIAction={onAIAction}
               showAvatar={showAvatar}
               compact={isCompact}

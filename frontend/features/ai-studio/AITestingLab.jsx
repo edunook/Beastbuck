@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { FlaskConical, AlertTriangle, Shield, Target, Zap, Clock, CheckCircle, FileText } from 'lucide-react';
+import { FlaskConical, AlertTriangle, Shield, Target, Zap, Clock, CheckCircle, FileText, MessageSquare, Star } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';

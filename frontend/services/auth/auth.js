@@ -3,9 +3,12 @@ import {
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   signOut, 
-  updateProfile 
+  updateProfile,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
 } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { ROLES } from '@shared/constants/roles';
 
 export const AuthService = {
@@ -30,6 +33,10 @@ export const AuthService = {
   getAuthEmailForUsername(username) {
     const normalized = this.normalizeUsername(username);
     return `${normalized}@beastbuck.local`;
+  },
+
+  normalizePhone(phone) {
+    return String(phone || '').replace(/\D/g, '');
   },
 
   /**
@@ -168,6 +175,75 @@ export const AuthService = {
   },
 
   /**
+   * Verify username + phone for account recovery (no auth required).
+   */
+  async verifyRecoveryCredentials(username, phoneNumber) {
+    const normalizedUsername = this.normalizeUsername(username?.trim() || '');
+    const usernameError = this.validateUsername(normalizedUsername);
+
+    if (usernameError) {
+      throw new Error(usernameError);
+    }
+
+    const providedPhone = this.normalizePhone(phoneNumber);
+    if (!providedPhone) {
+      throw new Error('Phone number is required.');
+    }
+
+    const snap = await getDoc(doc(db, 'usernames', normalizedUsername));
+    if (!snap.exists()) {
+      throw new Error('Account not found. Check your username or create an account.');
+    }
+
+    const data = snap.data();
+    const storedPhone = this.normalizePhone(data.phoneNumber);
+
+    if (!storedPhone || storedPhone !== providedPhone) {
+      throw new Error('Phone number does not match our records.');
+    }
+
+    return {
+      uid: data.uid,
+      authEmail: data.authEmail,
+      normalizedUsername,
+    };
+  },
+
+  /**
+   * Queue a password reset after identity verification.
+   * Processed server-side via backend/admin/process-password-resets.mjs
+   */
+  async submitPasswordResetRequest(username, phoneNumber, newPassword) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters.');
+    }
+
+    const lastRequest = localStorage.getItem('lastPasswordResetRequest');
+    if (lastRequest && Date.now() - parseInt(lastRequest, 10) < 300000) {
+      throw new Error('Please wait 5 minutes before submitting another reset request.');
+    }
+
+    const { uid, normalizedUsername } = await this.verifyRecoveryCredentials(username, phoneNumber);
+
+    await addDoc(collection(db, 'passwordResetRequests'), {
+      uid,
+      username: normalizedUsername,
+      phoneNumber: this.normalizePhone(phoneNumber),
+      status: 'pending',
+      requestedAt: serverTimestamp(),
+      newPassword,
+    });
+
+    localStorage.setItem('lastPasswordResetRequest', Date.now().toString());
+    return { success: true };
+  },
+
+  clearLoginAttempts() {
+    localStorage.removeItem('lastLoginAttempt');
+    localStorage.removeItem('loginAttemptCount');
+  },
+
+  /**
    * Sign in with username and password.
    * Firebase Auth still requires email internally, so the username index resolves it.
    */
@@ -187,32 +263,63 @@ export const AuthService = {
       throw new Error('Password is required.');
     }
 
-    // Rate limiting for sign in attempts
     const lastLoginAttempt = localStorage.getItem('lastLoginAttempt');
-    const loginAttemptCount = parseInt(localStorage.getItem('loginAttemptCount') || '0');
-    
-    if (lastLoginAttempt && Date.now() - parseInt(lastLoginAttempt) < 300000) { // 5 minutes
-      if (loginAttemptCount >= 5) {
-        throw new Error('Too many failed login attempts. Please wait 5 minutes before trying again.');
-      }
-      localStorage.setItem('loginAttemptCount', (loginAttemptCount + 1).toString());
-    } else {
-      // Reset counter after 5 minutes
-      localStorage.setItem('loginAttemptCount', '1');
+    let loginAttemptCount = parseInt(localStorage.getItem('loginAttemptCount') || '0', 10);
+
+    if (lastLoginAttempt && Date.now() - parseInt(lastLoginAttempt, 10) >= 300000) {
+      loginAttemptCount = 0;
     }
-    localStorage.setItem('lastLoginAttempt', Date.now().toString());
+
+    if (lastLoginAttempt && Date.now() - parseInt(lastLoginAttempt, 10) < 300000 && loginAttemptCount >= 5) {
+      throw new Error('Too many failed login attempts. Please wait 5 minutes before trying again.');
+    }
 
     const authEmail = this.getAuthEmailForUsername(normalizedUsername);
-    return await signInWithEmailAndPassword(auth, authEmail, sanitizedPassword);
+
+    try {
+      const result = await signInWithEmailAndPassword(auth, authEmail, sanitizedPassword);
+      this.clearLoginAttempts();
+      return result;
+    } catch (err) {
+      localStorage.setItem('loginAttemptCount', String(loginAttemptCount + 1));
+      localStorage.setItem('lastLoginAttempt', Date.now().toString());
+      throw err;
+    }
+  },
+
+  /**
+   * Change password for the currently signed-in user.
+   */
+  async changePassword(currentPassword, newPassword) {
+    const user = auth.currentUser;
+
+    if (!user?.email) {
+      throw new Error('You must be signed in to change your password.');
+    }
+
+    if (!currentPassword) {
+      throw new Error('Current password is required.');
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('New password must be at least 6 characters.');
+    }
+
+    if (currentPassword === newPassword) {
+      throw new Error('New password must be different from your current password.');
+    }
+
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    await updatePassword(user, newPassword);
+    return { success: true };
   },
 
   /**
    * Logout
    */
   async logOut() {
-    // Clear login attempt counters on logout
-    localStorage.removeItem('lastLoginAttempt');
-    localStorage.removeItem('loginAttemptCount');
+    this.clearLoginAttempts();
     return await signOut(auth);
   }
 };

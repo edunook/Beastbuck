@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { Sparkles, Lightbulb, FileText, MessageSquare, Tag, Image as ImageIcon, Camera, Zap, Award, User, Wand2 } from 'lucide-react';
+import { Sparkles, Lightbulb, FileText, MessageSquare, Tag, Image as ImageIcon, Camera, Zap, Award, User, Wand2, Laugh, Layout } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent } from '@frontend/components/ui/Card';

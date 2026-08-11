@@ -245,6 +245,12 @@ export const ChallengeService = {
   // CHALLENGE SUBMISSIONS
   // ---------------------------------------------------------------------------
   async submitChallengeResponse(challengeId, userId, userData, responseData) {
+    // Check if user has already submitted a response for this challenge
+    const existingResponse = await this.getUserResponse(challengeId, userId);
+    if (existingResponse) {
+      throw new Error('You have already participated in this challenge. Each member can only participate once.');
+    }
+
     const docRef = await addDoc(collection(db, 'challengeResponses'), {
       challengeId,
       userId,
@@ -284,6 +290,13 @@ export const ChallengeService = {
     const userResponse = snap.docs.find(doc => doc.data().userId === userId);
     if (!userResponse) return null;
     return { id: userResponse.id, ...userResponse.data() };
+  },
+
+  async getUserChallengeResponses(userId) {
+    const snap = await getDocs(
+      query(collection(db, 'challengeResponses'), where('userId', '==', userId))
+    );
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   },
 
   async reviewResponse(responseId, reviewData) {

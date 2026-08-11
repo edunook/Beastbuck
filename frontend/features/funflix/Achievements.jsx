@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { Award, Film, Heart, Star, Trophy, Crown, Zap, Users, Mic } from 'lucide-react';
+import { Award, Film, Heart, Star, Trophy, Crown, Zap, Users, Mic, Eye, Laugh, BookOpen } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent } from '@frontend/components/ui/Card';

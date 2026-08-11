@@ -169,6 +169,10 @@ export function uploadProofFile(file, { folder = 'proof' } = {}) {
   return uploadFile(file, { folder });
 }
 
+export function uploadProfilePhoto(file) {
+  return uploadFile(file, { folder: 'profile-photos' });
+}
+
 // Note: Deletion from IPFS is not guaranteed once pinned
 // This function attempts to unpin from Pinata only
 export async function deleteFile(cid) {

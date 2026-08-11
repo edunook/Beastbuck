@@ -2,6 +2,10 @@ export const ROLES = {
   MAIN_CEO: 'Main CEO',
   CO_CEO: 'Co-CEO',
   LEADER: 'Leader',
+  MODERATOR: 'Moderator',
+  MENTOR: 'Mentor',
+  JUDGE: 'Judge',
+  WRITER: 'Writer',
   MEMBER: 'Member',
   USER: 'User',
   PENDING: 'Pending Member',
@@ -25,7 +29,7 @@ export const CREATIVE_BADGES = [
 export const PERMISSIONS = {
   canAccessCeoPanel: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO].includes(role),
   canManageUsers: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO].includes(role),
-  isOfficialMember: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER].includes(role),
+  isOfficialMember: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MODERATOR, ROLES.MENTOR, ROLES.JUDGE, ROLES.WRITER, ROLES.MEMBER].includes(role),
   isAuthenticated: (role) => role !== ROLES.GUEST,
-  isApprovedMember: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER].includes(role),
+  isApprovedMember: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MODERATOR, ROLES.MENTOR, ROLES.JUDGE, ROLES.WRITER, ROLES.MEMBER].includes(role),
 };

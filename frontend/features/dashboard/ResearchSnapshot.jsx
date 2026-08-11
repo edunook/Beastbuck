@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { FileText, Edit, CheckCircle, Users, Quote } from 'lucide-react';
+import { FileText, Edit, CheckCircle, Users, Quote, Clock } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent } from '@frontend/components/ui/Card';

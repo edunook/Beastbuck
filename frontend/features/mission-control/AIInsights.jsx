@@ -4,6 +4,8 @@ import { IntelligencePanel } from './missionControlUtils';
 import { AIService } from '@services/ai/aiService';
 import { OrganizationService } from '@services/firestore/organization';
 import Button from '@frontend/components/ui/Button';
+import AIResponse from '@frontend/components/ai/AIResponse';
+import '@frontend/components/ai/AIResponse.css';
 
 const CONFIDENCE_COLORS = {
   HIGH:   { bar: 'bg-status-success', text: 'text-status-success', label: 'High Confidence' },
@@ -18,36 +20,6 @@ function ConfidencePill({ level = 'MEDIUM' }) {
       <span className={`h-1.5 w-1.5 rounded-full ${cfg.bar}`} />
       {cfg.label}
     </span>
-  );
-}
-
-function InsightCard({ icon: Icon, title, body, confidence = 'MEDIUM', variant = 'neutral' }) {
-  const variantClasses = {
-    success: 'border-status-success/20 bg-status-success/5',
-    warning: 'border-status-warning/20 bg-status-warning/5',
-    danger:  'border-status-danger/20  bg-status-danger/5',
-    neutral: 'border-white/10 bg-white/[0.03]',
-  };
-  const iconClasses = {
-    success: 'bg-status-success/20 text-status-success',
-    warning: 'bg-status-warning/20 text-status-warning',
-    danger:  'bg-status-danger/20  text-status-danger',
-    neutral: 'bg-accent/20 text-accent',
-  };
-
-  return (
-    <li className={`flex gap-4 rounded-2xl border p-5 ${variantClasses[variant]}`}>
-      <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconClasses[variant]}`}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="mb-1.5 flex flex-wrap items-center gap-2">
-          <h4 className="font-bold text-white">{title}</h4>
-          <ConfidencePill level={confidence} />
-        </div>
-        <p className="text-sm leading-6 text-text-soft whitespace-pre-wrap">{body}</p>
-      </div>
-    </li>
   );
 }
 
@@ -184,69 +156,101 @@ Respond ONLY with a JSON object in this exact structure, no markdown, no extra t
 
       {/* Raw fallback */}
       {phase === 'done' && rawSummary && !insights && (
-        <IntelligencePanel title="AI Summary" icon={Sparkles}>
-          <p className="whitespace-pre-wrap text-sm leading-7 text-text-soft">{rawSummary}</p>
-        </IntelligencePanel>
+        <AIResponse
+          content={rawSummary}
+          title="AI Summary"
+          variant="info"
+          confidence="MEDIUM"
+          showCopy={true}
+        />
       )}
 
       {/* Structured insights */}
       {phase === 'done' && insights && (
         <div className="space-y-6">
           {/* Executive Summary */}
-          <div className="rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/10 to-accent-alt/5 p-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="h-5 w-5 text-accent" />
-              <h3 className="font-bold text-white">Executive Summary</h3>
-              <ConfidencePill level="HIGH" />
-            </div>
-            <p className="text-sm leading-7 text-white">{insights.executiveSummary}</p>
-          </div>
+          <AIResponse
+            content={insights.executiveSummary}
+            title="Executive Summary"
+            variant="info"
+            confidence="HIGH"
+            showCopy={true}
+          />
 
           {/* Risks */}
           {insights.risks?.length > 0 && (
-            <IntelligencePanel title="Identified Risks" icon={AlertTriangle}>
-              <ul className="space-y-3">
-                {insights.risks.map((r, i) => (
-                  <InsightCard key={i} icon={AlertTriangle} title={r.title} body={r.body} confidence={r.confidence} variant="danger" />
-                ))}
-              </ul>
-            </IntelligencePanel>
+            <div className="space-y-3">
+              <h3 className="flex items-center gap-2 font-bold text-white">
+                <AlertTriangle className="h-5 w-5 text-status-danger" />
+                Identified Risks
+              </h3>
+              {insights.risks.map((r, i) => (
+                <AIResponse
+                  key={i}
+                  content={r.body}
+                  title={r.title}
+                  variant="danger"
+                  confidence={r.confidence}
+                  showCopy={true}
+                />
+              ))}
+            </div>
           )}
 
           {/* Opportunities */}
           {insights.opportunities?.length > 0 && (
-            <IntelligencePanel title="Opportunities" icon={TrendingUp}>
-              <ul className="space-y-3">
-                {insights.opportunities.map((o, i) => (
-                  <InsightCard key={i} icon={TrendingUp} title={o.title} body={o.body} confidence={o.confidence} variant="success" />
-                ))}
-              </ul>
-            </IntelligencePanel>
+            <div className="space-y-3">
+              <h3 className="flex items-center gap-2 font-bold text-white">
+                <TrendingUp className="h-5 w-5 text-status-success" />
+                Opportunities
+              </h3>
+              {insights.opportunities.map((o, i) => (
+                <AIResponse
+                  key={i}
+                  content={o.body}
+                  title={o.title}
+                  variant="success"
+                  confidence={o.confidence}
+                  showCopy={true}
+                />
+              ))}
+            </div>
           )}
 
           {/* Recommendations */}
           {insights.recommendations?.length > 0 && (
-            <IntelligencePanel title="AI Recommendations" icon={Target}>
-              <ul className="space-y-3">
-                {insights.recommendations.map((rec, i) => (
-                  <InsightCard key={i} icon={Target} title={rec.title} body={rec.body} confidence={rec.confidence} variant="warning" />
-                ))}
-              </ul>
-            </IntelligencePanel>
+            <div className="space-y-3">
+              <h3 className="flex items-center gap-2 font-bold text-white">
+                <Target className="h-5 w-5 text-status-warning" />
+                AI Recommendations
+              </h3>
+              {insights.recommendations.map((rec, i) => (
+                <AIResponse
+                  key={i}
+                  content={rec.body}
+                  title={rec.title}
+                  variant="warning"
+                  confidence={rec.confidence}
+                  showCopy={true}
+                />
+              ))}
+            </div>
           )}
 
           {/* Growth Prediction */}
           {insights.growthPrediction && (
-            <IntelligencePanel title="Growth Prediction" icon={BarChart3}>
-              <div className="flex items-start gap-3">
-                <BarChart3 className="h-5 w-5 text-accent shrink-0 mt-0.5" />
-                <p className="text-sm leading-7 text-text-soft">{insights.growthPrediction}</p>
-              </div>
+            <AIResponse
+              content={insights.growthPrediction}
+              title="Growth Prediction"
+              variant="info"
+              confidence="MEDIUM"
+              showCopy={true}
+            >
               <div className="mt-4">
                 <ConfidencePill level="MEDIUM" />
                 <p className="mt-2 text-xs text-text-muted">Predictions are based on available organizational data and may not account for external factors.</p>
               </div>
-            </IntelligencePanel>
+            </AIResponse>
           )}
         </div>
       )}

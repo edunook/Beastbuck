@@ -6,6 +6,8 @@ import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
 import { Input } from '@frontend/components/ui/Input';
+import AIResponse from '@frontend/components/ai/AIResponse';
+import '@frontend/components/ai/AIResponse.css';
 
 export default function InteractivePromptPlayground() {
   const { user } = useAuth();
@@ -69,9 +71,21 @@ export default function InteractivePromptPlayground() {
             <CardTitle>AI Output</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="min-h-[200px] p-4 rounded-xl bg-white/5 border border-border">
-              {output || 'AI response will appear here...'}
-            </div>
+            {output ? (
+              <AIResponse
+                content={output}
+                title="AI Response"
+                variant="info"
+                enhanced={true}
+                showCopy={true}
+                showIcon={false}
+                className="border-0 bg-transparent p-0"
+              />
+            ) : (
+              <div className="min-h-[200px] p-4 rounded-xl bg-white/5 border border-border flex items-center justify-center text-text-muted">
+                AI response will appear here...
+              </div>
+            )}
             {qualityScore > 0 && (
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">

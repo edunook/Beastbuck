@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { Smile, Shuffle, GitBranch, User, Sparkles, Gamepad2, Gift, Trophy } from 'lucide-react';
+import { Smile, Shuffle, GitBranch, User, Sparkles, Gamepad2, Gift, Trophy, Target } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';

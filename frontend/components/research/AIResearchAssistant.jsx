@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Bot, Sparkles, FileText, Copy, Check } from 'lucide-react';
+import { Bot, Sparkles, FileText } from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
+import AIResponse from '@frontend/components/ai/AIResponse';
+import '@frontend/components/ai/AIResponse.css';
 
 export function AIResearchAssistant({ paperText, onCitationGenerated }) {
   const [query, setQuery] = useState('');
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   const handleQuery = async () => {
     if (!query.trim()) return;
@@ -35,12 +36,6 @@ export function AIResearchAssistant({ paperText, onCitationGenerated }) {
     };
     setResponse(citations[format]);
     if (onCitationGenerated) onCitationGenerated(citations[format]);
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(response);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -91,21 +86,21 @@ export function AIResearchAssistant({ paperText, onCitationGenerated }) {
 
         {/* Response */}
         {response && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-text-muted uppercase tracking-widest">Response</p>
-              <button
-                onClick={copyToClipboard}
-                className="flex items-center gap-1 text-xs text-text-muted hover:text-white"
-              >
-                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-            <div className="rounded-lg border border-border bg-white/[0.03] p-3">
-              <pre className="whitespace-pre-wrap text-sm text-text-soft font-sans">{response}</pre>
-            </div>
-          </div>
+          <AIResponse
+            content={response}
+            title="AI Response"
+            variant="info"
+            confidence="HIGH"
+            showCopy={true}
+          />
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <AIResponse
+            loading={true}
+            title="AI is analyzing..."
+          />
         )}
       </CardContent>
     </Card>

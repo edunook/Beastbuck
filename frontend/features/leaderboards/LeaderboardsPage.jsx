@@ -9,23 +9,12 @@ import { GamificationService } from '@services/firestore/gamification';
 
 const BOARDS = [
   { id: 'xp', label: 'Top XP', icon: Trophy, metric: 'XP' },
+  { id: 'tasks', label: 'Top Contributor', icon: CheckSquare, metric: 'tasks' },
   { id: 'experiments', label: 'Top Scientist', icon: FlaskConical, metric: 'experiments' },
   { id: 'products', label: 'Top Inventor', icon: Package, metric: 'products' },
-  { id: 'tasks', label: 'Top Contributor', icon: CheckSquare, metric: 'tasks' },
-  { id: 'developer', label: 'Top Developer', icon: Trophy, metric: 'dev points' },
-  { id: 'engineer', label: 'Top Engineer', icon: Medal, metric: 'eng points' },
-  { id: 'researcher', label: 'Top Researcher', icon: FlaskConical, metric: 'research points' },
-  { id: 'rising_star', label: 'Rising Star', icon: Trophy, metric: 'velocity' },
-  { id: 'most_improved', label: 'Most Improved', icon: Medal, metric: 'improvement' },
   { id: 'learners', label: 'Top Learners', icon: GraduationCap, metric: 'learner score' },
-  { id: 'instructors', label: 'Top Instructors', icon: BookOpen, metric: 'courses' },
   { id: 'mentors', label: 'Top Mentors', icon: Users, metric: 'mentor points' },
-  { id: 'knowledge', label: 'Knowledge Contributors', icon: Brain, metric: 'knowledge' },
-  { id: 'skills', label: 'Skill Builders', icon: Network, metric: 'skill nodes' },
-  { id: 'creators', label: 'Top Creators', icon: PackageOpen, metric: 'creator score' },
-  { id: 'publishers', label: 'Top Publishers', icon: FileText, metric: 'resources' },
-  { id: 'designers', label: 'Top Designers', icon: Palette, metric: 'design assets' },
-  { id: 'educators', label: 'Top Educators', icon: BookOpen, metric: 'course assets' },
+  { id: 'rising_star', label: 'Rising Star', icon: Medal, metric: 'velocity' },
 ];
 
 function getScore(member, boardId) {
@@ -53,6 +42,13 @@ function getInitials(member) {
     .slice(0, 2)
     .map(part => part[0]?.toUpperCase())
     .join('') || 'M';
+}
+
+function getRankColor(index) {
+  if (index === 0) return 'text-amber-400 bg-amber-400/10 border-amber-400/30';
+  if (index === 1) return 'text-slate-300 bg-slate-300/10 border-slate-300/30';
+  if (index === 2) return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
+  return 'text-slate-400 bg-slate-400/10 border-slate-400/30';
 }
 
 export default function LeaderboardsPage() {
@@ -98,14 +94,14 @@ export default function LeaderboardsPage() {
         title="Leaderboards"
         description="Friendly BeastBuck rankings for XP, tasks, experiments, products, learning, teaching, mentoring, research, and skill building."
         action={
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-accent/25 bg-accent/10 text-accent">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-accent/30 bg-accent/15 text-accent">
             <ActiveIcon className="h-6 w-6" />
           </div>
         }
       />
 
       <SectionWrapper>
-        <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+        <div className="flex flex-wrap gap-2 mb-6">
           {BOARDS.map(board => {
             const Icon = board.icon;
             const active = board.id === activeBoard;
@@ -115,15 +111,14 @@ export default function LeaderboardsPage() {
                 key={board.id}
                 type="button"
                 onClick={() => setActiveBoard(board.id)}
-                className={`inline-flex min-h-10 sm:min-h-11 shrink-0 items-center gap-1.5 sm:gap-2 rounded-xl border px-3 sm:px-4 text-xs sm:text-sm font-bold transition ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-colors ${
                   active
-                    ? 'border-accent/40 bg-accent/10 text-white'
-                    : 'border-border bg-white/[0.03] text-text-muted hover:text-white'
+                    ? 'border-accent bg-accent text-white'
+                    : 'border-border bg-slate-800 text-slate-300 hover:border-slate-600 hover:text-white'
                 }`}
               >
-                <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">{board.label}</span>
-                <span className="sm:hidden">{board.label.split(' ')[0]}</span>
+                <Icon className="h-4 w-4" />
+                {board.label}
               </button>
             );
           })}
@@ -132,67 +127,80 @@ export default function LeaderboardsPage() {
 
       <SectionWrapper>
         {error && (
-          <div className="mb-3 sm:mb-4 rounded-xl border border-status-danger/20 bg-status-danger/10 px-3 py-2.5 text-xs sm:text-sm text-status-danger sm:px-4 sm:py-3">
+          <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
           </div>
         )}
 
         {user && currentUserRank > 0 && currentUserRank <= 25 && (
-          <div className="mb-4 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 flex items-center gap-3">
+          <div className="mb-4 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3 flex items-center gap-3">
             <Crown className="h-5 w-5 text-accent" />
-            <div className="flex-1">
-              <p className="text-sm font-bold text-white">Your current rank: #{currentUserRank}</p>
-              <p className="text-xs text-text-muted">Keep earning {activeConfig.metric} to climb higher!</p>
+            <div>
+              <p className="text-sm font-semibold text-white">Your rank: #{currentUserRank}</p>
+              <p className="text-xs text-slate-400">Keep earning {activeConfig.metric} to climb higher!</p>
             </div>
           </div>
         )}
 
-        <Card className="rounded-lg">
+        <Card className="rounded-xl border border-slate-700 bg-slate-900">
           <CardContent className="p-0">
             {loading ? (
-              <div className="flex min-h-52 sm:min-h-64 items-center justify-center">
+              <div className="flex min-h-64 items-center justify-center">
                 <LoadingState text={`Loading ${activeConfig.label} leaderboard...`} />
               </div>
             ) : members.length === 0 ? (
-              <div className="p-6 sm:p-8 text-center">
-                <Medal className="mx-auto mb-3 h-8 w-8 sm:h-10 sm:w-10 text-text-muted" />
-                <h2 className="mb-1 text-base sm:text-lg font-bold text-white">No leaderboard entries yet</h2>
-                <p className="text-xs sm:text-sm text-text-muted">Members will appear here after earning reputation stats.</p>
+              <div className="p-8 text-center">
+                <Medal className="mx-auto mb-3 h-10 w-10 text-slate-500" />
+                <h2 className="mb-1 text-lg font-semibold text-white">No leaderboard entries yet</h2>
+                <p className="text-sm text-slate-400">Members will appear here after earning reputation stats.</p>
               </div>
             ) : (
-              <div className="divide-y divide-border">
-                {members.map((member, index) => (
-                  <Link
-                    key={member.id}
-                    to={`/profile/${member.id}`}
-                    className="grid gap-2 sm:gap-3 p-3 sm:p-4 transition hover:bg-white/[0.03] sm:grid-cols-[4rem_minmax(0,1fr)_8rem] sm:items-center"
-                  >
-                    <div className="flex items-center gap-3 sm:block">
-                      <span className={`inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl border text-xs sm:text-sm font-black ${
-                        index === 0
-                          ? 'border-status-warning/40 bg-status-warning/10 text-status-warning'
-                          : 'border-border bg-white/5 text-text-soft'
+              <div className="divide-y divide-slate-800">
+                {members.map((member, index) => {
+                  const isCurrentUser = member.id === user?.uid;
+                  const rankColor = getRankColor(index);
+
+                  return (
+                    <Link
+                      key={member.id}
+                      to={`/profile/${member.id}`}
+                      className={`flex items-center gap-4 p-4 transition-colors hover:bg-slate-800 ${
+                        isCurrentUser ? 'bg-accent/10' : ''
+                      }`}
+                    >
+                      {/* Rank */}
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-bold ${rankColor}`}>
+                        {index + 1}
+                      </div>
+
+                      {/* Avatar */}
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl border overflow-hidden shrink-0 ${
+                        isCurrentUser ? 'border-accent' : 'border-slate-600'
                       }`}>
-                        #{index + 1}
-                      </span>
-                    </div>
-
-                    <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                      <div className="flex h-9 w-9 sm:h-11 sm:w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-accent/10 text-xs sm:text-sm font-bold text-accent">
-                        {member.avatar ? <img src={member.avatar} alt={`Avatar of ${member.displayName || member.username}`} className="h-full w-full object-cover" /> : getInitials(member)}
+                        {member.avatar ? (
+                          <img src={member.avatar} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-sm font-bold text-accent">{getInitials(member)}</span>
+                        )}
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-xs sm:text-sm font-bold text-white">{member.displayName || member.username || 'Member'}</p>
-                        <p className="truncate text-[10px] sm:text-xs text-text-muted">@{member.username || 'member'} · Level {member.level || 1}</p>
-                      </div>
-                    </div>
 
-                    <div className="text-left sm:text-right">
-                      <p className="text-lg sm:text-xl font-black text-white">{getScore(member, activeBoard)}</p>
-                      <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-text-muted">{activeConfig.metric}</p>
-                    </div>
-                  </Link>
-                ))}
+                      {/* Name */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">
+                          {member.displayName || member.username || 'Member'}
+                          {isCurrentUser && <span className="ml-2 text-xs text-accent">(You)</span>}
+                        </p>
+                        <p className="text-xs text-slate-400">@{member.username || 'member'}</p>
+                      </div>
+
+                      {/* Score */}
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-white">{getScore(member, activeBoard).toLocaleString()}</p>
+                        <p className="text-xs text-slate-500 uppercase tracking-wider">{activeConfig.metric}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </CardContent>

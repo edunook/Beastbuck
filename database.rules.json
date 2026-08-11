@@ -17,7 +17,7 @@
     "documentPresence": {
       "$docId": {
         ".read": "auth != null",
-        ".write": "auth != null && (newData.child('users').child(auth.uid).exists() || auth.uid == $uid)",
+        ".write": "auth != null && (newData.child('users').child(auth.uid).exists() || auth.uid == $docId)",
         "users": {
           "$uid": {
             ".read": "auth != null",

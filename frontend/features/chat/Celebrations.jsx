@@ -83,22 +83,28 @@ export function CelebrationCard({ celebration, onClose, onClaim, reducedMotion =
 
   useEffect(() => {
     if (!celebration.autoClose) return;
-    const timer = setTimeout(() => handleClose(), celebration.duration || 8000);
+    const timer = setTimeout(() => {
+      setIsLeaving(true);
+      setTimeout(() => {
+        setIsVisible(false);
+        onClose?.();
+      }, 500);
+    }, celebration.duration || 8000);
     return () => clearTimeout(timer);
-  }, [celebration.autoClose, celebration.duration]);
+  }, [celebration.autoClose, celebration.duration, onClose]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     setIsLeaving(true);
     setTimeout(() => {
       setIsVisible(false);
       onClose?.();
     }, 500);
-  }, [onClose]);
+  };
 
-  const handleClaim = useCallback(() => {
+  const handleClaim = () => {
     onClaim?.(celebration);
     handleClose();
-  }, [celebration, onClaim, handleClose]);
+  };
 
   return (
     <div

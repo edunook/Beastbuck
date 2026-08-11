@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/u
 import { useAuth } from '../../auth/AuthContext';
 import { DynamicEmptyState } from '@frontend/components/dashboard/DynamicEmptyStates';
 import { GamificationService } from '@services/firestore/gamification';
+import { calculateLevel } from '@services/firestore/gamification';
 
 const PODIUM_COLORS = [
   'from-yellow-400 to-orange-500',

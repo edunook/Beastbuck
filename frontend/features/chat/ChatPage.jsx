@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { AlertCircle, X, Pin, MessageSquareReply, Settings, Flag, Forward } from 'lucide-react';
+import { AlertCircle, X, Pin, MessageSquareReply, Settings, Flag } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { ChatService, SUPPORTED_REACTIONS } from '@services/firestore/chat';
 import { UsersService } from '@services/firestore/users';
@@ -7,7 +7,6 @@ import { hasPermission } from '@shared/permissions/permissions';
 import { ChatHeader, VoiceCallOverlay, MemberListModal } from './ChatHeader';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
-import { ThreadDrawer } from './ThreadDrawer';
 import { VoiceRoomBar } from './VoiceRoomBar';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
@@ -47,16 +46,11 @@ const ChatPage = React.memo(function ChatPage() {
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [screenEffect, setScreenEffect] = useState(null);
   const [showReplyPanel, setShowReplyPanel] = useState(false);
-  const [replyThread, setReplyThread] = useState(null);
-  const [showThreadDrawer, setShowThreadDrawer] = useState(false);
-  const [threadMessage, setThreadMessage] = useState(null);
   const [memberPresence, setMemberPresence] = useState({});
   const [showMemberList, setShowMemberList] = useState(false);
   const [showPersonalization, setShowPersonalization] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMessage, setReportMessage] = useState(null);
-  const [showForwardModal, setShowForwardModal] = useState(false);
-  const [forwardMessage, setForwardMessage] = useState(null);
   const [celebration, setCelebration] = useState(null);
   const [celebrations, setCelebrations] = useState([]);
   const [showMediaHub, setShowMediaHub] = useState(false);
@@ -301,7 +295,6 @@ const ChatPage = React.memo(function ChatPage() {
         setShowPinnedModal(false);
         setShowPersonalization(false);
         setShowReportModal(false);
-        setShowForwardModal(false);
         setShowAvatarProfile(null);
         setShowMemberList(false);
       }
@@ -434,24 +427,6 @@ const ChatPage = React.memo(function ChatPage() {
     setIsMuted(prev => !prev);
   }, []);
 
-  const handleOpenThread = useCallback((message) => {
-    setThreadMessage(message);
-    setShowThreadDrawer(true);
-  }, []);
-
-  const handleCloseThread = useCallback(() => {
-    setShowThreadDrawer(false);
-    setThreadMessage(null);
-  }, []);
-
-  const handleThreadReply = useCallback((message, text) => {
-    setOptimisticMessages(prev => prev.map(m => 
-      m.id === message.id 
-        ? { ...m, replyCount: (m.replyCount || 0) + 1 }
-        : m
-    ));
-  }, []);
-
   const handleTyping = useCallback((isTyping) => {
     if (!user?.uid || !memberName) return;
     try {
@@ -472,6 +447,11 @@ const ChatPage = React.memo(function ChatPage() {
 
   const handleReply = useCallback((message) => {
     setReplyTarget(message);
+  }, []);
+
+  const handleCloseReplyPanel = useCallback(() => {
+    setShowReplyPanel(false);
+    setReplyTarget(null);
   }, []);
 
   const handleToggleReaction = useCallback(async (messageTarget, reactionKey, isUserActive) => {
@@ -549,25 +529,6 @@ const ChatPage = React.memo(function ChatPage() {
       console.error('Failed to bookmark message:', error);
     }
   }, [user?.uid]);
-
-  const handleForward = useCallback(async (messageTarget, targetRoomId) => {
-    if (!user?.uid) return;
-    const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
-    if (!msgId) return;
-    try {
-      await ChatService.forwardMessage({
-        sourceRoomId: 'general',
-        messageId: msgId,
-        targetRoomId: targetRoomId || 'general',
-        senderId: user.uid,
-        senderName: memberName,
-        senderRole: memberRole,
-      });
-    } catch (error) {
-      console.error('Failed to forward message:', error);
-      setError('Failed to forward message');
-    }
-  }, [user?.uid, memberName, memberRole]);
 
   const handleReport = useCallback(async (messageTarget, reason) => {
     if (!user?.uid) return;
@@ -696,9 +657,7 @@ const ChatPage = React.memo(function ChatPage() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onBookmark={handleBookmark}
-              onForward={handleForward}
               onReport={handleReport}
-              onOpenThread={handleOpenThread}
               onAIAction={handleAIAction}
               senderPresence={memberPresence}
               onShowProfile={(senderId, senderName) => setSelectedDrawerMember({ id: senderId, displayName: senderName, role: 'Member' })}
@@ -781,16 +740,6 @@ const ChatPage = React.memo(function ChatPage() {
         </div>
       )}
 
-      {/* Thread Drawer */}
-      {showThreadDrawer && threadMessage && (
-        <ThreadDrawer
-          message={threadMessage}
-          onClose={handleCloseThread}
-          onReply={handleThreadReply}
-          currentUserId={user?.uid}
-        />
-      )}
-
       {/* Media Hub */}
       {showMediaHub && (
         <MediaHub
@@ -860,7 +809,7 @@ const ChatPage = React.memo(function ChatPage() {
       )}
 
       {/* Reply Thread Slide-out Panel */}
-      {showReplyPanel && replyThread && (
+      {showReplyPanel && (
         <div className="fixed right-0 top-0 h-full w-full max-w-md z-50 bg-surface border-l border-border shadow-2xl animate-slide-in">
           <div className="flex h-full flex-col">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -870,13 +819,6 @@ const ChatPage = React.memo(function ChatPage() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
-              <div className="mb-4 p-3 rounded-lg bg-white/5 border border-white/10">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-accent text-sm">{replyThread.senderName}</span>
-                  <span className="text-xs text-text-muted">{replyThread.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</span>
-                </div>
-                <p className="text-sm text-white">{replyThread.text}</p>
-              </div>
               <div className="text-center py-12 text-text-muted">
                 <MessageSquareReply className="mx-auto mb-3 h-10 w-10 text-text-muted/50" />
                 <p className="text-sm font-medium">Thread replies will appear here</p>
@@ -1049,28 +991,6 @@ const ChatPage = React.memo(function ChatPage() {
                 <Button onClick={() => setShowReportModal(false)} className="flex-1 bg-status-danger hover:bg-status-danger/90">Report</Button>
                 <Button onClick={() => setShowReportModal(false)} variant="outline" className="flex-1">Cancel</Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Forward Modal */}
-      {showForwardModal && forwardMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setShowForwardModal(false)}>
-          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Forward message">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Forward className="h-5 w-5 text-accent" />
-                  Forward Message
-                </div>
-                <button onClick={() => setShowForwardModal(false)} className="p-1 rounded-lg hover:bg-white/10 transition" aria-label="Close forward">
-                  <X className="h-4 w-4" />
-                </button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-text-muted">Forwarding is not available in single chat mode.</p>
             </CardContent>
           </Card>
         </div>

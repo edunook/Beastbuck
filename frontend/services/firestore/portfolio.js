@@ -228,68 +228,7 @@ export const PortfolioService = {
   },
 
   async getPortfolioData(username) {
-    // Try to get pre-generated portfolio first
-    try {
-      const portfolioSnap = await getDocs(query(collection(db, 'portfolios'), where('username', '==', username)));
-      if (!portfolioSnap.empty) {
-        const portfolio = portfolioSnap.docs[0].data();
-        return {
-          profile: {
-            username: portfolio.username,
-            displayName: portfolio.displayName,
-            avatar: portfolio.avatar,
-            role: portfolio.role,
-          },
-          stats: {
-            level: portfolio.level,
-            totalXP: portfolio.totalXP,
-            projectsJoined: portfolio.projectsCount,
-            experimentsCreated: 0,
-            productsCreated: 0,
-            certificatesEarned: portfolio.certificatesCount,
-            achievementsEarned: portfolio.achievementsCount,
-            discoveriesCount: portfolio.discoveriesCount,
-            inventionsCount: portfolio.inventionsCount,
-            researchProjectsCount: portfolio.researchProjectsCount,
-            prototypesCount: portfolio.prototypesCount,
-            foundedVenturesCount: portfolio.foundedVenturesCount,
-            joinedVenturesCount: portfolio.joinedVenturesCount,
-            successfulVenturesCount: portfolio.successfulVentures?.length || 0,
-            completedCoursesCount: portfolio.completedCoursesCount,
-            skillNodesUnlocked: portfolio.skillNodesUnlocked,
-            publishedResourcesCount: portfolio.publishedResourcesCount,
-            marketplaceDownloadsCount: portfolio.marketplaceDownloadsCount,
-            marketplaceCollectionsCount: portfolio.marketplaceCollections?.length || 0,
-            creatorRating: portfolio.creatorRating,
-          },
-          projects: portfolio.projects || [],
-          researchProjects: portfolio.researchProjects || [],
-          inventions: portfolio.inventions || [],
-          prototypes: portfolio.prototypes || [],
-          experiments: [],
-          products: [],
-          activity: [],
-          certificates: portfolio.certificates || [],
-          discoveries: portfolio.discoveries || [],
-          specializations: portfolio.specializations || [],
-          completedCourses: portfolio.completedCourses || [],
-          authoredTutorials: [],
-          publishedArticles: [],
-          foundedVentures: portfolio.foundedVentures || [],
-          joinedVentures: portfolio.joinedVentures || [],
-          successfulVentures: portfolio.successfulVentures || [],
-          userLearning: portfolio.userLearning || [],
-          learningPaths: portfolio.learningPaths || [],
-          marketplaceResources: portfolio.marketplaceResources || [],
-          marketplaceCollections: portfolio.marketplaceCollections || [],
-          affiliations: portfolio.affiliations || [],
-        };
-      }
-    } catch (err) {
-      console.error('Failed to get pre-generated portfolio, falling back to dynamic generation:', err);
-    }
-
-    // Fallback to dynamic generation
+    // Always get fresh data from user profile - this ensures profile and portfolio are synced
     const uid = await UsersService.getUidForUsername(username);
     if (!uid) throw new Error('User not found');
 
@@ -327,10 +266,10 @@ export const PortfolioService = {
       getDocs(query(collection(db, 'ventures'), where('memberIds', 'array-contains', uid))),
       getDocs(query(collection(db, 'userLearning'), where('userId', '==', uid))),
       getDocs(query(collection(db, 'learningPaths'))),
-      getDocs(query(collection(db, 'marketplaceItems'), where('creatorId', '==', uid))),
-      getDocs(query(collection(db, 'marketplaceCollections'), where('creatorId', '==', uid))),
-      getDocs(query(collection(db, 'marketplaceDownloads'), where('creatorId', '==', uid))),
-      OrganizationService.getMemberAffiliations(uid),
+      getDocs(query(collection(db, 'marketplaceResources'), where('authorId', '==', uid))),
+      getDocs(query(collection(db, 'marketplaceCollections'), where('authorId', '==', uid))),
+      getDocs(query(collection(db, 'marketplaceDownloads'), where('userId', '==', uid))),
+      OrganizationService.getUserAffiliations(uid),
     ]);
 
     const profile = userSnap;
@@ -389,6 +328,8 @@ export const PortfolioService = {
 
     return {
       uid,
+      // Include the full profile to ensure sync
+      ...profile,
       profile,
       stats,
       projects,

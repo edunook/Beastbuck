@@ -114,7 +114,7 @@ function getVerificationHalo(role, badges) {
 
 export default function PortfolioPage() {
   const { username } = useParams();
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [portfolioData, setPortfolioData] = useState(null);
@@ -141,13 +141,22 @@ export default function PortfolioPage() {
         setProfile(userProfile);
         setSelectedTheme(userProfile?.theme || 'default');
 
-        // Load portfolio data with full information
+        // Load portfolio data with full information (now gets from profile directly)
         try {
           const portfolio = await PortfolioService.getPortfolioData(username);
-          setPortfolioData(portfolio);
+          // Merge portfolio data with profile to ensure consistency
+          setPortfolioData({
+            ...portfolio,
+            ...userProfile,
+            profile: {
+              ...portfolio.profile,
+              ...userProfile
+            }
+          });
         } catch (portfolioErr) {
           console.error('Failed to load portfolio data:', portfolioErr);
-          setPortfolioData(null); // Set to null to handle error state
+          // Fallback to just profile data
+          setPortfolioData(userProfile);
         }
 
         // Load presence status (with error handling)
@@ -169,15 +178,22 @@ export default function PortfolioPage() {
   }, [username]);
 
   const isOwnProfile = user?.uid === profile?.uid;
-  const isCEO = profile?.role === ROLES.MAIN_CEO || profile?.role === ROLES.CO_CEO;
-  const canEdit = isOwnProfile || isCEO;
+  
+  // Security check: Only user can edit their own profile, or CEO/Co-CEO can edit any profile
+  const userRole = roleData?.role?.toLowerCase().trim() || '';
+  const isCEO = userRole === 'main ceo' || userRole === 'ceo';
+  const isCoCEO = userRole === 'co-ceo' || userRole === 'co ceo';
+  const isExecutive = isCEO || isCoCEO;
+  const canEdit = isOwnProfile || isExecutive;
+  
   const verification = getVerificationHalo(profile?.role, profile?.badges);
   const state = status?.state || 'offline';
   const presenceColor = PresenceService.getPresenceColor(state);
   const presenceLabel = PresenceService.getPresenceLabel(state);
 
   const handlePrivacyToggle = async (section, isVisible) => {
-    if (!isOwnProfile) return;
+    // Security check: Only user can edit their own profile, or CEO/Co-CEO can edit any profile
+    if (!isOwnProfile && !isExecutive) return;
     
     try {
       await PortfolioService.updatePrivacySettings(profile.uid, {
@@ -230,8 +246,8 @@ export default function PortfolioPage() {
                   boxShadow: verification?.glow || 'none'
                 }}
               >
-                {profile.avatar ? (
-                  <img src={profile.avatar} alt={profile.displayName} className="h-full w-full object-cover" />
+                {profile.photoURL || profile.avatar ? (
+                  <img src={profile.photoURL || profile.avatar} alt={profile.displayName} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-4xl font-black" style={{ color: theme.accentColor }}>
                     {profile.displayName?.[0] || 'M'}

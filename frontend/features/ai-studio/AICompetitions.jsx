@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { Trophy, Award, Flame, Calendar, Users, Star, Zap } from 'lucide-react';
+import { Trophy, Award, Flame, Calendar, Users, Star, Zap, GraduationCap, Code, BriefcaseBusiness, Sparkles, FlaskConical, MessageSquare } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';

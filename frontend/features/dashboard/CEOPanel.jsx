@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { PageContainer, SectionWrapper } from '@frontend/components/layout/LayoutWrappers';
-import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
 import { Input } from '@frontend/components/ui/Input';
@@ -27,6 +26,46 @@ import { ExperimentsService } from '@services/firestore/experiments';
 import { ProductsService } from '@services/firestore/products';
 import { MembershipService } from '@services/firestore/membership';
 import { SPECIALIZATIONS } from '@shared/constants/specializations';
+
+const ceoPanelStyles = `
+  .exec-ceo-shell {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .exec-ceo-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 8% 8%, rgba(34, 211, 238, 0.15), transparent 28rem),
+      radial-gradient(circle at 86% 10%, rgba(139, 92, 246, 0.16), transparent 27rem),
+      radial-gradient(circle at 66% 94%, rgba(245, 158, 11, 0.10), transparent 32rem),
+      linear-gradient(135deg, rgba(2, 6, 23, 0.96), rgba(8, 13, 32, 0.96) 48%, rgba(24, 14, 47, 0.95));
+    z-index: -1;
+  }
+
+  .exec-ceo-title {
+    background: linear-gradient(90deg, #ffffff 0%, #a5f3fc 32%, #c4b5fd 66%, #fde68a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .exec-ceo-shell .rounded-lg {
+    border-radius: 1rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exec-ceo-shell * {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+`;
 
 export default function CEOPanel() {
   const { user } = useAuth();
@@ -275,16 +314,31 @@ export default function CEOPanel() {
   };
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="CEO Control Center"
-        description="Administration, moderation, applications, announcements, and analytics for BeastBuck leadership."
-        action={
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-accent/25 bg-accent/10 text-accent">
-            <BarChart3 className="h-6 w-6" />
+    <PageContainer className="exec-ceo-shell max-w-[1760px]">
+      <style>{ceoPanelStyles}</style>
+
+      <section className="mb-6 overflow-hidden rounded-[1.8rem] border border-white/10 bg-gradient-to-br from-slate-950/86 via-slate-900/66 to-violet-950/40 p-1 shadow-[0_30px_96px_rgba(0,0,0,0.34)] backdrop-blur-xl">
+        <div className="relative rounded-[1.6rem] bg-black/20 p-4 sm:p-6 lg:p-7">
+          <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/45 to-transparent" />
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div className="min-w-0">
+              <div className="mb-3 inline-flex max-w-full items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-cyan-100">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                CEO Operating Console
+              </div>
+              <h1 className="exec-ceo-title font-heading text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">
+                CEO Control Center
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400 sm:text-base">
+                Administration, moderation, applications, gamification controls, and analytics for BeastBuck leadership.
+              </p>
+            </div>
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-cyan-200/20 bg-cyan-300/10 text-cyan-100 shadow-[0_20px_46px_rgba(34,211,238,0.12)]">
+              <BarChart3 className="h-8 w-8" />
+            </div>
           </div>
-        }
-      />
+        </div>
+      </section>
 
       <SectionWrapper>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -512,7 +566,7 @@ export default function CEOPanel() {
                 >
                   {members.map(member => (
                     <option key={member.id} value={member.id}>
-                      {member.displayName || member.username} · {member.role}
+                      {member.displayName || member.username} - {member.role}
                     </option>
                   ))}
                 </select>
@@ -562,7 +616,7 @@ export default function CEOPanel() {
                   >
                     {achievements.map(achievement => (
                       <option key={achievement.id} value={achievement.id}>
-                        {achievement.title} · {achievement.rewardXP || 0} XP
+                      {achievement.title} - {achievement.rewardXP || 0} XP
                       </option>
                     ))}
                   </select>

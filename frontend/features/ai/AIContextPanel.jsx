@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Bot, Sparkles, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { AIService } from '@services/ai/aiService';
+import AIResponse from '@frontend/components/ai/AIResponse';
+import '@frontend/components/ai/AIResponse.css';
 
 /**
  * AIContextButton – a reusable inline AI button for embedding in feature pages.
@@ -60,11 +62,19 @@ export function AIContextButton({
         )}
       </button>
       {open && result && (
-        <div className="border-t border-accent/20 px-4 py-3">
-          <p className="whitespace-pre-wrap text-sm leading-6 text-white">{result}</p>
+        <div className="border-t border-accent/20">
+          <AIResponse
+            content={result}
+            variant="info"
+            title="AI Response"
+            enhanced={true}
+            showCopy={true}
+            showIcon={false}
+            className="border-0 bg-transparent p-4"
+          />
           <button
             type="button"
-            className="mt-2 text-xs text-text-muted hover:text-accent"
+            className="w-full text-xs text-text-muted hover:text-accent py-2 transition"
             onClick={() => { setResult(''); setOpen(false); }}
           >
             Clear

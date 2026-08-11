@@ -1,22 +1,273 @@
-import { useState, useEffect } from 'react';
-import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
-import { Star, MessageSquare, Sparkles, Search, Loader2, Bot, Plus, ArrowRight, User } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '@services/firebase/config';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import {
+  ArrowRight,
+  Bot,
+  Compass,
+  Filter,
+  Layers,
+  MessageSquare,
+  Plus,
+  Search,
+  Sparkles,
+  Star,
+  TrendingUp,
+  User,
+  Wand2,
+  Zap,
+} from 'lucide-react';
+import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import EmptyState from '@frontend/components/ui/EmptyState';
+import { SafeImage } from '@frontend/features/creative/CreativityPage';
+import { db } from '@services/firebase/config';
+import { cn } from '@shared/lib/utils';
 
 const CATEGORIES = ['All', 'Educational', 'Research', 'Coding', 'Business', 'Creative', 'Fun', 'Productivity', 'Science', 'Leadership'];
+
+const marketplaceStyles = `
+  .ai-market-shell {
+    position: relative;
+    overflow: hidden;
+    color: #eef7ff;
+  }
+
+  .ai-market-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 10% 9%, rgba(0, 245, 255, 0.24), transparent 24rem),
+      radial-gradient(circle at 88% 12%, rgba(255, 54, 171, 0.22), transparent 26rem),
+      radial-gradient(circle at 78% 84%, rgba(132, 92, 255, 0.25), transparent 30rem),
+      radial-gradient(circle at 16% 90%, rgba(30, 255, 188, 0.13), transparent 28rem),
+      linear-gradient(135deg, rgba(3, 7, 24, 0.94), rgba(7, 12, 40, 0.96) 42%, rgba(22, 8, 39, 0.97));
+    z-index: -1;
+  }
+
+  .ai-market-glass {
+    border: 1px solid rgba(147, 197, 253, 0.22);
+    background:
+      linear-gradient(145deg, rgba(21, 28, 64, 0.86), rgba(6, 23, 49, 0.78) 42%, rgba(37, 17, 58, 0.78)),
+      radial-gradient(circle at top left, rgba(34, 211, 238, 0.12), transparent 22rem),
+      radial-gradient(circle at bottom right, rgba(244, 114, 182, 0.12), transparent 20rem);
+    box-shadow: 0 26px 88px rgba(0, 0, 0, 0.34), 0 0 42px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+  }
+
+  .ai-market-card {
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  }
+
+  .ai-market-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.38);
+    background:
+      linear-gradient(145deg, rgba(27, 39, 85, 0.92), rgba(9, 39, 70, 0.82) 42%, rgba(55, 20, 77, 0.84)),
+      radial-gradient(circle at 18% 0%, rgba(34, 211, 238, 0.2), transparent 17rem),
+      radial-gradient(circle at 92% 100%, rgba(244, 114, 182, 0.18), transparent 17rem);
+    box-shadow: 0 26px 78px rgba(15, 23, 42, 0.42), 0 0 34px rgba(34, 211, 238, 0.1), 0 0 0 1px rgba(244, 114, 182, 0.08);
+  }
+
+  .ai-market-input {
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(6, 12, 27, 0.62);
+    color: #f8fbff;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  }
+
+  .ai-market-input:focus {
+    border-color: rgba(244, 114, 182, 0.74);
+    box-shadow: 0 0 0 4px rgba(244, 114, 182, 0.12), 0 0 24px rgba(34, 211, 238, 0.08);
+    outline: none;
+  }
+
+  .ai-market-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(103, 232, 249, 0.34) transparent;
+  }
+
+  .ai-market-skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(34,211,238,0.16), rgba(244,114,182,0.13), rgba(255,255,255,0.06));
+    background-size: 220% 100%;
+    animation: ai-market-shimmer 1.1s ease-in-out infinite;
+  }
+
+  .ai-market-title {
+    background: linear-gradient(90deg, #ffffff 0%, #bff9ff 32%, #d7c8ff 62%, #ffc1e2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .ai-market-orb {
+    background:
+      radial-gradient(circle at 28% 24%, rgba(255,255,255,0.58), transparent 0.9rem),
+      conic-gradient(from 140deg, #22d3ee, #8b5cf6, #f472b6, #bef264, #22d3ee);
+    box-shadow: 0 18px 42px rgba(34, 211, 238, 0.18), inset 0 1px 0 rgba(255,255,255,0.22);
+  }
+
+  @keyframes ai-market-shimmer {
+    0% { background-position: 180% 0; }
+    100% { background-position: -40% 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai-market-card,
+    .ai-market-input,
+    .ai-market-skeleton {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    .ai-market-card:hover {
+      transform: none;
+    }
+  }
+`;
+
+function formatNumber(value) {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric) ? numeric.toLocaleString() : '0';
+}
+
+function getFocusList(ai) {
+  return Array.isArray(ai?.focusAreas) ? ai.focusAreas.filter(Boolean) : [];
+}
+
+function getRating(ai) {
+  return typeof ai.avgRating === 'number' && ai.avgRating > 0 ? ai.avgRating.toFixed(1) : '5.0';
+}
+
+function Avatar({ ai, className }) {
+  return (
+    <div className={cn(
+      'ai-market-orb relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/25 text-2xl font-black text-slate-950',
+      className
+    )}>
+      {ai.avatarUrl ? (
+        <SafeImage src={ai.avatarUrl} alt={ai.name || 'AI avatar'} className="h-full w-full object-cover" />
+      ) : (
+        ai.emoji || 'AI'
+      )}
+      <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full border border-slate-950 bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.75)]" />
+    </div>
+  );
+}
+
+function MarketplaceSkeleton() {
+  return (
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, index) => (
+        <div key={index} className="ai-market-glass rounded-[1.5rem] p-5">
+          <div className="flex items-center gap-4">
+            <div className="ai-market-skeleton h-14 w-14 rounded-2xl" />
+            <div className="flex-1 space-y-3">
+              <div className="ai-market-skeleton h-5 w-2/3 rounded-full" />
+              <div className="ai-market-skeleton h-3 w-1/2 rounded-full" />
+            </div>
+          </div>
+          <div className="ai-market-skeleton mt-5 h-20 rounded-2xl" />
+          <div className="ai-market-skeleton mt-4 h-11 rounded-xl" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Metric({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300/18 via-violet-300/16 to-pink-300/16 text-cyan-50">
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="text-2xl font-black text-white">{value}</p>
+      <p className="mt-1 text-xs font-bold text-slate-400">{label}</p>
+    </div>
+  );
+}
+
+function AIStoreCard({ ai, featured = false }) {
+  const focusList = getFocusList(ai);
+  const categoryBadge = focusList[0] || ai.personality || 'Member AI';
+
+  return (
+    <article className={cn(
+      'ai-market-glass ai-market-card flex min-w-0 flex-col rounded-[1.5rem] p-5',
+      featured && 'bg-gradient-to-br from-cyan-300/16 via-violet-300/14 to-pink-300/12'
+    )}>
+      <div className="flex items-start justify-between gap-3">
+        <Avatar ai={ai} className={featured ? 'h-16 w-16 text-3xl' : ''} />
+        <span className="max-w-[9rem] truncate rounded-full border border-pink-200/25 bg-gradient-to-r from-cyan-300/12 via-violet-300/12 to-pink-300/12 px-2.5 py-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-pink-100">
+          {categoryBadge}
+        </span>
+      </div>
+
+      <div className="mt-5 min-w-0">
+        <h3 className={cn('truncate font-black text-white', featured ? 'text-2xl' : 'text-xl')}>
+          {ai.name || 'Untitled AI'}
+        </h3>
+        <p className="mt-2 flex min-w-0 items-center gap-1.5 text-xs font-bold text-slate-400">
+          <User className="h-3.5 w-3.5 shrink-0 text-cyan-200/80" />
+          <span className="truncate">By {ai.creatorName || 'Member'}</span>
+        </p>
+        <p className={cn('mt-4 text-sm leading-6 text-slate-400', featured ? 'line-clamp-4 min-h-[6rem]' : 'line-clamp-3 min-h-[4.5rem]')}>
+          {ai.description || 'Custom AI assistant created by a BeastBuck member.'}
+        </p>
+      </div>
+
+      <div className="mt-4 flex min-h-[2rem] flex-wrap gap-2">
+        {(focusList.length ? focusList.slice(0, 3) : [ai.personality || 'General']).map(area => (
+          <span key={area} className="rounded-full border border-white/10 bg-white/[0.055] px-2.5 py-1 text-[0.68rem] font-bold text-slate-300">
+            {area}
+          </span>
+        ))}
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-2 border-t border-white/10 pt-4 text-xs text-slate-400">
+        <span className="flex items-center gap-1.5 text-white/85">
+          <Star className="h-3.5 w-3.5 fill-lime-200 text-lime-200" />
+          {getRating(ai)}
+        </span>
+        <span className="flex items-center justify-end gap-1.5">
+          <MessageSquare className="h-3.5 w-3.5 text-cyan-200" />
+          {formatNumber(ai.totalChats)} chats
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <Link
+          to={`/ais/${ai.id}/chat`}
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-200 via-violet-200 to-pink-200 px-4 py-2 text-sm font-black text-slate-950 shadow-[0_16px_36px_rgba(34,211,238,0.14)] transition hover:brightness-110"
+        >
+          <MessageSquare className="h-4 w-4" />
+          Launch Chat
+        </Link>
+        <Link
+          to={`/ais/${ai.id}`}
+          className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-black text-white transition hover:border-cyan-200/35 hover:bg-white/[0.1]"
+          title="View AI details"
+        >
+          <ArrowRight className="h-4 w-4" />
+          <span className="ml-2 sm:sr-only">Details</span>
+        </Link>
+      </div>
+    </article>
+  );
+}
 
 export default function AIMarketplaceBrowser() {
   const [ais, setAis] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
   useEffect(() => {
     const fetchMarketplaceAIs = async () => {
       try {
+        setLoadError('');
         setLoading(true);
         let aisSnap;
         try {
@@ -25,19 +276,19 @@ export default function AIMarketplaceBrowser() {
             orderBy('createdAt', 'desc')
           );
           aisSnap = await getDocs(aisQuery);
-        } catch (err) {
-          // Fallback query if composite index is not set
+        } catch {
           aisSnap = await getDocs(collection(db, 'custom_ais'));
         }
 
         const list = aisSnap.docs.map(doc => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         }));
 
         setAis(list);
       } catch (err) {
         console.error('Failed to load member AIs from Firestore:', err);
+        setLoadError(err.message || 'Failed to load marketplace AIs.');
       } finally {
         setLoading(false);
       }
@@ -46,197 +297,288 @@ export default function AIMarketplaceBrowser() {
     fetchMarketplaceAIs();
   }, []);
 
-  // Filter AIs by selected category & search input
-  const filteredAIs = ais.filter(ai => {
-    let matchesCat = selectedCategory === 'All';
-    if (!matchesCat) {
-      const catLower = selectedCategory.toLowerCase();
-      const personality = (ai.personality || '').toLowerCase();
-      const focusAreas = (ai.focusAreas || []).map(f => f.toLowerCase());
-      const tone = (ai.tone || '').toLowerCase();
-      matchesCat = personality.includes(catLower) ||
-                   focusAreas.some(f => f.includes(catLower)) ||
-                   tone.includes(catLower);
-    }
+  const stats = useMemo(() => {
+    const totalChats = ais.reduce((sum, ai) => sum + (ai.totalChats || 0), 0);
+    const creators = new Set(ais.map(ai => ai.creatorId || ai.creatorName).filter(Boolean)).size;
+    const categories = new Set(ais.flatMap(ai => getFocusList(ai))).size;
 
-    let matchesSearch = true;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const name = (ai.name || '').toLowerCase();
-      const desc = (ai.description || '').toLowerCase();
-      const creator = (ai.creatorName || '').toLowerCase();
-      const focus = (ai.focusAreas || []).join(' ').toLowerCase();
-      matchesSearch = name.includes(q) || desc.includes(q) || creator.includes(q) || focus.includes(q);
-    }
+    return {
+      assistants: ais.length,
+      totalChats,
+      creators,
+      categories,
+    };
+  }, [ais]);
 
-    return matchesCat && matchesSearch;
-  });
+  const categoryCounts = useMemo(() => {
+    const counts = Object.fromEntries(CATEGORIES.map(category => [category, 0]));
+    counts.All = ais.length;
+
+    ais.forEach(ai => {
+      const searchable = [
+        ai.personality,
+        ai.tone,
+        ...getFocusList(ai),
+      ].join(' ').toLowerCase();
+
+      CATEGORIES.filter(category => category !== 'All').forEach(category => {
+        if (searchable.includes(category.toLowerCase())) {
+          counts[category] += 1;
+        }
+      });
+    });
+
+    return counts;
+  }, [ais]);
+
+  const filteredAIs = useMemo(() => {
+    return ais.filter(ai => {
+      let matchesCat = selectedCategory === 'All';
+      if (!matchesCat) {
+        const catLower = selectedCategory.toLowerCase();
+        const personality = (ai.personality || '').toLowerCase();
+        const focusAreas = getFocusList(ai).map(f => f.toLowerCase());
+        const tone = (ai.tone || '').toLowerCase();
+        matchesCat = personality.includes(catLower) ||
+          focusAreas.some(f => f.includes(catLower)) ||
+          tone.includes(catLower);
+      }
+
+      let matchesSearch = true;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const name = (ai.name || '').toLowerCase();
+        const desc = (ai.description || '').toLowerCase();
+        const creator = (ai.creatorName || '').toLowerCase();
+        const focus = getFocusList(ai).join(' ').toLowerCase();
+        const personality = (ai.personality || '').toLowerCase();
+        matchesSearch = name.includes(q) || desc.includes(q) || creator.includes(q) || focus.includes(q) || personality.includes(q);
+      }
+
+      return matchesCat && matchesSearch;
+    });
+  }, [ais, searchQuery, selectedCategory]);
+
+  const featuredAIs = useMemo(() => {
+    return [...ais]
+      .sort((a, b) => ((b.avgRating || 0) * 100 + (b.totalChats || 0)) - ((a.avgRating || 0) * 100 + (a.totalChats || 0)))
+      .slice(0, 3);
+  }, [ais]);
+
+  const topCategorySections = useMemo(() => {
+    return CATEGORIES
+      .filter(category => category !== 'All' && categoryCounts[category] > 0)
+      .slice(0, 4);
+  }, [categoryCounts]);
 
   return (
-    <PageContainer>
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">Member AI Marketplace</h1>
-        <p className="text-text-muted max-w-xl mx-auto text-sm sm:text-base">
-          Explore and chat with custom AI assistants built and published by BeastBuck community members.
-        </p>
-        <div className="mt-6 max-w-lg mx-auto relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search member AIs by name, creator, or topic..."
-            className="w-full bg-surface border border-border rounded-xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-accent transition text-sm"
+    <PageContainer className="ai-market-shell max-w-[1760px]">
+      <style>{marketplaceStyles}</style>
+
+      <section className="ai-market-glass mb-6 overflow-hidden rounded-[1.75rem] p-5 sm:p-7 lg:p-8">
+        <div className="grid gap-7 lg:grid-cols-[minmax(0,1.28fr)_minmax(300px,0.72fr)] lg:items-center">
+          <div className="min-w-0">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-pink-200/25 bg-gradient-to-r from-cyan-300/12 via-violet-300/12 to-pink-300/12 px-3 py-1.5 text-xs font-black uppercase tracking-[0.18em] text-cyan-100">
+              <Compass className="h-3.5 w-3.5" />
+              AI Marketplace
+            </div>
+            <h1 className="ai-market-title max-w-4xl text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">
+              Discover member-built AIs in a polished, high-end assistant store.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+              Browse real community assistants, search by creator or topic, filter by expertise, view details, and launch a chat instantly.
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <label className="relative block min-w-0">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search AIs by name, creator, focus, or personality..."
+                  className="ai-market-input min-h-[52px] w-full rounded-2xl pl-12 pr-4 text-sm"
+                />
+              </label>
+              <Link
+                to="/ai-studio"
+                className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-200 via-violet-200 to-pink-200 px-5 py-3 text-sm font-black text-slate-950 shadow-[0_18px_42px_rgba(34,211,238,0.16)] transition hover:brightness-110"
+              >
+                <Plus className="h-4 w-4" />
+                Build AI
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+            <Metric icon={Bot} label="Assistants" value={formatNumber(stats.assistants)} />
+            <Metric icon={MessageSquare} label="Chats" value={formatNumber(stats.totalChats)} />
+            <Metric icon={User} label="Creators" value={formatNumber(stats.creators)} />
+            <Metric icon={Layers} label="Focus Areas" value={formatNumber(stats.categories)} />
+          </div>
+        </div>
+      </section>
+
+      <section className="ai-market-glass mb-7 rounded-[1.5rem] p-3">
+        <div className="ai-market-scroll flex gap-2 overflow-x-auto pb-1">
+          <span className="hidden h-11 shrink-0 items-center gap-2 px-2 text-xs font-black uppercase tracking-[0.16em] text-slate-500 sm:inline-flex">
+            <Filter className="h-4 w-4" />
+            Categories
+          </span>
+          {CATEGORIES.map(category => {
+            const isActive = selectedCategory === category;
+            return (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setSelectedCategory(category)}
+                className={cn(
+                  'flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border px-4 py-2 text-xs font-black transition sm:text-sm',
+                  isActive
+                    ? 'border-white/35 bg-gradient-to-r from-cyan-200 via-violet-200 to-pink-200 text-slate-950 shadow-[0_12px_28px_rgba(244,114,182,0.16)]'
+                    : 'border-white/10 bg-white/[0.055] text-slate-200 hover:border-pink-200/35 hover:bg-white/[0.085]'
+                )}
+              >
+                <span>{category}</span>
+                <span className={cn('rounded-full px-2 py-0.5 text-[0.65rem]', isActive ? 'bg-slate-950/10' : 'bg-white/[0.075] text-slate-400')}>
+                  {categoryCounts[category] || 0}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {loading ? (
+        <MarketplaceSkeleton />
+      ) : loadError ? (
+        <div className="ai-market-glass rounded-[1.5rem]">
+          <EmptyState
+            icon={Zap}
+            title="Marketplace could not load"
+            description={loadError}
+            variant="error"
           />
         </div>
-      </div>
-
-      {/* Category Pills */}
-      <div className="flex gap-2 overflow-x-auto pb-4 mb-8 scrollbar-hide">
-        {CATEGORIES.map((cat) => {
-          const isActive = selectedCategory === cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition ${
-                isActive
-                  ? 'bg-accent text-black shadow-[0_0_15px_rgba(208,255,0,0.2)]'
-                  : 'bg-white/5 text-white hover:bg-white/10 border border-border'
-              }`}
-            >
-              {cat}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Content Area */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-text-muted">
-          <Loader2 className="w-8 h-8 animate-spin text-accent" />
-          <p className="text-sm">Loading member AIs...</p>
-        </div>
       ) : ais.length === 0 ? (
-        <EmptyState
-          icon={Bot}
-          title="No Member AIs Created Yet"
-          description="Be the first member to build and publish a custom AI assistant for the BeastBuck community!"
-          action={
-            <Link
-              to="/ai-studio"
-              className="inline-flex items-center gap-2 bg-accent hover:bg-accent/90 text-black font-bold px-6 py-3 rounded-xl transition shadow-[0_0_20px_rgba(208,255,0,0.15)] text-sm"
-            >
-              <Plus className="w-4 h-4" />
-              Build Member AI
-            </Link>
-          }
-        />
-      ) : filteredAIs.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          title="No Matching AIs Found"
-          description="No member AIs matched your search criteria or category filter."
-          action={
-            <button
-              onClick={() => { setSearchQuery(''); setSelectedCategory('All'); }}
-              className="bg-white/10 text-white font-bold px-5 py-2.5 rounded-xl hover:bg-white/20 transition text-sm"
-            >
-              Clear Search & Filters
-            </button>
-          }
-        />
+        <div className="ai-market-glass rounded-[1.5rem]">
+          <EmptyState
+            icon={Bot}
+            title="No Member AIs Created Yet"
+            description="Be the first member to build and publish a custom AI assistant for the BeastBuck community."
+            action={
+              <Link
+                to="/ai-studio"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-200 via-violet-200 to-pink-200 px-6 py-3 text-sm font-black text-slate-950 shadow-[0_16px_36px_rgba(34,211,238,0.14)] transition hover:brightness-110"
+              >
+                <Plus className="h-4 w-4" />
+                Build Member AI
+              </Link>
+            }
+          />
+        </div>
       ) : (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Sparkles className="text-accent w-5 h-5" />
-              Community AI Assistants ({filteredAIs.length})
-            </h2>
-            <Link to="/ai-studio" className="text-xs sm:text-sm font-bold text-accent hover:underline flex items-center gap-1">
-              <Plus className="w-4 h-4" /> Create Your AI
-            </Link>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredAIs.map((ai) => {
-              const categoryBadge = ai.focusAreas?.[0] || ai.personality || 'Member AI';
-              const ratingVal = typeof ai.avgRating === 'number' && ai.avgRating > 0 ? ai.avgRating.toFixed(1) : '5.0';
-
-              return (
-                <div
-                  key={ai.id}
-                  className="group rounded-2xl border border-border bg-surface/40 p-5 backdrop-blur-sm transition-all hover:border-accent/50 hover:shadow-[0_0_25px_rgba(208,255,0,0.06)] flex flex-col justify-between"
-                >
-                  <div>
-                    {/* Header: Avatar + Category Tag */}
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      {ai.avatarUrl ? (
-                        <img
-                          src={ai.avatarUrl}
-                          alt={ai.name}
-                          className="w-12 h-12 rounded-2xl object-cover border border-border shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-border flex items-center justify-center text-2xl shrink-0">
-                          {ai.emoji || '🤖'}
-                        </div>
-                      )}
-                      <span className="bg-white/10 text-text-muted text-[10px] font-bold px-2.5 py-1 rounded-full truncate max-w-[120px]">
-                        {categoryBadge}
-                      </span>
-                    </div>
-
-                    {/* AI Name & Creator */}
-                    <h3 className="font-bold text-white text-base group-hover:text-accent transition line-clamp-1">
-                      {ai.name}
-                    </h3>
-                    <p className="text-xs text-text-muted mb-2 flex items-center gap-1">
-                      <User className="w-3 h-3 text-accent/70 shrink-0" />
-                      <span className="truncate">By {ai.creatorName || 'Member'}</span>
-                    </p>
-
-                    {/* Description */}
-                    <p className="text-xs text-text-muted line-clamp-2 mb-4 leading-relaxed">
-                      {ai.description || 'Custom AI assistant created by member.'}
-                    </p>
-                  </div>
-
-                  {/* Footer & Actions */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs text-text-muted border-t border-border/40 pt-3 mb-3">
-                      <span className="flex items-center gap-1 text-white/80">
-                        <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                        {ratingVal}
-                      </span>
-                      <span className="flex items-center gap-1 text-text-muted">
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        {ai.totalChats || 0} chats
-                      </span>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Link
-                        to={`/ais/${ai.id}/chat`}
-                        className="flex-1 bg-accent/15 hover:bg-accent text-accent hover:text-black font-bold py-2 rounded-xl text-xs text-center transition flex items-center justify-center gap-1.5"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" /> Launch Chat
-                      </Link>
-                      <Link
-                        to={`/ais/${ai.id}`}
-                        className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-border text-white text-xs font-bold transition flex items-center justify-center"
-                        title="View Details"
-                      >
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </Link>
-                    </div>
-                  </div>
+        <div className="space-y-9">
+          {featuredAIs.length > 0 && selectedCategory === 'All' && !searchQuery.trim() && (
+            <section>
+              <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="mb-2 text-[0.72rem] font-black uppercase tracking-[0.2em] text-cyan-200">Featured discovery</p>
+                  <h2 className="text-2xl font-black text-white">High-signal assistants</h2>
                 </div>
-              );
-            })}
-          </div>
+                <p className="text-sm text-slate-400">Ranked from real rating and chat activity when available.</p>
+              </div>
+              <div className="grid gap-5 lg:grid-cols-3">
+                {featuredAIs.map(ai => (
+                  <AIStoreCard key={ai.id} ai={ai} featured />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {topCategorySections.length > 0 && selectedCategory === 'All' && !searchQuery.trim() && (
+            <section className="ai-market-glass rounded-[1.5rem] p-5 sm:p-6">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="mb-2 text-[0.72rem] font-black uppercase tracking-[0.2em] text-cyan-200">Browse lanes</p>
+                  <h2 className="text-2xl font-black text-white">Popular categories</h2>
+                </div>
+                <TrendingUp className="h-6 w-6 text-cyan-100" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {topCategorySections.map(category => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setSelectedCategory(category)}
+                    className="ai-market-card rounded-2xl border border-white/10 bg-white/[0.05] p-4 text-left"
+                  >
+                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300/18 via-violet-300/16 to-pink-300/16 text-cyan-50">
+                      {category === 'Creative' ? <Wand2 className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                    </div>
+                    <p className="text-lg font-black text-white">{category}</p>
+                    <p className="mt-1 text-sm font-bold text-slate-400">{categoryCounts[category]} assistants</p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section>
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="mb-2 text-[0.72rem] font-black uppercase tracking-[0.2em] text-cyan-200">Marketplace shelf</p>
+                <h2 className="text-2xl font-black text-white">
+                  {selectedCategory === 'All' ? 'Community AI Assistants' : `${selectedCategory} Assistants`} ({filteredAIs.length})
+                </h2>
+              </div>
+              {(searchQuery || selectedCategory !== 'All') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('All');
+                  }}
+                  className="inline-flex min-h-[42px] items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-black text-white transition hover:bg-white/[0.1]"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            {filteredAIs.length === 0 ? (
+              <div className="ai-market-glass rounded-[1.5rem]">
+                <EmptyState
+                  icon={Search}
+                  title="No Matching AIs Found"
+                  description="No member AIs matched your search criteria or category filter."
+                  action={
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedCategory('All');
+                      }}
+                      className="inline-flex min-h-[44px] items-center rounded-xl bg-white/[0.08] px-5 py-2.5 text-sm font-black text-white transition hover:bg-white/[0.12]"
+                    >
+                      Clear Search and Filters
+                    </button>
+                  }
+                />
+              </div>
+            ) : (
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                {filteredAIs.map(ai => (
+                  <AIStoreCard key={ai.id} ai={ai} />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       )}
+
+      <div className="sr-only" aria-live="polite">
+        {loading ? 'Loading AI marketplace' : `${filteredAIs.length} marketplace assistants visible`}
+      </div>
     </PageContainer>
   );
 }

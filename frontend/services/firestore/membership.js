@@ -148,7 +148,7 @@ export const MembershipService = {
     if (userData.membershipStatus === 'approved') return true;
     if (userData.role) {
       const normalized = userData.role.toLowerCase().trim();
-      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'member'].includes(normalized);
+      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'moderator', 'mentor', 'judge', 'writer', 'member'].includes(normalized);
     }
     return false;
   },

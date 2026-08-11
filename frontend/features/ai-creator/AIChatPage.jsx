@@ -40,8 +40,9 @@ async function smartChat({ messages, systemPrompt }) {
 
 // Lightweight Markdown Renderer with Code Copying
 function MarkdownText({ text }) {
-  if (!text) return null;
   const [copiedCodeIdx, setCopiedCodeIdx] = useState(null);
+
+  if (!text) return null;
 
   const handleCopyCode = (codeStr, idx) => {
     navigator.clipboard.writeText(codeStr).catch(() => {});

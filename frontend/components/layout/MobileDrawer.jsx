@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useGlobalStore } from '@frontend/store/useGlobalStore';
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
@@ -23,7 +24,6 @@ import {
   Palette,
 } from 'lucide-react';
 import { cn } from '@shared/lib/utils';
-import { useEffect } from 'react';
 
 
 
@@ -38,6 +38,7 @@ const DRAWER_NAV_ITEMS = [
   { name: 'AI Marketplace', path: '/ais', icon: Bot },
   { name: 'AI Assistant', path: '/ai', icon: Bot },
   { name: 'Leaderboards', path: '/leaderboards', icon: Trophy },
+  { name: 'Memobook', path: '/memobook', icon: BookOpen, memberOnly: true },
 ];
 
 export default function MobileDrawer() {
@@ -52,10 +53,9 @@ export default function MobileDrawer() {
 
   const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
 
-  const MEMBER_ONLY_PATHS = ['/dashboard', '/chat', '/workspace', '/workspace/experiments', '/workspace/products'];
-
   const filteredNavItems = DRAWER_NAV_ITEMS.filter((item) => {
-    if (MEMBER_ONLY_PATHS.includes(item.path)) {
+    // Handle member-only items with memberOnly property
+    if (item.memberOnly) {
       return isApprovedMember;
     }
     return true;

@@ -1,10 +1,13 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   BarChart3,
+  BadgeCheck,
+  BrainCircuit,
   ClipboardList,
   FileWarning,
   Gamepad2,
   LayoutDashboard,
+  Network,
   Shield,
   ShieldCheck,
   Users,
@@ -12,12 +15,9 @@ import {
   ChevronRight,
   Calendar,
   FlaskConical,
-  BriefcaseBusiness,
-  PackageOpen,
-  Workflow,
   Orbit,
-  Headphones,
   Crown,
+  Sparkles,
 } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { cn } from '@shared/lib/utils';
@@ -25,6 +25,7 @@ import { cn } from '@shared/lib/utils';
 const adminNav = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, desc: 'Platform overview' },
   { label: 'Members', path: '/admin/members', icon: Users, desc: 'Manage users' },
+  { label: 'Memberships', path: '/admin/memberships', icon: BadgeCheck, desc: 'Review access' },
   { label: 'Roles', path: '/admin/roles', icon: UserCog, desc: 'Permission roles' },
   { label: 'Content', path: '/admin/content', icon: FileWarning, desc: 'Moderate content' },
   { label: 'Gamification', path: '/admin/gamification', icon: Gamepad2, desc: 'XP & badges' },
@@ -33,78 +34,119 @@ const adminNav = [
   { label: 'Security', path: '/admin/security', icon: Shield, desc: 'Platform locks' },
   { label: 'Events', path: '/admin/events', icon: Calendar, desc: 'Manage events' },
   { label: 'Innovation', path: '/admin/innovation', icon: FlaskConical, desc: 'Approve innovations' },
-  { label: 'Ventures', path: '/admin/ventures', icon: BriefcaseBusiness, desc: 'Incubator OS' },
-  { label: 'Marketplace', path: '/admin/marketplace', icon: PackageOpen, desc: 'Resource exchange' },
-  { label: 'Automation', path: '/admin/automation', icon: Workflow, desc: 'Smart ops' },
   { label: 'Universe', path: '/admin/universe', icon: Orbit, desc: 'Intelligence layer' },
-  { label: 'Collaboration', path: '/admin/collaboration', icon: Headphones, desc: 'Voice & meetings' },
+  { label: 'Intelligence', path: '/admin/intelligence', icon: BrainCircuit, desc: 'Decision signals' },
+  { label: 'Ecosystem', path: '/admin/ecosystem', icon: Network, desc: 'System map' },
   { label: 'Exec Roles', path: '/executive-role-management', icon: Crown, desc: 'CEO & Co-CEO roles' },
 ];
+
+const adminLayoutStyles = `
+  .exec-admin-shell {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .exec-admin-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 8% 8%, rgba(34, 211, 238, 0.15), transparent 28rem),
+      radial-gradient(circle at 88% 10%, rgba(139, 92, 246, 0.16), transparent 26rem),
+      radial-gradient(circle at 60% 95%, rgba(59, 130, 246, 0.12), transparent 32rem),
+      linear-gradient(135deg, rgba(3, 7, 18, 0.94), rgba(7, 13, 34, 0.96) 48%, rgba(20, 14, 46, 0.95));
+    z-index: -1;
+  }
+
+  .exec-admin-title {
+    background: linear-gradient(90deg, #ffffff 0%, #bfdbfe 34%, #a5f3fc 62%, #ddd6fe 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exec-admin-shell * {
+      scroll-behavior: auto !important;
+    }
+  }
+`;
 
 export default function AdminLayout() {
   const location = useLocation();
   const activeNav = adminNav.find(n => location.pathname.startsWith(n.path));
 
   return (
-    <PageContainer>
-      {/* Command Center Header */}
-      <div className="mb-6 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-surface/90 via-surface/70 to-accent/5 p-1 shadow-[0_0_40px_rgba(0,240,255,0.05)]">
-        <div className="rounded-xl bg-black/30 p-4 md:p-6">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-accent-alt/20 text-accent shadow-[0_0_20px_rgba(0,240,255,0.2)]">
-                <ShieldCheck className="h-6 w-6" />
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-status-success shadow-[0_0_8px_rgba(0,255,136,0.8)]" />
+    <PageContainer className="exec-admin-shell max-w-[1760px]">
+      <style>{adminLayoutStyles}</style>
+
+      <section className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-slate-950/82 via-slate-900/62 to-indigo-950/42 p-1 shadow-[0_28px_90px_rgba(0,0,0,0.3)] backdrop-blur-xl">
+        <div className="rounded-[1.55rem] bg-black/20 p-4 sm:p-6">
+          <div className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cyan-200/20 bg-gradient-to-br from-cyan-300/18 via-violet-300/14 to-blue-500/16 text-cyan-100 shadow-[0_20px_46px_rgba(34,211,238,0.12)]">
+                <ShieldCheck className="h-7 w-7" />
+                <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border border-slate-950 bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.85)]" />
               </div>
-              <div>
-                <h1 className="font-heading text-xl font-black tracking-wide text-white md:text-2xl">
-                  Command Center
+              <div className="min-w-0">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-cyan-100">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  CEO / Co-CEO Command Layer
+                </div>
+                <h1 className="exec-admin-title font-heading text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">
+                  Executive Command Center
                 </h1>
-                <p className="text-xs text-text-muted">
-                  BeastBuck Admin OS
+                <p className="mt-2 flex flex-wrap items-center gap-1.5 text-sm text-slate-400">
+                  <span>BeastBuck Admin OS</span>
                   {activeNav && (
                     <>
-                      <ChevronRight className="mx-1 inline h-3 w-3" />
-                      <span className="text-accent">{activeNav.label}</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                      <span className="font-bold text-cyan-100">{activeNav.label}</span>
                     </>
                   )}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 rounded-lg border border-status-success/20 bg-status-success/5 px-3 py-1.5">
-              <span className="h-2 w-2 rounded-full bg-status-success shadow-[0_0_6px_rgba(0,255,136,0.8)]" />
-              <span className="text-xs font-bold text-status-success">System Operational</span>
+
+            <div className="grid gap-2 sm:grid-cols-2 lg:w-[22rem]">
+              <div className="rounded-2xl border border-emerald-200/20 bg-emerald-300/10 px-4 py-3">
+                <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-emerald-100/70">Status</p>
+                <div className="mt-1 flex items-center gap-2 text-sm font-black text-emerald-100">
+                  <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.9)]" />
+                  Operational
+                </div>
+              </div>
+              <div className="rounded-2xl border border-violet-200/20 bg-violet-300/10 px-4 py-3">
+                <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-violet-100/70">Active surface</p>
+                <p className="mt-1 truncate text-sm font-black text-violet-100">{activeNav?.label || 'Dashboard'}</p>
+              </div>
             </div>
           </div>
 
-          {/* Navigation Grid */}
-          <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8 xl:grid-cols-12">
+          <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-8" aria-label="Executive admin navigation">
             {adminNav.map(({ label, path, icon: Icon, desc }) => (
               <NavLink
                 key={path}
                 to={path}
                 className={({ isActive }) => cn(
-                  'group relative flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-center text-xs font-bold transition-all duration-200',
+                  'group relative flex min-w-0 flex-col items-start gap-2 rounded-2xl border px-3 py-3 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-200/25',
                   isActive
-                    ? 'border-accent/40 bg-gradient-to-b from-accent/15 to-accent/5 text-accent shadow-[0_0_20px_rgba(0,240,255,0.1),inset_0_1px_0_rgba(0,240,255,0.2)]'
-                    : 'border-border bg-white/[0.02] text-text-muted hover:border-white/10 hover:bg-white/5 hover:text-white',
+                    ? 'border-cyan-200/35 bg-gradient-to-br from-cyan-300/16 via-violet-300/12 to-blue-400/10 text-white shadow-[0_18px_44px_rgba(34,211,238,0.12)]'
+                    : 'border-white/10 bg-white/[0.045] text-slate-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.075] hover:text-white',
                 )}
               >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className="leading-tight">{label}</span>
-                <span className={cn(
-                  'hidden text-[10px] font-normal leading-tight lg:block',
-                  location.pathname.startsWith(path) ? 'text-accent/60' : 'text-text-muted/60',
-                )}>
-                  {desc}
-                </span>
+                <div className="flex w-full min-w-0 items-center gap-2">
+                  <Icon className="h-4 w-4 shrink-0 text-cyan-100" />
+                  <span className="truncate text-xs font-black">{label}</span>
+                </div>
+                <span className="line-clamp-2 text-[0.68rem] leading-4 text-slate-500 group-hover:text-slate-400">{desc}</span>
               </NavLink>
             ))}
           </nav>
         </div>
-      </div>
+      </section>
 
-      {/* Page Content */}
       <Outlet />
     </PageContainer>
   );

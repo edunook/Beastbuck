@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { Sparkles, TrendingUp, User, Award, Calendar, Flame, Gem } from 'lucide-react';
+import { Sparkles, TrendingDown, TrendingUp, User, Award, Calendar, Flame, Gem } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent } from '@frontend/components/ui/Card';

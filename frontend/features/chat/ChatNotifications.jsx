@@ -55,17 +55,23 @@ export function ChatNotification({ notification, onClose, onClick, soundEnabled 
 
   useEffect(() => {
     if (!notification.autoClose) return;
-    const timer = setTimeout(() => handleClose(), notification.duration || 5000);
+    const timer = setTimeout(() => {
+      setIsLeaving(true);
+      setTimeout(() => {
+        setIsVisible(false);
+        onClose?.();
+      }, 300);
+    }, notification.duration || 5000);
     return () => clearTimeout(timer);
-  }, [notification.autoClose, notification.duration]);
+  }, [notification.autoClose, notification.duration, onClose]);
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     setIsLeaving(true);
     setTimeout(() => {
       setIsVisible(false);
       onClose?.();
     }, 300);
-  }, [onClose]);
+  };
 
   const typeConfig = NOTIFICATION_TYPES[notification.type] || NOTIFICATION_TYPES.system;
   const Icon = typeConfig.icon;

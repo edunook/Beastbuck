@@ -1,24 +1,35 @@
 import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@frontend/components/ui/Card';
+import { ShieldX, Home, LayoutDashboard } from 'lucide-react';
+import AuthLayout from './AuthLayout';
 import Button from '@frontend/components/ui/Button';
 
 export default function AccessDenied() {
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border-status-danger/30">
-        <CardHeader className="text-center pb-4">
-          <div className="w-16 h-16 bg-status-danger/10 text-status-danger rounded-full flex items-center justify-center mx-auto mb-4 border border-status-danger/20">
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </div>
-          <CardTitle className="text-2xl text-status-danger">Access Restricted</CardTitle>
-          <CardDescription>You do not have the required permissions to view this sector.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center">
-          <Link to="/">
-            <Button variant="secondary">Return to Safety</Button>
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthLayout title="Access restricted" subtitle="You don't have permission to view this area">
+      <div className="text-center mb-8">
+        <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-status-danger/25 bg-status-danger/10">
+          <ShieldX className="h-8 w-8 text-status-danger" />
+        </div>
+        <p className="text-sm leading-relaxed text-text-soft">
+          This sector requires elevated permissions. Contact your workspace administrator if you
+          believe this is an error.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Link to="/dashboard" className="flex-1">
+          <Button variant="primary" className="w-full !rounded-2xl !py-3.5">
+            <LayoutDashboard className="h-5 w-5" />
+            Go to Dashboard
+          </Button>
+        </Link>
+        <Link to="/" className="flex-1">
+          <Button variant="secondary" className="w-full !rounded-2xl !py-3.5">
+            <Home className="h-5 w-5" />
+            Back to Home
+          </Button>
+        </Link>
+      </div>
+    </AuthLayout>
   );
 }

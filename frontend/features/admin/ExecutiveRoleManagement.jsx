@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { 
   Crown, 
   Shield, 
@@ -6,28 +6,18 @@ import {
   UserMinus, 
   RefreshCw, 
   Search, 
-  Filter,
   ChevronDown,
-  Check,
   X,
   AlertTriangle,
   Crown as CoCEOIcon,
   Users,
-  MapPin,
-  Calendar,
   Award,
-  Zap,
-  Eye,
-  EyeOff,
-  MoreVertical,
-  Trash2,
   Edit,
   Star,
-  Lock,
-  Unlock
+  Lock
 } from 'lucide-react';
 import { db } from '@services/firebase/config';
-import { collection, getDocs, doc, updateDoc, query, where, orderBy, serverTimestamp, runTransaction } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, serverTimestamp, runTransaction } from 'firebase/firestore';
 import { useAuth } from '../auth/AuthContext';
 import { ROLES } from '@shared/constants/roles';
 import { cn } from '@shared/lib/utils';
@@ -43,22 +33,41 @@ const ROLE_HIERARCHY = {
 
 const AVAILABLE_ROLES = [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER, ROLES.USER];
 
-const ROLE_PERMISSIONS = {
-  [ROLES.MAIN_CEO]: {
-    canManageCEO: true,
-    canManageCoCEO: true,
-    canManageAllRoles: true,
-    canAssignJudge: true,
-    description: 'Full control over all roles and executive functions'
-  },
-  [ROLES.CO_CEO]: {
-    canManageCEO: false,
-    canManageCoCEO: false,
-    canManageAllRoles: true,
-    canAssignJudge: true,
-    description: 'Can manage member roles but cannot modify CEO or Co-CEO positions'
+const executiveRoleStyles = `
+  .exec-role-shell {
+    position: relative;
+    isolation: isolate;
   }
-};
+
+  .exec-role-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 8% 8%, rgba(250, 204, 21, 0.12), transparent 26rem),
+      radial-gradient(circle at 86% 10%, rgba(139, 92, 246, 0.16), transparent 28rem),
+      radial-gradient(circle at 66% 94%, rgba(34, 211, 238, 0.12), transparent 32rem),
+      linear-gradient(135deg, rgba(2, 6, 23, 0.96), rgba(8, 13, 32, 0.96) 48%, rgba(24, 14, 47, 0.95));
+    z-index: -1;
+  }
+
+  .exec-role-title {
+    background: linear-gradient(90deg, #ffffff 0%, #fde68a 28%, #c4b5fd 62%, #a5f3fc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exec-role-shell * {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+`;
 
 export default function ExecutiveRoleManagement() {
   const { user, roleData } = useAuth();
@@ -77,7 +86,6 @@ export default function ExecutiveRoleManagement() {
   const isCEO = currentUserRole === ROLES.MAIN_CEO;
   const isCoCEO = currentUserRole === ROLES.CO_CEO;
   const hasAccess = isCEO || isCoCEO;
-  const permissions = ROLE_PERMISSIONS[currentUserRole] || {};
 
   useEffect(() => {
     if (!hasAccess) {
@@ -86,10 +94,6 @@ export default function ExecutiveRoleManagement() {
     }
     loadMembers();
   }, [hasAccess]);
-
-  useEffect(() => {
-    filterMembers();
-  }, [members, searchQuery, roleFilter]);
 
   const loadMembers = async () => {
     setLoading(true);
@@ -116,7 +120,7 @@ export default function ExecutiveRoleManagement() {
     }
   };
 
-  const filterMembers = () => {
+  const filterMembers = useCallback(() => {
     let filtered = [...members];
 
     if (searchQuery) {
@@ -132,7 +136,11 @@ export default function ExecutiveRoleManagement() {
     }
 
     setFilteredMembers(filtered);
-  };
+  }, [members, roleFilter, searchQuery]);
+
+  useEffect(() => {
+    filterMembers();
+  }, [filterMembers]);
 
   const handleRoleChange = async (memberId, newRole) => {
     setActionLoading(true);
@@ -325,32 +333,37 @@ export default function ExecutiveRoleManagement() {
 
   if (!hasAccess) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <Lock className="w-16 h-16 mx-auto text-text-muted mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Access Denied</h2>
-          <p className="text-text-muted">This page is only accessible to CEO and Co-CEO</p>
+      <div className="exec-role-shell flex min-h-[60vh] items-center justify-center px-4">
+        <style>{executiveRoleStyles}</style>
+        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/80 p-8 text-center shadow-2xl shadow-black/30 backdrop-blur-xl">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-amber-300/20 bg-amber-300/10 text-amber-200">
+            <Lock className="h-7 w-7" />
+          </div>
+          <h2 className="text-2xl font-black text-white">Access Denied</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">This workspace is reserved for CEO and Co-CEO access.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="exec-role-shell mx-auto max-w-[1760px] space-y-6">
+      <style>{executiveRoleStyles}</style>
       {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-surface/90 via-surface/70 to-accent/5 p-1 shadow-[0_0_40px_rgba(0,240,255,0.05)]">
-        <div className="rounded-xl bg-black/30 p-6">
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950/95 via-indigo-950/70 to-cyan-950/45 p-1 shadow-2xl shadow-black/30">
+        <div className="rounded-[22px] bg-slate-950/45 p-5 backdrop-blur-xl sm:p-7">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-4">
-              <div className="relative flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-accent-alt/20 text-accent shadow-[0_0_20px_rgba(0,240,255,0.2)]">
+              <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-300/20 to-violet-400/20 text-amber-100 shadow-lg shadow-amber-300/10">
                 <Crown className="h-7 w-7" />
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-status-success shadow-[0_0_8px_rgba(0,255,136,0.8)]" />
+                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.85)]" />
               </div>
               <div>
-                <h1 className="font-heading text-2xl font-black tracking-wide text-white md:text-3xl">
+                <p className="mb-1 text-xs font-bold uppercase tracking-[0.2em] text-cyan-200/80">Leadership control plane</p>
+                <h1 className="exec-role-title font-heading text-2xl font-black tracking-wide md:text-3xl">
                   Executive Role Management
                 </h1>
-                <p className="text-sm text-text-muted">
+                <p className="mt-1 text-sm text-slate-300">
                   {isCEO ? 'CEO Control Panel' : 'Co-CEO Management Panel'}
                 </p>
               </div>
@@ -360,7 +373,7 @@ export default function ExecutiveRoleManagement() {
               <button
                 onClick={loadMembers}
                 disabled={loading}
-                className="flex items-center gap-2 rounded-xl border border-border bg-white/5 px-4 py-2.5 text-sm font-bold text-text-soft hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2.5 text-sm font-bold text-slate-100 transition-all hover:-translate-y-0.5 hover:border-cyan-200/30 hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                 Refresh
@@ -403,7 +416,8 @@ export default function ExecutiveRoleManagement() {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex flex-col gap-4 md:flex-row">
+      <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-3 shadow-xl shadow-black/15 backdrop-blur-xl sm:p-4">
+      <div className="flex flex-col gap-3 md:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted" />
           <input
@@ -411,7 +425,7 @@ export default function ExecutiveRoleManagement() {
             placeholder="Search members by name, username, or email..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-12 w-full rounded-xl border border-border bg-white/5 pl-12 pr-4 text-sm text-white placeholder:text-text-muted focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
+            className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.05] pl-12 pr-4 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-cyan-200/45 focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-cyan-300/20"
           />
         </div>
         
@@ -419,7 +433,7 @@ export default function ExecutiveRoleManagement() {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="h-12 appearance-none rounded-xl border border-border bg-white/5 px-4 pr-12 text-sm text-white focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/20"
+            className="h-12 w-full appearance-none rounded-xl border border-white/10 bg-white/[0.05] px-4 pr-12 text-sm text-white transition-colors focus:border-cyan-200/45 focus:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-cyan-300/20 md:w-56"
           >
             <option value="all">All Roles</option>
             {AVAILABLE_ROLES.map(role => (
@@ -429,10 +443,11 @@ export default function ExecutiveRoleManagement() {
           <ChevronDown className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-text-muted pointer-events-none" />
         </div>
       </div>
+      </div>
 
       {/* Members List */}
-      <div className="rounded-2xl border border-border bg-white/[0.02] overflow-hidden">
-        <div className="border-b border-border bg-white/[0.02] px-6 py-4">
+      <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/65 shadow-2xl shadow-black/20 backdrop-blur-xl">
+        <div className="border-b border-white/10 bg-white/[0.035] px-5 py-5 sm:px-6">
           <h3 className="text-lg font-bold text-white">Team Members</h3>
           <p className="text-sm text-text-muted">Manage roles and permissions</p>
         </div>
@@ -448,7 +463,7 @@ export default function ExecutiveRoleManagement() {
             <p className="text-text-muted">No members found</p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-white/10">
             {filteredMembers.map((member, index) => {
               const roleInfo = getRoleInfo(member.role);
               const RoleIcon = roleInfo.icon;
@@ -457,12 +472,12 @@ export default function ExecutiveRoleManagement() {
               return (
                 <div
                   key={member.id}
-                  className="group relative px-6 py-4 transition-all hover:bg-white/[0.03]"
+                  className="group relative px-4 py-4 transition-all hover:bg-white/[0.045] sm:px-6"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                     {/* Member Info */}
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 items-center gap-4">
                       <div className={cn(
                         "flex h-12 w-12 items-center justify-center rounded-xl",
                         roleInfo.bgColor,
@@ -490,7 +505,7 @@ export default function ExecutiveRoleManagement() {
                     </div>
 
                     {/* Role Badge */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center xl:justify-end">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-bold",
                         roleInfo.bgColor,
@@ -501,7 +516,7 @@ export default function ExecutiveRoleManagement() {
                       </span>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex flex-wrap items-center gap-2">
                         {canModifyRole(member) && !isCurrentUser && (
                           <button
                             onClick={() => {
@@ -701,7 +716,7 @@ export default function ExecutiveRoleManagement() {
 // Stat Card Component
 function StatCard({ icon: Icon, label, value, color, bgColor }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-white/[0.02] p-4 transition-all hover:border-white/10 hover:bg-white/[0.04]">
+    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60 p-4 shadow-lg shadow-black/10 transition-all hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.055]">
       <div className="flex items-center gap-3">
         <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", bgColor, color)}>
           <Icon className="h-5 w-5" />
@@ -720,20 +735,20 @@ function Modal({ isOpen, onClose, title, children, variant = 'default' }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       <div className={cn(
-        "relative w-full max-w-md rounded-2xl border bg-background p-6 shadow-2xl",
-        variant === 'danger' ? "border-red-500/30" : "border-border"
+        "relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-3xl border bg-slate-950/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-xl sm:p-6",
+        variant === 'danger' ? "border-red-400/35" : "border-white/10"
       )}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-bold text-white">{title}</h3>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-white/5 text-text-muted hover:bg-white/10 hover:text-white transition-all"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-slate-400 transition-all hover:bg-white/[0.1] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
           >
             <X className="h-4 w-4" />
           </button>

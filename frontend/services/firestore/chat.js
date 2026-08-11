@@ -594,7 +594,6 @@ export const ChatService = {
     await updateDoc(messageRef(roomId, messageId), {
       deleted: true,
       deletedAt: serverTimestamp(),
-      text: '[Message deleted]',
     });
   },
 

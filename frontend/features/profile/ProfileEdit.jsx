@@ -4,7 +4,7 @@ import { Save, X, Plus, Trash2, User, MapPin, Globe, Briefcase, GraduationCap, H
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { UsersService } from '@services/firestore/users';
 import { ThemesService } from '@services/firestore/themes';
-import { uploadProofFile, isCloudinaryConfigured } from '@services/storage/cloudinary';
+import { uploadProfilePhoto, isIPFSConfigured } from '@services/storage/ipfs';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import { LoadingState } from '@frontend/components/ui/UIElements';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -624,6 +624,9 @@ export default function ProfileEdit() {
     interests: '',
     customSections: []
   });
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState('default');
   const [showAllThemes, setShowAllThemes] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState('');
@@ -686,7 +689,22 @@ export default function ProfileEdit() {
   useEffect(() => {
     if (!user?.uid) return;
 
+    // Security check: Users can only edit their own profile
+    // CEO and Co-CEO can edit any profile
+    const userRole = roleData?.role?.toLowerCase().trim() || '';
+    const isCEO = userRole === 'main ceo' || userRole === 'ceo';
+    const isCoCEO = userRole === 'co-ceo' || userRole === 'co ceo';
+    const isExecutive = isCEO || isCoCEO;
+
     const profileUid = uid || user.uid;
+
+    // If uid is provided and it's not the user's own profile, check permissions
+    if (uid && uid !== user.uid && !isExecutive) {
+      console.error('Security: Attempting to edit another user\'s profile without permission');
+      navigate(`/profile/${user.uid}`);
+      return;
+    }
+
     const unsubscribe = UsersService.subscribeToUserProfile(profileUid, {
       onProfile: (nextProfile) => {
         setProfile(nextProfile);
@@ -701,6 +719,7 @@ export default function ProfileEdit() {
           customSections: nextProfile?.customSections || []
         });
         setSelectedTheme(nextProfile?.theme || 'default');
+        setProfilePhotoPreview(nextProfile?.photoURL || null);
         setLoading(false);
       },
       onError: (err) => {
@@ -911,8 +930,24 @@ export default function ProfileEdit() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const profileUid = (uid && uid !== user?.uid && (roleData?.role === 'Main CEO' || roleData?.role === 'Co-CEO')) ? uid : user?.uid;
-      await UsersService.updateUserProfile(profileUid, {
+      // Security check: Users can only edit their own profile
+      // CEO and Co-CEO can edit any profile
+      const userRole = roleData?.role?.toLowerCase().trim() || '';
+      const isCEO = userRole === 'main ceo' || userRole === 'ceo';
+      const isCoCEO = userRole === 'co-ceo' || userRole === 'co ceo';
+      const isExecutive = isCEO || isCoCEO;
+
+      const profileUid = uid || user?.uid;
+
+      // If uid is provided and it's not the user's own profile, check permissions
+      if (uid && uid !== user?.uid && !isExecutive) {
+        console.error('Security: Attempting to save another user\'s profile without permission');
+        alert('You do not have permission to edit this profile.');
+        setSaving(false);
+        return;
+      }
+
+      const updateData = {
         displayName: formData.displayName,
         bio: formData.bio,
         location: formData.location,
@@ -922,7 +957,16 @@ export default function ProfileEdit() {
         interests: formData.interests,
         customSections: formData.customSections,
         theme: selectedTheme
-      });
+      };
+
+      // If there's a new profile photo, upload it first using IPFS
+      if (profilePhoto) {
+        const photoResult = await uploadProfilePhoto(profilePhoto);
+        updateData.photoURL = photoResult.url;
+        updateData.photoCID = photoResult.cid;
+      }
+
+      await UsersService.updateUserProfile(profileUid, updateData);
       navigate(`/profile/${profileUid}`);
     } catch (error) {
       console.error('Profile save failed:', error);
@@ -930,6 +974,29 @@ export default function ProfileEdit() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      // Validate file size (max 10MB for IPFS)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Image size must be less than 10MB');
+        return;
+      }
+      setProfilePhoto(file);
+      setProfilePhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setProfilePhoto(null);
+    setProfilePhotoPreview(null);
   };
 
   if (loading) {
@@ -956,6 +1023,53 @@ export default function ProfileEdit() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Profile Photo Upload */}
+              <div>
+                <label className="mb-2 block text-sm font-bold text-white">Profile Photo</label>
+                <div className="flex items-center gap-4">
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border-2 border-border bg-surface">
+                    {profilePhotoPreview ? (
+                      <img
+                        src={profilePhotoPreview}
+                        alt="Profile preview"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-text-muted">
+                        <User className="h-8 w-8" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="file"
+                      id="profile-photo"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="profile-photo"
+                      className="inline-flex items-center gap-2 rounded-xl bg-accent/10 px-4 py-2 text-sm font-bold text-accent hover:bg-accent/20 cursor-pointer transition-colors"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Upload Photo
+                    </label>
+                    {profilePhotoPreview && (
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="inline-flex items-center gap-2 rounded-xl bg-red-500/10 px-4 py-2 text-sm font-bold text-red-400 hover:bg-red-500/20 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                        Remove Photo
+                      </button>
+                    )}
+                    <p className="text-xs text-text-muted">Max size: 10MB. JPG, PNG, GIF, WebP, SVG</p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-bold text-white">Display Name</label>
                 <input

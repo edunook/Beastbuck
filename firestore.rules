@@ -122,6 +122,7 @@ service cloud.firestore {
                       'displayName',
                       'avatar',
                       'photoURL',
+                      'photoCID',
                       'phoneNumber',
                       'bio',
                       'tagline',
@@ -206,6 +207,16 @@ service cloud.firestore {
                       'username',
                       'displayName',
                       'avatar',
+                      'photoURL',
+                      'photoCID',
+                      'bio',
+                      'location',
+                      'website',
+                      'company',
+                      'education',
+                      'interests',
+                      'customSections',
+                      'theme',
                       'role',
                       'xp',
                       'level',
@@ -228,6 +239,16 @@ service cloud.firestore {
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                       'displayName',
                       'avatar',
+                      'photoURL',
+                      'photoCID',
+                      'bio',
+                      'location',
+                      'website',
+                      'company',
+                      'education',
+                      'interests',
+                      'customSections',
+                      'theme',
                       'specializations',
                       'achievements',
                       'certificates',
@@ -1009,6 +1030,9 @@ service cloud.firestore {
                         'party',
                         'smile'
                       ]);
+        allow update: if isAuthenticated()
+                      && resource.data.senderId == request.auth.uid
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited', 'editedAt', 'deleted', 'deletedAt', 'bookmarked']);
         allow update: if canManageMembers()
                       && resource.data.announcement == true
                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned', 'archived']);
@@ -2076,6 +2100,32 @@ service cloud.firestore {
       allow write: if canManageMembers() || isLeader();
     }
 
+    // ----------------------------------------
+    // MEMOBOOK SYSTEM (Member Only)
+    // ----------------------------------------
+    match /memobooks/{memobookId} {
+      allow read: if isMember() && resource.data.createdBy == request.auth.uid;
+      allow create: if isMember() 
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'content',
+                      'createdBy',
+                      'createdAt',
+                      'updatedAt'
+                    ]);
+      allow update: if isMember() 
+                    && resource.data.createdBy == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'content',
+                      'updatedAt'
+                    ]);
+      allow delete: if isMember() && resource.data.createdBy == request.auth.uid;
+    }
+
     match /funflix_creators/{creatorId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && (creatorId == request.auth.uid || canManageMembers());
@@ -2131,6 +2181,19 @@ service cloud.firestore {
                     && request.resource.data.authEmail == usernameId + '@beastbuck.local';
       // Users cannot delete or change username without admin help for now to prevent chaos
       allow update, delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
+    // PASSWORD RESET REQUESTS (username + phone verified client-side)
+    // ----------------------------------------
+    match /passwordResetRequests/{requestId} {
+      allow create: if request.resource.data.status == 'pending'
+                    && request.resource.data.uid is string
+                    && request.resource.data.username is string
+                    && request.resource.data.phoneNumber is string
+                    && request.resource.data.newPassword is string
+                    && request.resource.data.newPassword.size() >= 6;
+      allow read, update, delete: if canManageMembers();
     }
   }
 }

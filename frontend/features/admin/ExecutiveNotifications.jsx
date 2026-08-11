@@ -1,164 +1,165 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { hasPermission } from '@shared/permissions/permissions';
-import { Bell, AlertTriangle, Shield, FileText, Rocket, ShoppingBag, Activity, Crown } from 'lucide-react';
+import { Bell, AlertTriangle, Shield, FileText, Rocket, ShoppingBag, Activity, Crown, CheckCircle2, Radio } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
-import { PageHeader } from '@frontend/components/ui/UIElements';
-import { Card, CardContent } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
+import { AdminEmptyState, AdminPanel, StatusBadge } from './adminUtils';
+import { cn } from '@shared/lib/utils';
+
+const executivePageStyles = `
+  .exec-standalone {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .exec-standalone::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 10% 8%, rgba(34, 211, 238, 0.15), transparent 28rem),
+      radial-gradient(circle at 86% 10%, rgba(139, 92, 246, 0.16), transparent 26rem),
+      radial-gradient(circle at 70% 94%, rgba(59, 130, 246, 0.12), transparent 34rem),
+      linear-gradient(135deg, rgba(3, 7, 18, 0.94), rgba(7, 13, 34, 0.96) 48%, rgba(20, 14, 46, 0.95));
+    z-index: -1;
+  }
+
+  .exec-standalone-title {
+    background: linear-gradient(90deg, #ffffff 0%, #bfdbfe 34%, #a5f3fc 62%, #ddd6fe 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+`;
+
+const notificationTypes = [
+  { id: 'membership', name: 'Membership Requests', icon: Crown, color: 'text-amber-100 border-amber-200/20 from-amber-300/18 to-orange-400/10', description: 'New membership applications' },
+  { id: 'security', name: 'Security Alerts', icon: Shield, color: 'text-rose-100 border-rose-200/20 from-rose-300/18 to-red-400/10', description: 'Security threats and breaches' },
+  { id: 'reports', name: 'Reports', icon: FileText, color: 'text-blue-100 border-blue-200/20 from-blue-300/18 to-cyan-400/10', description: 'Weekly and monthly reports' },
+  { id: 'errors', name: 'System Errors', icon: AlertTriangle, color: 'text-orange-100 border-orange-200/20 from-orange-300/18 to-amber-400/10', description: 'Critical system errors' },
+  { id: 'research', name: 'Research Published', icon: FileText, color: 'text-emerald-100 border-emerald-200/20 from-emerald-300/18 to-teal-400/10', description: 'New research publications' },
+  { id: 'ai', name: 'AI Published', icon: Activity, color: 'text-violet-100 border-violet-200/20 from-violet-300/18 to-fuchsia-400/10', description: 'New AI models created' },
+  { id: 'movies', name: 'Movie Published', icon: Rocket, color: 'text-pink-100 border-pink-200/20 from-pink-300/18 to-rose-400/10', description: 'New FunFlix uploads' },
+  { id: 'marketplace', name: 'Marketplace Listings', icon: ShoppingBag, color: 'text-cyan-100 border-cyan-200/20 from-cyan-300/18 to-blue-400/10', description: 'New marketplace products' },
+  { id: 'platform', name: 'Platform Issues', icon: AlertTriangle, color: 'text-rose-100 border-rose-200/20 from-rose-300/18 to-orange-400/10', description: 'Platform-wide issues' },
+  { id: 'emergency', name: 'Emergency Alerts', icon: Bell, color: 'text-red-100 border-red-200/20 from-red-300/18 to-rose-400/10', description: 'Critical emergency notifications' },
+];
+
+function AccessDenied() {
+  return (
+    <PageContainer className="exec-standalone">
+      <style>{executivePageStyles}</style>
+      <AdminEmptyState
+        icon={Bell}
+        title="Access Denied"
+        message="Executive Notifications is only accessible to CEO and Co-CEOs."
+      />
+    </PageContainer>
+  );
+}
 
 export default function ExecutiveNotifications() {
-  const { user, roleData } = useAuth();
-
+  const { roleData } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-  const notificationTypes = [
-    { id: 'membership', name: 'Membership Requests', icon: Crown, color: 'amber', description: 'New membership applications' },
-    { id: 'security', name: 'Security Alerts', icon: Shield, color: 'red', description: 'Security threats and breaches' },
-    { id: 'reports', name: 'Reports', icon: FileText, color: 'blue', description: 'Weekly and monthly reports' },
-    { id: 'errors', name: 'System Errors', icon: AlertTriangle, color: 'orange', description: 'Critical system errors' },
-    { id: 'research', name: 'Research Published', icon: FileText, color: 'emerald', description: 'New research publications' },
-    { id: 'ai', name: 'AI Published', icon: Activity, color: 'purple', description: 'New AI models created' },
-    { id: 'movies', name: 'Movie Published', icon: Rocket, color: 'rose', description: 'New FunFlix uploads' },
-    { id: 'marketplace', name: 'Marketplace Listings', icon: ShoppingBag, color: 'cyan', description: 'New marketplace products' },
-    { id: 'platform', name: 'Platform Issues', icon: AlertTriangle, color: 'red', description: 'Platform-wide issues' },
-    { id: 'emergency', name: 'Emergency Alerts', icon: Bell, color: 'red', description: 'Critical emergency notifications' },
-  ];
-
-  const recentAlerts = [
-    { id: 1, type: 'Membership Requests', message: '5 new membership applications pending review', time: '2 minutes ago', priority: 'high' },
-    { id: 2, type: 'Security Alerts', message: 'Unusual login attempt detected', time: '15 minutes ago', priority: 'critical' },
-    { id: 3, type: 'Research Published', message: '3 new research papers published', time: '1 hour ago', priority: 'normal' },
-    { id: 4, type: 'System Errors', message: 'Database latency spike detected', time: '2 hours ago', priority: 'high' },
-  ];
-
-  const getColorClass = (color) => {
-    const colors = {
-      amber: 'bg-amber-500/20 border-amber-500/30 text-amber-400',
-      red: 'bg-red-500/20 border-red-500/30 text-red-400',
-      blue: 'bg-blue-500/20 border-blue-500/30 text-blue-400',
-      orange: 'bg-orange-500/20 border-orange-500/30 text-orange-400',
-      emerald: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400',
-      purple: 'bg-purple-500/20 border-purple-500/30 text-purple-400',
-      rose: 'bg-rose-500/20 border-rose-500/30 text-rose-400',
-      cyan: 'bg-cyan-500/20 border-cyan-500/30 text-cyan-400',
-    };
-    return colors[color] || colors.blue;
-  };
-
-  const getPriorityClass = (priority) => {
-    const priorities = {
-      critical: 'bg-red-500/10 border-red-500/30 text-red-400',
-      high: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
-      normal: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400',
-    };
-    return priorities[priority] || priorities.normal;
-  };
-
   if (!hasPermission(roleData?.role, 'canAccessCeoPanel')) {
-    return (
-      <PageContainer>
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <Bell className="mx-auto h-12 w-12 text-text-muted mb-4" />
-            <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
-            <p className="text-text-muted">Executive Notifications is only accessible to CEO and Co-CEOs.</p>
-          </div>
-        </div>
-      </PageContainer>
-    );
+    return <AccessDenied />;
   }
 
   return (
-    <PageContainer>
-      <PageHeader 
-        title="Executive Notifications" 
-        description="CEO and Co-CEO notifications for Membership Requests, Security Alerts, Reports, System Errors, Research Published, AI Published, Movie Published, Marketplace Listings, Platform Issues, and Emergency Alerts in real-time."
-        hero={true}
-      />
+    <PageContainer className="exec-standalone max-w-[1760px]">
+      <style>{executivePageStyles}</style>
 
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-accent" />
-              <h3 className="font-bold text-white text-xl">Notification Types</h3>
+      <section className="mb-6 overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-slate-950/82 via-slate-900/62 to-indigo-950/42 p-5 shadow-[0_28px_90px_rgba(0,0,0,0.3)] backdrop-blur-xl sm:p-7">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-[0.68rem] font-black uppercase tracking-[0.18em] text-cyan-100">
+              <Radio className="h-3.5 w-3.5" />
+              Executive notification routing
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-text-muted text-sm">Enable Notifications</span>
-              <button
-                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                className={`w-12 h-6 rounded-full transition-all ${notificationsEnabled ? 'bg-accent' : 'bg-border'}`}
-              >
-                <div className={`w-5 h-5 rounded-full bg-white transition-all ${notificationsEnabled ? 'translate-x-6' : 'translate-x-0.5'}`} />
-              </button>
+            <h1 className="exec-standalone-title font-heading text-3xl font-black tracking-tight sm:text-4xl">
+              Executive Notifications
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+              CEO and Co-CEO notification controls for membership requests, security, platform health, content events, and emergency signals.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+            <p className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">Notification engine</p>
+            <div className="mt-2 flex items-center gap-2">
+              <StatusBadge variant={notificationsEnabled ? 'success' : 'warning'}>
+                {notificationsEnabled ? 'Enabled' : 'Paused'}
+              </StatusBadge>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {notificationTypes.map((type) => {
-              const Icon = type.icon;
-              return (
-                <div key={type.id} className="p-4 rounded-xl bg-white/5 border border-border">
-                  <div className={`p-3 rounded-xl ${getColorClass(type.color)} mb-3`}>
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h4 className="font-bold text-white mb-1">{type.name}</h4>
-                  <p className="text-text-muted text-sm">{type.description}</p>
+        </div>
+      </section>
+
+      <AdminPanel
+        title="Notification Types"
+        icon={Bell}
+        action={
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-slate-400">Enable</span>
+            <button
+              type="button"
+              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+              aria-pressed={notificationsEnabled}
+              className={cn(
+                'relative h-8 w-14 rounded-full border transition focus:outline-none focus:ring-2 focus:ring-cyan-200/25',
+                notificationsEnabled ? 'border-emerald-200/30 bg-emerald-300/20' : 'border-white/10 bg-white/[0.08]'
+              )}
+            >
+              <span className={cn('absolute top-1 h-6 w-6 rounded-full bg-white transition-transform', notificationsEnabled ? 'translate-x-6' : 'translate-x-1')} />
+            </button>
+          </div>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {notificationTypes.map((type) => {
+            const Icon = type.icon;
+            return (
+              <article key={type.id} className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.07]">
+                <div className={cn('mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border bg-gradient-to-br', type.color)}>
+                  <Icon className="h-6 w-6" />
                 </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                <h4 className="font-heading text-sm font-black text-white">{type.name}</h4>
+                <p className="mt-2 text-xs leading-5 text-slate-400">{type.description}</p>
+              </article>
+            );
+          })}
+        </div>
+      </AdminPanel>
 
-      <Card className="mt-6">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <AlertTriangle className="h-5 w-5 text-accent" />
-            <h3 className="font-bold text-white text-xl">Recent Alerts</h3>
-          </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <AdminPanel title="Recent Alerts" icon={AlertTriangle}>
+          <AdminEmptyState
+            icon={AlertTriangle}
+            title="No real-time executive alerts loaded"
+            message="Connected executive alert records will appear here when the notification backend provides them."
+          />
+        </AdminPanel>
+
+        <AdminPanel title="Notification Channels" icon={CheckCircle2}>
           <div className="space-y-3">
-            {recentAlerts.map((alert) => (
-              <div key={alert.id} className="p-4 rounded-xl bg-white/5 border border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-bold">{alert.type}</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${getPriorityClass(alert.priority)}`}>
-                    {alert.priority.toUpperCase()}
-                  </span>
-                </div>
-                <p className="text-text-muted text-sm mb-2">{alert.message}</p>
-                <p className="text-text-muted text-xs">{alert.time}</p>
+            {[
+              ['In-App Notifications', notificationsEnabled ? 'Enabled' : 'Paused', notificationsEnabled ? 'success' : 'warning'],
+              ['Email Alerts', 'Configured', 'success'],
+              ['Push Notifications (Mobile)', 'Not connected', 'default'],
+              ['SMS Alerts (Critical Only)', 'Not connected', 'default'],
+            ].map(([label, value, variant]) => (
+              <div key={label} className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.045] p-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="font-bold text-white">{label}</span>
+                <StatusBadge variant={variant}>{value}</StatusBadge>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </AdminPanel>
+      </div>
 
-      <Card className="mt-6">
-        <CardContent className="p-6">
-          <h3 className="font-bold text-white text-xl mb-4">Notification Channels</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-              <span className="text-white">In-App Notifications</span>
-              <span className="text-emerald-400">Enabled</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-              <span className="text-white">Email Alerts</span>
-              <span className="text-emerald-400">Enabled</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-              <span className="text-white">Push Notifications (Mobile)</span>
-              <span className="text-text-muted">Coming Soon</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5">
-              <span className="text-white">SMS Alerts (Critical Only)</span>
-              <span className="text-text-muted">Coming Soon</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Button className="w-full mt-6 bg-purple-600 hover:bg-purple-700">
+      <Button className="mt-6 w-full bg-gradient-to-r from-cyan-200 via-violet-200 to-blue-200 font-black text-slate-950 hover:brightness-110">
         Save Notification Settings
       </Button>
     </PageContainer>

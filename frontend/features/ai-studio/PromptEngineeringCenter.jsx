@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { BookOpen, Target, Brain, Zap, CheckCircle, Award, TrendingUp, Shield, Sparkles } from 'lucide-react';
+import { BookOpen, Target, Brain, Zap, CheckCircle, Award, TrendingUp, Shield, Sparkles, MessageSquare } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';

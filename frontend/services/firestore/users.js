@@ -14,6 +14,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { SPECIALIZATIONS } from '@shared/constants/specializations';
 
@@ -66,7 +67,9 @@ export const UsersService = {
    * Update user profile with new fields for profile editing
    */
   async updateUserProfile(uid, data) {
-    const docRef = doc(db, 'users', uid);
+    const userDocRef = doc(db, 'users', uid);
+    const publicProfileRef = doc(db, 'publicProfiles', uid);
+    
     const updates = {};
     if (data.displayName !== undefined) updates.displayName = data.displayName;
     if (data.bio !== undefined) updates.bio = data.bio;
@@ -77,9 +80,16 @@ export const UsersService = {
     if (data.interests !== undefined) updates.interests = data.interests;
     if (data.customSections !== undefined) updates.customSections = data.customSections || [];
     if (data.theme !== undefined) updates.theme = data.theme || 'default';
+    if (data.photoURL !== undefined) updates.photoURL = data.photoURL;
+    if (data.photoCID !== undefined) updates.photoCID = data.photoCID;
     updates.updatedAt = new Date();
 
-    await updateDoc(docRef, updates);
+    // Use batch write to update both users and publicProfiles collections
+    const batch = writeBatch(db);
+    batch.update(userDocRef, updates);
+    batch.update(publicProfileRef, updates);
+    
+    await batch.commit();
   },
 
   async getSpecializations() {

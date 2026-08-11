@@ -1,4 +1,5 @@
 import { NavLink, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useGlobalStore } from '@frontend/store/useGlobalStore';
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
@@ -21,6 +22,7 @@ import {
   Trophy,
   Crown,
   Palette,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@shared/lib/utils';
 
@@ -59,6 +61,12 @@ const NAV_ITEMS = [
     label: 'AI Assistant',
     icon: Sparkles,
     path: '/ai',
+  },
+  {
+    label: 'Memobook',
+    icon: BookOpen,
+    path: '/memobook',
+    memberOnly: true,
   },
 ];
 
@@ -100,9 +108,6 @@ function NavItem({ item, isSidebarCollapsed, isAdmin: itemIsAdmin = false }) {
   );
 }
 
-const MEMBER_ONLY_ITEMS = ['Organization', 'Governance', 'Intelligence', 'Research', 'Community', 'Ventures', 'Achievements', 'AI Studio'];
-
-
 export default function Sidebar() {
   const { isSidebarCollapsed, toggleSidebar } = useGlobalStore();
   const { roleData, user } = useAuth();
@@ -120,8 +125,8 @@ export default function Sidebar() {
   const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
 
   const filteredNavItems = NAV_ITEMS.filter(item => {
-    // Completely hide member-only items for non-members
-    if (MEMBER_ONLY_ITEMS.includes(item.label)) {
+    // Handle member-only items with memberOnly property
+    if (item.memberOnly) {
       return isApprovedMember === true;
     }
     // Show restricted items for all authenticated users (functionality restricted on pages)

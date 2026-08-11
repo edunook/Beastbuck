@@ -22,12 +22,12 @@ export const hasPermission = (userRole, permissionName) => {
     canCreateAnnouncements: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER],
     canManageChannels: [ROLES.MAIN_CEO, ROLES.CO_CEO],
     canManageAnnouncements: [ROLES.MAIN_CEO, ROLES.CO_CEO],
-    canModerateChat: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER],
+    canModerateChat: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MODERATOR],
     canManageExperiments: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER],
     canManageProducts: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER],
     canCreateTeam: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER],
     canManageOrganization: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER],
-    canModerate: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER],
+    canModerate: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MODERATOR],
   };
 
   const allowedRoles = permissionMatrix[permissionName];
@@ -55,7 +55,7 @@ export const PERMISSIONS = {
     if (status === 'approved') return true;
     if (role) {
       const normalized = role.toLowerCase().trim();
-      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'member'].includes(normalized);
+      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'moderator', 'mentor', 'judge', 'writer', 'member'].includes(normalized);
     }
     return false;
   },
@@ -67,7 +67,7 @@ export const PERMISSIONS = {
     if (status === 'approved') return true;
     if (role) {
       const normalized = role.toLowerCase().trim();
-      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'member'].includes(normalized);
+      return ['main ceo', 'co-ceo', 'co ceo', 'leader', 'moderator', 'mentor', 'judge', 'writer', 'member'].includes(normalized);
     }
     return false;
   },

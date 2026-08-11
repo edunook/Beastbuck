@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Lock, Shield, Smartphone, LogOut, AlertTriangle, CheckCircle2, Laptop } from 'lucide-react';
+import { Lock, Shield, Smartphone, LogOut, AlertTriangle, CheckCircle2, Laptop, KeyRound } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
+import { Input } from '@frontend/components/ui/Input';
 import { useAuth } from '../auth/AuthContext';
+import { AuthService } from '@services/auth/auth';
 
 function detectBrowserInfo() {
   const ua = navigator.userAgent;
@@ -24,14 +26,52 @@ function detectBrowserInfo() {
 }
 
 export default function SecuritySettings() {
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
   const [loggedOutOthers, setLoggedOutOthers] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const currentDeviceInfo = detectBrowserInfo();
   const isEmailVerified = Boolean(user?.emailVerified);
+  const accountLabel = roleData?.username ? `@${roleData.username}` : user?.displayName || 'Logged In User';
 
   const handleLogoutOthers = () => {
     setLoggedOutOthers(true);
     setTimeout(() => setLoggedOutOthers(false), 4000);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.');
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      await AuthService.changePassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordSuccess(true);
+    } catch (err) {
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setPasswordError('Current password is incorrect.');
+      } else if (err.code === 'auth/weak-password') {
+        setPasswordError('New password is too weak. Use at least 6 characters.');
+      } else {
+        setPasswordError(err.message || 'Failed to change password.');
+      }
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   return (
@@ -43,28 +83,28 @@ export default function SecuritySettings() {
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Email Verification */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
               <Shield className="h-5 w-5 text-accent" />
-              Email Verification
+              Account Identity
             </CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-bold">{user?.email || 'Logged In User'}</p>
-                <p className="text-text-muted text-sm">{isEmailVerified ? 'Email address is verified' : 'Email address needs verification'}</p>
+                <p className="font-bold text-white">{accountLabel}</p>
+                <p className="text-sm text-text-muted">
+                  {isEmailVerified ? 'Account verified' : 'Internal auth account'}
+                </p>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold ${isEmailVerified ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                {isEmailVerified ? '✓ Verified' : 'Unverified'}
+              <span className={`rounded-full border px-3 py-1 text-xs font-bold ${isEmailVerified ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-amber-500/20 bg-amber-500/10 text-amber-400'}`}>
+                {isEmailVerified ? 'Verified' : 'Active'}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        {/* 2FA */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
@@ -75,10 +115,10 @@ export default function SecuritySettings() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-white font-bold">2FA Status</p>
-                <p className="text-text-muted text-sm">Protected via Firebase Authentication</p>
+                <p className="font-bold text-white">2FA Status</p>
+                <p className="text-sm text-text-muted">Protected via Firebase Authentication</p>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/5 text-text-muted border border-border">
+              <span className="rounded-full border border-border bg-white/5 px-3 py-1 text-xs font-bold text-text-muted">
                 Standard Protection
               </span>
             </div>
@@ -86,7 +126,66 @@ export default function SecuritySettings() {
         </Card>
       </div>
 
-      {/* Active Session */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
+            <KeyRound className="h-5 w-5 text-accent" />
+            Change Password
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <form onSubmit={handleChangePassword} className="mx-auto max-w-xl space-y-4">
+            <Input
+              type="password"
+              label="Current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              icon={Lock}
+              required
+            />
+            <Input
+              type="password"
+              label="New password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              icon={Lock}
+              required
+            />
+            <Input
+              type="password"
+              label="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              icon={Lock}
+              error={confirmPassword && newPassword !== confirmPassword ? 'Passwords do not match' : undefined}
+              required
+            />
+
+            {passwordError && (
+              <p className="rounded-xl border border-status-danger/25 bg-status-danger/10 px-4 py-3 text-sm text-status-danger">
+                {passwordError}
+              </p>
+            )}
+
+            {passwordSuccess && (
+              <p className="flex items-center gap-2 rounded-xl border border-status-success/25 bg-status-success/10 px-4 py-3 text-sm text-status-success">
+                <CheckCircle2 className="h-4 w-4" />
+                Password updated successfully.
+              </p>
+            )}
+
+            <div className="pt-2">
+              <Button type="submit" loading={changingPassword} className="w-full sm:w-auto sm:min-w-[180px]">
+                Update Password
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
@@ -96,34 +195,33 @@ export default function SecuritySettings() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-accent/10 border border-accent/30">
+            <div className="flex items-center justify-between rounded-xl border border-accent/30 bg-accent/10 p-4">
               <div className="flex items-center gap-4">
-                <Laptop className="w-6 h-6 text-accent shrink-0" />
+                <Laptop className="h-6 w-6 shrink-0 text-accent" />
                 <div>
-                  <p className="text-white font-bold text-sm">{currentDeviceInfo.userAgentStr}</p>
-                  <p className="text-text-muted text-xs">Active now • Current Session</p>
+                  <p className="text-sm font-bold text-white">{currentDeviceInfo.userAgentStr}</p>
+                  <p className="text-xs text-text-muted">Active now • Current Session</p>
                 </div>
               </div>
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-accent/20 text-accent">
+              <span className="rounded-full bg-accent/20 px-2.5 py-1 text-xs font-bold text-accent">
                 Current Device
               </span>
             </div>
           </div>
 
           {loggedOutOthers && (
-            <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" /> All other active sessions have been invalidated.
+            <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" /> All other active sessions have been invalidated.
             </div>
           )}
 
-          <Button variant="secondary" onClick={handleLogoutOthers} className="w-full mt-4 text-xs font-bold text-red-400 hover:text-red-300">
-            <LogOut className="h-4 w-4 mr-2" />
+          <Button variant="secondary" onClick={handleLogoutOthers} className="mt-4 w-full text-xs font-bold text-red-400 hover:text-red-300">
+            <LogOut className="mr-2 h-4 w-4" />
             Terminate All Other Sessions
           </Button>
         </CardContent>
       </Card>
 
-      {/* Security Alerts */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base font-bold text-white">
@@ -133,13 +231,16 @@ export default function SecuritySettings() {
         </CardHeader>
         <CardContent className="p-6">
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-border/50 text-sm">
+            <div className="flex items-center justify-between rounded-xl border border-border/50 bg-white/5 p-3 text-sm">
               <span className="text-white">New device login notifications</span>
-              <span className="text-emerald-400 text-xs font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">Active</span>
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-400">Active</span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-border/50 text-sm">
-              <span className="text-white">Password change alert emails</span>
-              <span className="text-emerald-400 text-xs font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">Active</span>
+            <div className="flex items-center justify-between rounded-xl border border-border/50 bg-white/5 p-3 text-sm">
+              <span className="flex items-center gap-2 text-white">
+                <Smartphone className="h-4 w-4 text-text-muted" />
+                Password change alerts
+              </span>
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-bold text-emerald-400">Active</span>
             </div>
           </div>
         </CardContent>

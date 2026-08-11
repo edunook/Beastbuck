@@ -10,7 +10,7 @@ import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = resolve(__dirname, '..');
+const root = resolve(__dirname, '../..');
 
 function resolveCredentialPath() {
   const fromEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS;

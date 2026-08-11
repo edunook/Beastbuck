@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { Trophy, Award, Bot, MessageSquare, Star, CheckCircle, Crown, Sparkles } from 'lucide-react';
+import { Trophy, Award, Bot, MessageSquare, Star, CheckCircle, Crown, Sparkles, BookOpen } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';

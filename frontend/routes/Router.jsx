@@ -34,12 +34,14 @@ const CreativeHub = React.lazy(() => import('@frontend/features/creative/Creativ
 const CreativeDetail = React.lazy(() => import('@frontend/features/creative/CreativeDetail'));
 const CreativityPage = React.lazy(() => import('@frontend/features/creative/CreativityPage'));
 const ChallengesPage = React.lazy(() => import('@frontend/features/challenges/ChallengesPage'));
+const ChallengeResponses = React.lazy(() => import('@frontend/features/challenges/ChallengeResponses'));
 const SkillsHub = React.lazy(() => import('@frontend/features/skills/SkillsHub'));
 const SkillDetail = React.lazy(() => import('@frontend/features/skills/SkillDetail'));
 const AIOS = React.lazy(() => import('@frontend/features/ai/AIOS'));
 const AccessDenied = React.lazy(() => import('@frontend/features/auth/AccessDenied'));
 const SignIn = React.lazy(() => import('@frontend/features/auth/SignIn'));
 const SignUp = React.lazy(() => import('@frontend/features/auth/SignUp'));
+const ForgotPassword = React.lazy(() => import('@frontend/features/auth/ForgotPassword'));
 const WorkspaceDashboard = React.lazy(() => import('@frontend/features/digital-workspace/WorkspaceDashboard'));
 const WorkspaceDetail = React.lazy(() => import('@frontend/features/digital-workspace/WorkspaceDetail'));
 const ModulePage = React.lazy(() => import('@frontend/features/dashboard/ModulePage'));
@@ -276,7 +278,6 @@ const InnovationHealth = React.lazy(() => import('@frontend/features/mission-con
 // --- Events & Challenges (Step 16) ---
 const EventsPage = React.lazy(() => import('@frontend/features/events/EventsPage'));
 const EventDetail = React.lazy(() => import('@frontend/features/events/EventDetail'));
-const ChallengeDetail = React.lazy(() => import('@frontend/features/events/ChallengeDetail'));
 
 // --- Portfolios & Certificates (Step 17) ---
 const PortfolioShowcase = React.lazy(() => import('@frontend/features/portfolio/PortfolioShowcase'));
@@ -338,6 +339,9 @@ const AdminAIStudio = React.lazy(() => import('@frontend/features/admin/AdminAIS
 // Mobile/Desktop mock views
 const MobileDashboard = React.lazy(() => import('@frontend/mobile/MobileDashboard'));
 const DesktopHub = React.lazy(() => import('@frontend/desktop/DesktopHub'));
+
+// --- Memobook (Member Only) ---
+const MemobookPage = React.lazy(() => import('@frontend/features/memobook/MemobookPage'));
 
 // --- Universe OS (Step 28) ---
 const UniverseHome = React.lazy(() => import('@frontend/features/universe/UniverseHome'));
@@ -410,6 +414,9 @@ export default function AppRouter() {
         {/* Auth Routes - Only accessible when not signed in */}
         <Route path="/signin" element={<AuthRoute><SignIn /></AuthRoute>} />
         <Route path="/signup" element={<AuthRoute><SignUp /></AuthRoute>} />
+        <Route path="/auth/login" element={<AuthRoute><SignIn /></AuthRoute>} />
+        <Route path="/auth/register" element={<AuthRoute><SignUp /></AuthRoute>} />
+        <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
         
         {/* Public Routes - Accessible without authentication */}
         <Route element={<ProtectedRoute requireAuth={false}><PublicLayout /></ProtectedRoute>}>
@@ -436,10 +443,6 @@ export default function AppRouter() {
           <Route path="/universe/goals" element={<ProtectedRoute requireMember><UniverseGoals /></ProtectedRoute>} />
           <Route path="/search" element={<UnifiedSearchPage />} />
           
-          {/* Standalone pages outside the main layout */}
-          <Route path="/auth/login" element={<SignIn />} />
-          <Route path="/auth/register" element={<SignUp />} />
-          
           {/* Mobile / Desktop apps */}
           <Route path="/mobile" element={<MobileDashboard />} />
           <Route path="/desktop" element={<DesktopHub />} />
@@ -456,6 +459,7 @@ export default function AppRouter() {
           <Route path="/workspace/creative/:id" element={<CreativeDetail />} />
           <Route path="/creativity" element={<CreativityPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
+          <Route path="/challenges/:challengeId/responses" element={<ChallengeResponses />} />
           
           {/* ========================================
               ORGANIZATION OS ROUTES (Step 20) - Member Only
@@ -471,6 +475,9 @@ export default function AppRouter() {
           <Route path="/profile/:uid/edit" element={<ProfileEdit />} />
           <Route path="/profile/:uid" element={<ProfilePage />} />
           <Route path="/settings" element={<ModulePage type="settings" />} />
+          
+          {/* Memobook - Member Only */}
+          <Route path="/memobook" element={<ProtectedRoute requireMember><MemobookPage /></ProtectedRoute>} />
           
           {/* CEO Protected Routes inside AppShell */}
           <Route
@@ -547,7 +554,6 @@ export default function AppRouter() {
               ======================================== */}
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
-          <Route path="/challenges/:challengeId" element={<ChallengeDetail />} />
 
           {/* ========================================
               PORTFOLIOS & CERTIFICATES ROUTES (Step 17)
