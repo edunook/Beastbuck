@@ -841,9 +841,39 @@ service cloud.firestore {
 
     match /challengeResponses/{responseId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated();
+      allow create: if isAuthenticated()
+                    && request.resource.data.keys().hasOnly([
+                      'challengeId',
+                      'userId',
+                      'userName',
+                      'userUsername',
+                      'responseData',
+                      'status',
+                      'score',
+                      'rank',
+                      'submittedAt',
+                      'reviewedAt'
+                    ]);
+      allow update: if isAuthenticated() 
+                    && (resource.data.userId == request.auth.uid || canManageMembers())
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'status',
+                      'score',
+                      'rank',
+                      'feedback',
+                      'reviewedAt'
+                    ]);
+      // Allow challenge creator to award winner (update with winner fields)
+      allow update: if isAuthenticated()
+                    && get(/databases/$(database)/documents/communityChallenges/$(resource.data.challengeId)).data.creatorId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'status',
+                      'score',
+                      'rank',
+                      'feedback',
+                      'reviewedAt'
+                    ]);
+      allow delete: if canManageMembers();
     }
 
     match /skills/{skillId} {

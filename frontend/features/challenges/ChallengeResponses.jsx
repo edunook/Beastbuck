@@ -19,7 +19,9 @@ import {
   X,
   Star,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  Crown,
+  Sparkles
 } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { LoadingState } from '@frontend/components/ui/UIElements';
@@ -27,6 +29,7 @@ import Button from '@frontend/components/ui/Button';
 import { ChallengeService } from '@services/firestore/challenges';
 import { useAuth } from '../auth/AuthContext';
 import { cn } from '@shared/lib/utils';
+import toast from 'react-hot-toast';
 
 const animations = `
   @keyframes fadeInUp {
@@ -112,6 +115,9 @@ export default function ChallengeResponses() {
   const [selectedResponse, setSelectedResponse] = useState(null);
   const [filter, setFilter] = useState('all');
   const [error, setError] = useState('');
+  const [winnerId, setWinnerId] = useState(null);
+  const [xpAmount, setXpAmount] = useState(100);
+  const [awarding, setAwarding] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -190,6 +196,47 @@ export default function ChallengeResponses() {
   };
 
   const stats = getStats();
+
+  const handleAwardWinner = async (responseId) => {
+    if (!window.confirm(`Are you sure you want to award ${xpAmount} XP to this response as the winner?`)) return;
+    
+    setAwarding(true);
+    try {
+      const response = responses.find(r => r.id === responseId);
+      if (!response) throw new Error('Response not found');
+      
+      // Update response as winner
+      await ChallengeService.gradeResponse(responseId, 100, 1, 'Congratulations! You won this challenge!');
+      
+      // Award XP via gamification service
+      const { GamificationService } = await import('@services/firestore/gamification');
+      await GamificationService.awardXP({
+        uid: response.userId,
+        amount: xpAmount,
+        reason: `Challenge Winner: ${challenge.title}`,
+        sourceType: 'CHALLENGE_WIN',
+        sourceId: challengeId,
+        actorId: user.uid,
+      });
+      
+      // Update challenge with winner info
+      await ChallengeService.updateCommunityChallenge(challengeId, {
+        winnerId: response.userId,
+        winnerName: response.userName || response.userUsername,
+        winnerResponseId: responseId,
+        awardedAt: new Date(),
+      });
+      
+      setWinnerId(responseId);
+      toast.success(`Successfully awarded ${xpAmount} XP to ${response.userName || response.userUsername}!`);
+      loadData();
+    } catch (err) {
+      console.error('Failed to award winner:', err);
+      toast.error('Failed to award winner: ' + err.message);
+    } finally {
+      setAwarding(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -328,6 +375,38 @@ export default function ChallengeResponses() {
           </div>
         </div>
 
+        {/* Winner Selection Panel */}
+        <div className="mb-8 rounded-2xl bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Crown className="h-6 w-6 text-yellow-400" />
+            <h3 className="text-xl font-bold text-white">Award Winner</h3>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-bold text-text-muted mb-2">XP Amount for Winner</label>
+              <input
+                type="number"
+                value={xpAmount}
+                onChange={(e) => setXpAmount(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-full max-w-xs rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-white focus:border-yellow-500 focus:outline-none"
+                min="0"
+              />
+            </div>
+            <div className="text-sm text-text-muted">
+              <Sparkles className="h-4 w-4 inline mr-1" />
+              Select a response below to award as winner
+            </div>
+          </div>
+          {challenge.winnerId && (
+            <div className="mt-4 rounded-lg bg-green-500/20 border border-green-500/30 p-3">
+              <p className="text-sm font-bold text-green-400">
+                <CheckCircle className="h-4 w-4 inline mr-2" />
+                Winner: {challenge.winnerName || 'Unknown'} ({xpAmount} XP awarded)
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-center gap-3">
           <Filter className="h-5 w-5 text-text-muted" />
@@ -407,6 +486,24 @@ export default function ChallengeResponses() {
                       <Eye className="h-4 w-4 mr-2" />
                       View Details
                     </Button>
+                    {response.status !== 'ACCEPTED' && !challenge.winnerId && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleAwardWinner(response.id)}
+                        disabled={awarding}
+                        className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-black font-bold"
+                      >
+                        <Crown className="h-4 w-4 mr-2" />
+                        {awarding ? 'Awarding...' : 'Award Winner'}
+                      </Button>
+                    )}
+                    {response.id === challenge.winnerResponseId && (
+                      <div className="flex items-center gap-1 text-yellow-400 font-bold text-sm">
+                        <Crown className="h-4 w-4" />
+                        Winner
+                      </div>
+                    )}
                   </div>
                 </div>
 
