@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { WorkspaceService } from '@services/firestore/workspace';
+import { UsersService } from '@services/firestore/users';
 import Button from '@frontend/components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '@frontend/components/ui/Card';
-import { Users, X, Shield, Activity, Trash2, ShieldAlert } from 'lucide-react';
+import { Users, X, Shield, Activity, Trash2, ShieldAlert, Search } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 
 export default function CollaborationManager({ workspaceId, onClose }) {
@@ -11,11 +12,28 @@ export default function CollaborationManager({ workspaceId, onClose }) {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('members'); // members | activity
+  const [allUsers, setAllUsers] = useState([]);
+  const [selectedInviteUser, setSelectedInviteUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   useEffect(() => {
     loadData();
+    loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
+
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const users = await UsersService.getAllMembers();
+      setAllUsers(users);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -95,15 +113,87 @@ export default function CollaborationManager({ workspaceId, onClose }) {
               
               <div className="p-4 bg-surface/30">
                  <h4 className="text-sm font-bold text-white mb-2">Invite Member</h4>
-<div className="flex gap-2">
-                     <input type="text" placeholder="User ID" className="flex-1 rounded border border-border bg-black/20 px-3 py-1.5 text-sm text-white" />
+                 <div className="space-y-3">
+                   <div className="relative">
+                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                     <input
+                       type="text"
+                       value={searchQuery}
+                       onChange={(e) => setSearchQuery(e.target.value)}
+                       placeholder="Search members by name, username, or email..."
+                       className="w-full rounded border border-border bg-black/20 px-3 py-1.5 pl-10 text-sm text-white"
+                     />
+                   </div>
+                   
+                   {!loadingUsers && searchQuery && (
+                     <div className="max-h-40 overflow-y-auto rounded border border-border bg-black/20">
+                       {allUsers.filter(user => {
+                         const searchLower = searchQuery.toLowerCase();
+                         const displayName = (user.displayName || '').toLowerCase();
+                         const username = (user.username || '').toLowerCase();
+                         const email = (user.email || '').toLowerCase();
+                         return displayName.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower);
+                       }).length === 0 ? (
+                         <div className="text-center py-3 text-text-muted text-xs">No members found</div>
+                       ) : (
+                         allUsers.filter(user => {
+                           const searchLower = searchQuery.toLowerCase();
+                           const displayName = (user.displayName || '').toLowerCase();
+                           const username = (user.username || '').toLowerCase();
+                           const email = (user.email || '').toLowerCase();
+                           return displayName.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower);
+                         }).slice(0, 8).map(user => (
+                           <div
+                             key={user.id}
+                             onClick={() => {
+                               setSelectedInviteUser(user);
+                               setSearchQuery(user.displayName || user.username || '');
+                             }}
+                             className={`flex items-center gap-2 p-2 cursor-pointer transition-colors hover:bg-white/10 ${
+                               selectedInviteUser?.id === user.id ? 'bg-accent/20 border-l-2 border-accent' : ''
+                             }`}
+                           >
+                             <div className="h-6 w-6 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                               {(user.displayName || user.username || 'M')[0].toUpperCase()}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               <p className="font-bold text-white text-xs truncate">{user.displayName || user.username || 'Unknown'}</p>
+                               <p className="text-xs text-text-muted truncate">@{user.username || user.email || 'No username'}</p>
+                             </div>
+                           </div>
+                         ))
+                       )}
+                     </div>
+                   )}
+
+                   {selectedInviteUser && (
+                     <div className="flex items-center gap-2 p-2 rounded bg-accent/10 border border-accent/30">
+                       <div className="h-6 w-6 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                         {(selectedInviteUser.displayName || selectedInviteUser.username || 'M')[0].toUpperCase()}
+                       </div>
+                       <div className="flex-1 min-w-0">
+                         <p className="font-bold text-white text-xs truncate">{selectedInviteUser.displayName || selectedInviteUser.username}</p>
+                         <p className="text-xs text-text-muted truncate">{selectedInviteUser.email}</p>
+                       </div>
+                       <button
+                         type="button"
+                         onClick={() => setSelectedInviteUser(null)}
+                         className="text-text-muted hover:text-white text-xs"
+                       >
+                         ✕
+                       </button>
+                     </div>
+                   )}
+
+                   <div className="flex gap-2">
                      <select className="rounded border border-border bg-black/20 px-3 py-1.5 text-sm text-white">
                         <option>VIEWER</option>
                         <option>COMMENTER</option>
                         <option>EDITOR</option>
                      </select>
-                     <Button size="sm" onClick={() => alert('Invite sent! (Feature in development')}>Invite</Button>
-                  </div>
+                     <Button size="sm" disabled={!selectedInviteUser} onClick={() => alert('Invite sent! (Feature in development)')}>Invite</Button>
+                   </div>
+                 </div>
               </div>
             </div>
           ) : (

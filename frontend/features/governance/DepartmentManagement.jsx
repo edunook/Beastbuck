@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { hasPermission } from '@shared/permissions/permissions';
 import { GovernanceService } from '@services/firestore/governance';
+import { UsersService } from '@services/firestore/users';
 import { Building2, Plus, Edit2, Archive, Trash2, User, Users, Search, X } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
@@ -17,10 +18,27 @@ export default function DepartmentManagement() {
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '', leaderId: '' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [members, setMembers] = useState([]);
+  const [selectedLeader, setSelectedLeader] = useState(null);
+  const [leaderSearchQuery, setLeaderSearchQuery] = useState('');
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   useEffect(() => {
     loadDepartments();
+    loadMembers();
   }, []);
+
+  const loadMembers = async () => {
+    setLoadingMembers(true);
+    try {
+      const allMembers = await UsersService.getAllMembers();
+      setMembers(allMembers);
+    } catch (error) {
+      console.error('Error loading members:', error);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
 
   const loadDepartments = async () => {
     setLoading(true);
@@ -257,12 +275,81 @@ export default function DepartmentManagement() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-white mb-2">Leader ID (optional)</label>
-                <Input
-                  value={formData.leaderId}
-                  onChange={(e) => setFormData({ ...formData, leaderId: e.target.value })}
-                  placeholder="Enter leader user ID"
-                />
+                <label className="block text-sm font-bold text-white mb-2">Leader (optional)</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                  <Input
+                    value={leaderSearchQuery}
+                    onChange={(e) => setLeaderSearchQuery(e.target.value)}
+                    placeholder="Search members by name, username, or email..."
+                    className="pl-10"
+                  />
+                </div>
+                
+                {!loadingMembers && leaderSearchQuery && (
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-white/5 mt-2">
+                    {members.filter(member => {
+                      const searchLower = leaderSearchQuery.toLowerCase();
+                      const displayName = (member.displayName || '').toLowerCase();
+                      const username = (member.username || '').toLowerCase();
+                      const email = (member.email || '').toLowerCase();
+                      return displayName.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower);
+                    }).length === 0 ? (
+                      <div className="text-center py-4 text-text-muted text-sm">No members found</div>
+                    ) : (
+                      members.filter(member => {
+                        const searchLower = leaderSearchQuery.toLowerCase();
+                        const displayName = (member.displayName || '').toLowerCase();
+                        const username = (member.username || '').toLowerCase();
+                        const email = (member.email || '').toLowerCase();
+                        return displayName.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower);
+                      }).slice(0, 10).map(member => (
+                        <div
+                          key={member.id}
+                          onClick={() => {
+                            setSelectedLeader(member);
+                            setFormData({ ...formData, leaderId: member.id });
+                            setLeaderSearchQuery(member.displayName || member.username || '');
+                          }}
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-white/10 ${
+                            selectedLeader?.id === member.id ? 'bg-accent/20 border-l-2 border-accent' : ''
+                          }`}
+                        >
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                            {(member.displayName || member.username || 'M')[0].toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-white text-sm truncate">{member.displayName || member.username || 'Unknown'}</p>
+                            <p className="text-xs text-text-muted truncate">@{member.username || member.email || 'No username'}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {selectedLeader && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/10 border border-accent/30 mt-2">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                      {(selectedLeader.displayName || selectedLeader.username || 'M')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-white text-sm truncate">{selectedLeader.displayName || selectedLeader.username}</p>
+                      <p className="text-xs text-text-muted truncate">{selectedLeader.email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedLeader(null);
+                        setFormData({ ...formData, leaderId: '' });
+                        setLeaderSearchQuery('');
+                      }}
+                      className="text-text-muted hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="flex gap-3 pt-4">
                 <Button

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Award, Calendar, Plus, CalendarClock } from 'lucide-react';
+import { Award, Calendar, Plus, CalendarClock, Search } from 'lucide-react';
 import { PageHeader, LoadingState } from '@frontend/components/ui/UIElements';
 import { SectionWrapper } from '@frontend/components/layout/LayoutWrappers';
 import { EventService } from '@services/firestore/events';
+import { UsersService } from '@services/firestore/users';
 import { useAuth } from '../auth/AuthContext';
 import { formatDate } from '@shared/lib/dateUtils';
 
@@ -12,6 +13,10 @@ export default function AdminEvents() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: '', description: '', startDate: '', endDate: '', status: 'UPCOMING' });
+  const [members, setMembers] = useState([]);
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -25,7 +30,19 @@ export default function AdminEvents() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadMembers = async () => {
+    setLoadingMembers(true);
+    try {
+      const allMembers = await UsersService.getAllMembers();
+      setMembers(allMembers);
+    } catch (error) {
+      console.error('Error loading members:', error);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  useEffect(() => { load(); loadMembers(); }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -123,7 +140,7 @@ export default function AdminEvents() {
             </h3>
             <form onSubmit={async (e) => {
               e.preventDefault();
-              const uid = e.target.userId.value;
+              const uid = selectedMember?.id;
               const title = e.target.title.value;
               const desc = e.target.description.value;
               if (!uid || !title) return;
@@ -137,16 +154,88 @@ export default function AdminEvents() {
                   actorId: user.uid
                 });
                 alert('Certificate issued successfully');
-                e.target.reset();
+                setSelectedMember(null);
+                e.target.title.value = '';
+                e.target.description.value = '';
               } catch (err) {
                 console.error(err);
                 alert('Failed to issue certificate');
               }
             }} className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-bold text-text-soft">User ID</label>
-                <input required name="userId" type="text" className="w-full rounded-xl border border-border bg-black/20 p-3 text-white focus:border-accent focus:outline-none" />
+                <label className="mb-2 block text-sm font-bold text-text-soft">Select Member</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search members by name, username, or email..."
+                    className="w-full rounded-xl border border-border bg-black/20 p-3 pl-10 text-white focus:border-accent focus:outline-none"
+                  />
+                </div>
               </div>
+              
+              {!loadingMembers && searchQuery && (
+                <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-black/20">
+                  {members.filter(member => {
+                    const searchLower = searchQuery.toLowerCase();
+                    const displayName = (member.displayName || '').toLowerCase();
+                    const username = (member.username || '').toLowerCase();
+                    const email = (member.email || '').toLowerCase();
+                    return displayName.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower);
+                  }).length === 0 ? (
+                    <div className="text-center py-4 text-text-muted text-sm">No members found</div>
+                  ) : (
+                    members.filter(member => {
+                      const searchLower = searchQuery.toLowerCase();
+                      const displayName = (member.displayName || '').toLowerCase();
+                      const username = (member.username || '').toLowerCase();
+                      const email = (member.email || '').toLowerCase();
+                      return displayName.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower);
+                    }).slice(0, 10).map(member => (
+                      <div
+                        key={member.id}
+                        onClick={() => {
+                          setSelectedMember(member);
+                          setSearchQuery(member.displayName || member.username || '');
+                        }}
+                        className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-white/10 ${
+                          selectedMember?.id === member.id ? 'bg-accent/20 border-l-2 border-accent' : ''
+                        }`}
+                      >
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                          {(member.displayName || member.username || 'M')[0].toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-white text-sm truncate">{member.displayName || member.username || 'Unknown'}</p>
+                          <p className="text-xs text-text-muted truncate">@{member.username || member.email || 'No username'}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {selectedMember && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/10 border border-accent/30">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                    {(selectedMember.displayName || selectedMember.username || 'M')[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-white text-sm truncate">{selectedMember.displayName || selectedMember.username}</p>
+                    <p className="text-xs text-text-muted truncate">{selectedMember.email}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMember(null)}
+                    className="text-text-muted hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               <div>
                 <label className="mb-2 block text-sm font-bold text-text-soft">Title</label>
                 <input required name="title" type="text" className="w-full rounded-xl border border-border bg-black/20 p-3 text-white focus:border-accent focus:outline-none" />
@@ -155,7 +244,7 @@ export default function AdminEvents() {
                 <label className="mb-2 block text-sm font-bold text-text-soft">Description</label>
                 <textarea required name="description" className="w-full rounded-xl border border-border bg-black/20 p-3 text-white focus:border-accent focus:outline-none" />
               </div>
-              <button type="submit" className="w-full rounded-xl border border-accent text-accent px-4 py-3 font-bold hover:bg-accent/10 transition">
+              <button type="submit" disabled={!selectedMember} className="w-full rounded-xl border border-accent text-accent px-4 py-3 font-bold hover:bg-accent/10 transition disabled:opacity-50">
                 Issue Certificate
               </button>
             </form>

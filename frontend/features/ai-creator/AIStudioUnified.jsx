@@ -48,7 +48,12 @@ import { SafeImage } from '@frontend/features/creative/CreativityPage';
 import { db } from '@services/firebase/config';
 import { isIPFSConfigured, uploadProofFile } from '@services/storage/ipfs';
 import { PERMISSIONS } from '@shared/permissions/permissions';
-import { cn } from '@shared/lib/utils';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
 
 const CREATE_STEPS = [
   { label: 'Identity', icon: Bot },

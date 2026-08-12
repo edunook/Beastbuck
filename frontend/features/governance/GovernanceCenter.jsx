@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { Plus, Trophy, Vote, Users, AlertTriangle, FileText, Scale, Calendar, CheckCircle, XCircle, UserPlus } from 'lucide-react';
+import { Plus, Trophy, Vote, Users, AlertTriangle, FileText, Scale, Calendar, CheckCircle, XCircle, UserPlus, Search } from 'lucide-react';
 import { GovernanceService } from '@services/firestore/governance';
+import { UsersService } from '@services/firestore/users';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
@@ -29,10 +30,27 @@ export default function GovernanceCenter() {
   const [showCreatePolicy, setShowCreatePolicy] = useState(false);
   const [policyForm, setPolicyForm] = useState({ title: '', description: '', category: 'General' });
   const [policies, setPolicies] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [selectedReportedUser, setSelectedReportedUser] = useState(null);
+  const [reportedUserSearchQuery, setReportedUserSearchQuery] = useState('');
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   useEffect(() => {
     loadGovernanceData();
+    loadMembers();
   }, [activeTab]);
+
+  const loadMembers = async () => {
+    setLoadingMembers(true);
+    try {
+      const allMembers = await UsersService.getAllMembers();
+      setMembers(allMembers);
+    } catch (error) {
+      console.error('Error loading members:', error);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
 
   const loadGovernanceData = async () => {
     setIsLoading(true);
@@ -690,15 +708,82 @@ export default function GovernanceCenter() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-white mb-2">Reported User ID</label>
-                <input
-                  type="text"
-                  value={disputeForm.reportedUserId}
-                  onChange={(e) => setDisputeForm({ ...disputeForm, reportedUserId: e.target.value })}
-                  placeholder="Enter user ID being reported"
-                  required
-                  className="w-full bg-white/5 border border-border rounded-xl px-4 py-3 text-white placeholder:text-text-muted focus:border-accent/50 focus:outline-none transition-colors"
-                />
+                <label className="block text-sm font-bold text-white mb-2">Reported User</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
+                  <input
+                    type="text"
+                    value={reportedUserSearchQuery}
+                    onChange={(e) => setReportedUserSearchQuery(e.target.value)}
+                    placeholder="Search members by name, username, or email..."
+                    className="w-full bg-white/5 border border-border rounded-xl px-4 py-3 pl-10 text-white placeholder:text-text-muted focus:border-accent/50 focus:outline-none transition-colors"
+                  />
+                </div>
+                
+                {!loadingMembers && reportedUserSearchQuery && (
+                  <div className="max-h-48 overflow-y-auto rounded-xl border border-border bg-white/5 mt-2">
+                    {members.filter(member => {
+                      const searchLower = reportedUserSearchQuery.toLowerCase();
+                      const displayName = (member.displayName || '').toLowerCase();
+                      const username = (member.username || '').toLowerCase();
+                      const email = (member.email || '').toLowerCase();
+                      return displayName.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower);
+                    }).length === 0 ? (
+                      <div className="text-center py-4 text-text-muted text-sm">No members found</div>
+                    ) : (
+                      members.filter(member => {
+                        const searchLower = reportedUserSearchQuery.toLowerCase();
+                        const displayName = (member.displayName || '').toLowerCase();
+                        const username = (member.username || '').toLowerCase();
+                        const email = (member.email || '').toLowerCase();
+                        return displayName.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower);
+                      }).slice(0, 10).map(member => (
+                        <div
+                          key={member.id}
+                          onClick={() => {
+                            setSelectedReportedUser(member);
+                            setDisputeForm({ ...disputeForm, reportedUserId: member.id });
+                            setReportedUserSearchQuery(member.displayName || member.username || '');
+                          }}
+                          className={`flex items-center gap-3 p-3 cursor-pointer transition-colors hover:bg-white/10 ${
+                            selectedReportedUser?.id === member.id ? 'bg-accent/20 border-l-2 border-accent' : ''
+                          }`}
+                        >
+                          <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                            {(member.displayName || member.username || 'M')[0].toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-white text-sm truncate">{member.displayName || member.username || 'Unknown'}</p>
+                            <p className="text-xs text-text-muted truncate">@{member.username || member.email || 'No username'}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {selectedReportedUser && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-accent/10 border border-accent/30 mt-2">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-accent to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                      {(selectedReportedUser.displayName || selectedReportedUser.username || 'M')[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-white text-sm truncate">{selectedReportedUser.displayName || selectedReportedUser.username}</p>
+                      <p className="text-xs text-text-muted truncate">{selectedReportedUser.email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedReportedUser(null);
+                        setDisputeForm({ ...disputeForm, reportedUserId: '' });
+                        setReportedUserSearchQuery('');
+                      }}
+                      className="text-text-muted hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-bold text-white mb-2">Severity</label>
