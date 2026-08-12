@@ -13,14 +13,12 @@ import {
   Sparkles,
   Target,
   Trophy,
-  Users,
   Zap,
 } from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 import { AnimatedBackground } from '@frontend/components/background/AnimatedBackground';
 import { FadeIn, ScaleIn, StaggeredChildren } from '@frontend/components/transitions/PageTransition';
 import { InteractiveCard } from '@frontend/components/ui/InteractiveCard';
-import { cn } from '@shared/lib/utils';
 import heroImage from '@frontend/assets/hero.png';
 
 const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
@@ -30,13 +28,6 @@ const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
   delay: `${(i % 7) * 0.6}s`,
   duration: `${7 + (i % 4) * 2}s`,
 }));
-
-const STATS = [
-  { value: '2.4k+', label: 'Active creators' },
-  { value: '180+', label: 'Live projects' },
-  { value: '50+', label: 'Missions completed' },
-  { value: '99.9%', label: 'Uptime' },
-];
 
 const FEATURES = [
   {
@@ -140,46 +131,6 @@ function HeroPreviewCard() {
             alt="BeastBuck workspace preview"
             className="mb-4 w-full rounded-2xl border border-border/50 object-cover shadow-lg"
           />
-
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">
-            {[
-              { label: 'XP', value: '2,480', color: 'text-accent' },
-              { label: 'Projects', value: '12', color: 'text-status-success' },
-              { label: 'Rank', value: '#4', color: 'text-accent-alt' },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="rounded-xl border border-border/50 bg-white/[0.03] px-2 py-3 text-center sm:px-3"
-              >
-                <p className="text-[10px] uppercase tracking-wider text-text-muted">{item.label}</p>
-                <p className={cn('mt-1 text-sm font-black sm:text-base', item.color)}>{item.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute -left-4 top-1/4 hidden rounded-2xl border border-accent/30 bg-surface/90 px-4 py-3 shadow-xl backdrop-blur-md animate-landing-float-delayed sm:block">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15">
-            <Sparkles className="h-5 w-5 text-accent" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-text">Mission complete</p>
-            <p className="text-[11px] text-status-success">+120 XP earned</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute -right-2 bottom-8 hidden rounded-2xl border border-accent-alt/30 bg-surface/90 px-4 py-3 shadow-xl backdrop-blur-md animate-auth-orb-3 md:block">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-alt/15">
-            <Users className="h-5 w-5 text-accent-alt" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-text">Team online</p>
-            <p className="text-[11px] text-text-muted">8 collaborators</p>
-          </div>
         </div>
       </div>
     </div>
@@ -253,22 +204,6 @@ export default function LandingHome() {
                       Sign in
                     </Button>
                   </Link>
-                </div>
-              </FadeIn>
-
-              <FadeIn delay={400}>
-                <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:max-w-xl">
-                  {STATS.map((stat) => (
-                    <div
-                      key={stat.label}
-                      className="rounded-2xl border border-border/50 bg-surface/40 px-3 py-3 text-center backdrop-blur-sm transition-colors hover:border-accent/25 hover:bg-surface/60 sm:px-4"
-                    >
-                      <p className="text-lg font-black text-text sm:text-xl">{stat.value}</p>
-                      <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-text-muted sm:text-[11px]">
-                        {stat.label}
-                      </p>
-                    </div>
-                  ))}
                 </div>
               </FadeIn>
             </div>
