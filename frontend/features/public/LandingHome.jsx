@@ -19,6 +19,7 @@ import Button from '@frontend/components/ui/Button';
 import { AnimatedBackground } from '@frontend/components/background/AnimatedBackground';
 import { FadeIn, ScaleIn, StaggeredChildren } from '@frontend/components/transitions/PageTransition';
 import { InteractiveCard } from '@frontend/components/ui/InteractiveCard';
+import { cn } from '@shared/lib/utils';
 import heroImage from '@frontend/assets/hero.png';
 
 const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
