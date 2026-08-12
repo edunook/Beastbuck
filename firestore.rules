@@ -2391,6 +2391,35 @@ service cloud.firestore {
     }
 
     // ----------------------------------------
+    // CRITICAL ALERTS SYSTEM
+    // ----------------------------------------
+    match /alerts/{alertId} {
+      allow read: if isAuthenticated();
+      allow create: if canManageMembers()
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'severity',
+                      'type',
+                      'resolved',
+                      'resolvedAt',
+                      'resolvedBy',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.severity in ['low', 'medium', 'high', 'critical']
+                    && request.resource.data.resolved == false;
+      allow update: if canManageMembers()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'resolved',
+                      'resolvedAt',
+                      'resolvedBy',
+                      'updatedAt'
+                    ]);
+      allow delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
     // GLOBAL USERNAMES INDEX
     // ----------------------------------------
     match /usernames/{usernameId} {

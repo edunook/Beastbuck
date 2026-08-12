@@ -21,7 +21,12 @@ import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import EmptyState from '@frontend/components/ui/EmptyState';
 import { SafeImage } from '@frontend/features/creative/CreativityPage';
 import { db } from '@services/firebase/config';
-import { cn } from '@shared/lib/utils';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs) {
+  return twMerge(clsx(inputs));
+}
 
 const CATEGORIES = ['All', 'Educational', 'Research', 'Coding', 'Business', 'Creative', 'Fun', 'Productivity', 'Science', 'Leadership'];
 
