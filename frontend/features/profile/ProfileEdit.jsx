@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/u
 import { LoadingState } from '@frontend/components/ui/UIElements';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import { groqProvider } from '@services/ai/providers/groq';
 
 
 // Theme Templates
@@ -795,12 +796,19 @@ export default function ProfileEdit() {
   const handleGenerateBio = async () => {
     setGeneratingBio(true);
     try {
-      // This would call an AI service to generate bio
-      // For now, simulate with a template
-      const generatedBio = `${formData.displayName || roleData?.username || 'A passionate member'} of the BeastBuck community, dedicated to innovation and collaboration. With expertise in ${formData.interests || 'various fields'}, I strive to contribute meaningfully to projects and initiatives that push boundaries. My journey is driven by curiosity, creativity, and a commitment to continuous learning.`;
+      const systemPrompt = 'You are a professional bio writer for the BeastBuck community. Write engaging, professional bios that highlight the person\'s expertise, interests, and contributions. Keep bios concise (2-3 sentences) and inspiring.';
+      
+      const userPrompt = `Write a professional bio for ${formData.displayName || roleData?.username || 'a BeastBuck community member'} who has interests in ${formData.interests || 'various fields'}. They work at ${formData.company || 'a company'} and studied ${formData.education || 'various subjects'}. Location: ${formData.location || 'not specified'}.`;
+      
+      const generatedBio = await groqProvider.chat({
+        messages: [{ role: 'user', content: userPrompt }],
+        systemPrompt,
+      });
+      
       setFormData(prev => ({ ...prev, bio: generatedBio }));
     } catch (error) {
       console.error('Bio generation failed:', error);
+      alert('Failed to generate bio. Please try again or write it manually.');
     } finally {
       setGeneratingBio(false);
     }
