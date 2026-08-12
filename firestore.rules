@@ -466,6 +466,226 @@ service cloud.firestore {
       allow delete: if canManageMembers();
     }
 
+    // Research collection for organization health
+    match /research/{researchId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.authorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'authorId',
+                      'authorName',
+                      'authorUsername',
+                      'abstract',
+                      'content',
+                      'category',
+                      'tags',
+                      'status',
+                      'views',
+                      'downloads',
+                      'citations',
+                      'collaborators',
+                      'publishedAt',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.description is string
+                    && request.resource.data.status in ['DRAFT', 'UNDER_REVIEW', 'PUBLISHED'];
+      allow update: if isAuthenticated()
+                    && resource.data.authorId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'abstract',
+                      'content',
+                      'category',
+                      'tags',
+                      'status',
+                      'collaborators',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'downloads', 'citations']);
+      allow delete: if canManageMembers();
+    }
+
+    // Experiments collection for organization health
+    match /experiments/{experimentId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'creatorId',
+                      'creatorName',
+                      'creatorUsername',
+                      'objective',
+                      'methodology',
+                      'results',
+                      'category',
+                      'tags',
+                      'status',
+                      'views',
+                      'participants',
+                      'teamMembers',
+                      'publishedAt',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.description is string
+                    && request.resource.data.status in ['DRAFT', 'ONGOING', 'COMPLETED', 'PUBLISHED'];
+      allow update: if isAuthenticated()
+                    && resource.data.creatorId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'objective',
+                      'methodology',
+                      'results',
+                      'category',
+                      'tags',
+                      'status',
+                      'teamMembers',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'participants']);
+      allow delete: if canManageMembers();
+    }
+
+    // Marketplace collection for organization health
+    match /marketplace/{listingId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.sellerId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'sellerId',
+                      'sellerName',
+                      'sellerUsername',
+                      'category',
+                      'price',
+                      'status',
+                      'media',
+                      'views',
+                      'likes',
+                      'sold',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.description is string
+                    && request.resource.data.price is number
+                    && request.resource.data.status in ['DRAFT', 'AVAILABLE', 'SOLD'];
+      allow update: if isAuthenticated()
+                    && resource.data.sellerId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'category',
+                      'price',
+                      'status',
+                      'media',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likes', 'sold']);
+      allow delete: if canManageMembers();
+    }
+
+    // AI Models collection for organization health
+    match /aiModels/{modelId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'creatorId',
+                      'creatorName',
+                      'creatorUsername',
+                      'modelType',
+                      'category',
+                      'capabilities',
+                      'version',
+                      'status',
+                      'downloads',
+                      'stars',
+                      'forks',
+                      'documentation',
+                      'publishedAt',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.description is string
+                    && request.resource.data.status in ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+      allow update: if isAuthenticated()
+                    && resource.data.creatorId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'modelType',
+                      'category',
+                      'capabilities',
+                      'version',
+                      'status',
+                      'documentation',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloads', 'stars', 'forks']);
+      allow delete: if canManageMembers();
+    }
+
+    // FunFlix collection for organization health
+    match /funflix/{movieId} {
+      allow read: if isAuthenticated();
+      allow create: if isMember()
+                    && request.resource.data.uploaderId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'title',
+                      'description',
+                      'uploaderId',
+                      'uploaderName',
+                      'uploaderUsername',
+                      'category',
+                      'genre',
+                      'duration',
+                      'status',
+                      'views',
+                      'likes',
+                      'thumbnail',
+                      'videoUrl',
+                      'publishedAt',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.title is string
+                    && request.resource.data.description is string
+                    && request.resource.data.status in ['DRAFT', 'PUBLISHED', 'ARCHIVED'];
+      allow update: if isAuthenticated()
+                    && resource.data.uploaderId == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'title',
+                      'description',
+                      'category',
+                      'genre',
+                      'status',
+                      'thumbnail',
+                      'videoUrl',
+                      'updatedAt'
+                    ]);
+      allow update: if isAuthenticated()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'likes']);
+      allow delete: if canManageMembers();
+    }
+
     // ----------------------------------------
     // CONTENT (Products, Experiments, Skills)
     // ----------------------------------------

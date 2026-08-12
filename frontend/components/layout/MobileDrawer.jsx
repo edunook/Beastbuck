@@ -6,7 +6,6 @@ import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import { 
   X,
   LayoutDashboard, 
-  Compass, 
   MessageSquare, 
   Trophy, 
   Bot,
@@ -16,12 +15,19 @@ import {
   ShieldCheck,
   Brain,
   BriefcaseBusiness,
-  UserCircle2,
   BookOpen,
-  UsersRound,
   Sparkles,
   Film,
   Palette,
+  Crown,
+  Bell,
+  Shield,
+  Gamepad2,
+  Calendar,
+  FlaskConical,
+  Orbit,
+  Network,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@shared/lib/utils';
 
@@ -150,9 +156,23 @@ export default function MobileDrawer() {
                     <span className="truncate text-badge">Mission Control</span>
                   </NavLink>
                   <NavLink
-                    to="/admin/dashboard"
+                    to="/command-center"
                     onClick={toggleMobileDrawer}
-                    aria-label="Command Center"
+                    aria-label="Executive Management"
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
+                      isActive 
+                        ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset_3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
+                        : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
+                    )}
+                  >
+                    <Crown className="w-5 h-5 shrink-0" aria-hidden="true" />
+                    <span className="truncate text-badge">Executive Mgmt</span>
+                  </NavLink>
+                  <NavLink
+                    to="/platform-controls"
+                    onClick={toggleMobileDrawer}
+                    aria-label="Platform Controls"
                     className={({ isActive }) => cn(
                       "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
                       isActive 
@@ -161,7 +181,49 @@ export default function MobileDrawer() {
                     )}
                   >
                     <ShieldCheck className="w-5 h-5 shrink-0" aria-hidden="true" />
-                    <span className="truncate text-badge">Command Center</span>
+                    <span className="truncate text-badge">Platform Controls</span>
+                  </NavLink>
+                  <NavLink
+                    to="/critical-alerts"
+                    onClick={toggleMobileDrawer}
+                    aria-label="Critical Alerts"
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
+                      isActive 
+                        ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset_3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
+                        : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
+                    )}
+                  >
+                    <Bell className="w-5 h-5 shrink-0" aria-hidden="true" />
+                    <span className="truncate text-badge">Critical Alerts</span>
+                  </NavLink>
+                  <NavLink
+                    to="/admin/dashboard"
+                    onClick={toggleMobileDrawer}
+                    aria-label="Admin Dashboard"
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
+                      isActive 
+                        ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset-3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
+                        : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
+                    )}
+                  >
+                    <Building2 className="w-5 h-5 shrink-0" aria-hidden="true" />
+                    <span className="truncate text-badge">Admin Dashboard</span>
+                  </NavLink>
+                  <NavLink
+                    to="/admin/membership-applications"
+                    onClick={toggleMobileDrawer}
+                    aria-label="Membership Applications"
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
+                      isActive 
+                        ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset_3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
+                        : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
+                    )}
+                  >
+                    <ClipboardList className="w-5 h-5 shrink-0" aria-hidden="true" />
+                    <span className="truncate text-badge">Membership Applications</span>
                   </NavLink>
                 </>
               )}

@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../auth/AuthContext";
 import { MembershipService } from '@services/firestore/membership';
 import { Sparkles, CheckCircle, AlertCircle, Send } from 'lucide-react';
+import { ROLES } from '@shared/constants/roles';
 
 export default function MembershipApply() {
-  const { user } = useAuth();
+  const { user, roleData } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -29,9 +30,21 @@ export default function MembershipApply() {
       return;
     }
 
+    // Check if user is already a member - redirect to dashboard
+    const membershipStatus = roleData?.membershipStatus;
+    const normalizedRole = roleData?.role?.toLowerCase().trim();
+    const MEMBER_ROLES = ['member', 'leader', 'co-ceo', 'co ceo', 'main ceo'];
+    const isMemberByRole = normalizedRole && MEMBER_ROLES.includes(normalizedRole);
+    const isApprovedMember = membershipStatus === 'approved' || isMemberByRole;
+
+    if (isApprovedMember) {
+      navigate('/dashboard');
+      return;
+    }
+
     loadExistingApplication();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, navigate]);
+  }, [user, roleData, navigate]);
 
   const loadExistingApplication = async () => {
     setLoading(true);

@@ -187,7 +187,7 @@ export default function AdminMembers() {
                 {/* Expanded Actions */}
                 {expandedId === member.id && (
                   <div className="border-t border-border/60 p-3">
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                       {/* Role Promote */}
                       <div>
                         <label className="mb-1 block text-xs font-bold text-text-muted">Promote / Demote</label>

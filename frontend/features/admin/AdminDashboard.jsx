@@ -11,9 +11,7 @@ import {
   Users,
   Wifi,
   Shield,
-  Lock,
-  Unlock,
-  AlertTriangle } from 'lucide-react';
+} from 'lucide-react';
 import { AdminService } from '@services/firestore/admin';
 import { AdminMetric, AdminPanel, StatusBadge, LoadingRows } from './adminUtils';
 import { formatDistanceToNow } from '@shared/lib/dateUtils';
@@ -24,8 +22,6 @@ export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [platformLocked, setPlatformLocked] = useState(false);
-  const [lockReason, setLockReason] = useState('');
 
   const load = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -74,62 +70,15 @@ export default function AdminDashboard() {
     return icons[type] || '📌';
   };
 
-  const togglePlatformLock = () => {
-    if (platformLocked) {
-      setPlatformLocked(false);
-      setLockReason('');
-    } else {
-      const reason = prompt('Enter reason for platform lock:');
-      if (reason) {
-        setLockReason(reason);
-        setPlatformLocked(true);
-      }
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Platform Lock Alert */}
-      {platformLocked && (
-        <Card className="border-red-500/50 bg-red-500/10">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Lock className="h-5 w-5 text-red-400" />
-                <div>
-                  <p className="font-bold text-white">Platform Locked</p>
-                  <p className="text-sm text-text-muted">{lockReason}</p>
-                </div>
-              </div>
-              <Button
-                onClick={togglePlatformLock}
-                size="sm"
-                variant="destructive"
-              >
-                <Unlock className="h-4 w-4 mr-2" />
-                Unlock Platform
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Metrics Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-heading text-section-title font-bold text-white">Platform Overview</h2>
           <p className="text-caption text-text-muted">Live stats across all BeastBuck systems</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={togglePlatformLock}
-            size="sm"
-            variant={platformLocked ? "destructive" : "secondary"}
-            className={platformLocked ? "bg-red-600 hover:bg-red-700" : ""}
-          >
-            {platformLocked ? <Unlock className="h-4 w-4 mr-2" /> : <Lock className="h-4 w-4 mr-2" />}
-            {platformLocked ? 'Unlock' : 'Lock Platform'}
-          </Button>
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => load(true)}
             disabled={refreshing}
@@ -149,7 +98,7 @@ export default function AdminDashboard() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map(m => <AdminMetric key={m.label} {...m} />)}
         </div>
       )}
@@ -170,7 +119,7 @@ export default function AdminDashboard() {
                     <p className="truncate text-caption font-bold text-white">{item.title || item.type || 'Activity'}</p>
                     <p className="mt-0.5 truncate text-badge text-text-muted">{item.description || 'Activity recorded'}</p>
                   </div>
-                  <span className="shrink-0 text-badge text-text-muted">
+                  <span className="shrink-0 text-badge text-text-muted hidden sm:block">
                     {item.timestamp ? formatDistanceToNow(item.timestamp) : '—'}
                   </span>
                 </div>
@@ -190,9 +139,9 @@ export default function AdminDashboard() {
                     {getActivityIcon(item.type)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                       <p className="truncate text-caption font-bold text-white">{item.summary || item.type}</p>
-                      <StatusBadge variant={getAuditTypeColor(item.type)}>
+                      <StatusBadge variant={getAuditTypeColor(item.type)} className="text-xs">
                         {item.type?.replace(/_/g, ' ')}
                       </StatusBadge>
                     </div>
@@ -200,7 +149,7 @@ export default function AdminDashboard() {
                       Target: {item.targetId || 'system'} · Actor: {item.actorId?.slice(0, 8)}…
                     </p>
                   </div>
-                  <span className="shrink-0 text-badge text-text-muted">
+                  <span className="shrink-0 text-badge text-text-muted hidden sm:block">
                     {item.createdAt ? formatDistanceToNow(item.createdAt) : '—'}
                   </span>
                 </div>

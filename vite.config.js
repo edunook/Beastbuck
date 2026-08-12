@@ -256,6 +256,7 @@ export default defineConfig({
       overlay: true
     }
   },
+  publicDir: 'public',
   resolve: {
     alias: {
       '@frontend': path.resolve(process.cwd(), 'frontend'),
@@ -265,6 +266,7 @@ export default defineConfig({
     }
   },
   build: {
+    outDir: 'dist',
     rollupOptions: {
       output: {
         manualChunks(id) {

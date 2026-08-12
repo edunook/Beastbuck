@@ -1,14 +1,14 @@
 import { auth, db } from '@services/firebase/config';
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
   updateProfile,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
 } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp, writeBatch, runTransaction, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { ROLES } from '@shared/constants/roles';
 
 export const AuthService = {
@@ -52,13 +52,14 @@ export const AuthService = {
 
   /**
    * Register a new user with username reservation
+   * Automatically assigns Main CEO role to the very first user (atomic transaction)
    */
   async signUp(phoneNumber, password, username, avatar = '') {
     // Input sanitization
     const sanitizedUsername = username?.trim() || '';
     const sanitizedPhone = phoneNumber?.trim() || '';
     const sanitizedAvatar = avatar?.trim() || '';
-    
+
     const normalizedUsername = this.normalizeUsername(sanitizedUsername);
     const usernameError = this.validateUsername(normalizedUsername);
     const normalizedPhoneNumber = sanitizedPhone;
@@ -73,7 +74,7 @@ export const AuthService = {
 
     // Additional security: rate limiting placeholder
     // In a real implementation, track attempts by IP/user-agent
-    
+
     // Basic rate limiting attempt (implement proper rate limiting in production)
     const lastAttempt = localStorage.getItem('lastSignupAttempt');
     if (lastAttempt && Date.now() - parseInt(lastAttempt) < 60000) { // 1 minute cooldown
@@ -102,70 +103,101 @@ export const AuthService = {
     await updateProfile(user, { displayName: normalizedUsername, photoURL: sanitizedAvatar });
 
     try {
-      const batch = writeBatch(db);
-      const usernameRef = doc(db, 'usernames', normalizedUsername);
-      const userRef = doc(db, 'users', user.uid);
-      const publicProfileRef = doc(db, 'publicProfiles', user.uid);
+      // Use transaction for atomic first-user detection and role assignment
+      // This prevents race conditions where two users could both become CEO
+      await runTransaction(db, async (transaction) => {
+        // Check if this is the first user by counting existing users
+        // We use a limited query to get just one user to check if any exist
+        const usersQuery = query(collection(db, 'users'), orderBy('joinedAt', 'asc'), limit(1));
+        const usersSnapshot = await getDocs(usersQuery);
 
-      batch.set(usernameRef, {
-        uid: user.uid,
-        normalizedUsername,
-        authEmail,
-        phoneNumber: normalizedPhoneNumber,
-        createdAt: serverTimestamp()
+        const isFirstUser = usersSnapshot.empty;
+
+        // Determine role based on whether this is the first user
+        const userRole = isFirstUser ? ROLES.MAIN_CEO : ROLES.USER;
+        const membershipStatus = isFirstUser ? 'approved' : 'none';
+
+        // Prepare the user document
+        const userRef = doc(db, 'users', user.uid);
+        const usernameRef = doc(db, 'usernames', normalizedUsername);
+        const publicProfileRef = doc(db, 'publicProfiles', user.uid);
+
+        // Set username document
+        transaction.set(usernameRef, {
+          uid: user.uid,
+          normalizedUsername,
+          authEmail,
+          phoneNumber: normalizedPhoneNumber,
+          createdAt: serverTimestamp()
+        });
+
+        // Set user document with appropriate role
+        transaction.set(userRef, {
+          uid: user.uid,
+          username: normalizedUsername,
+          displayName: normalizedUsername,
+          authEmail,
+          phoneNumber: normalizedPhoneNumber,
+          avatar: sanitizedAvatar,
+          role: userRole,
+          membershipStatus: membershipStatus,
+          xp: 0,
+          level: 1,
+          specializations: [],
+          achievements: [],
+          joinedAt: serverTimestamp(),
+          stats: {
+            tasksCompleted: 0,
+            experimentsCount: 0,
+            productsCount: 0,
+            messagesSent: 0,
+            achievementsEarned: 0,
+          },
+          profileCustomization: {},
+          isExecutive: isFirstUser, // Mark as executive if CEO
+        });
+
+        // Set public profile document
+        transaction.set(publicProfileRef, {
+          uid: user.uid,
+          username: normalizedUsername,
+          displayName: normalizedUsername,
+          avatar: sanitizedAvatar,
+          role: userRole,
+          xp: 0,
+          level: 1,
+          specializations: [],
+          achievements: [],
+          certificates: [],
+          inventions: [],
+          research: [],
+          projects: [],
+          portfolios: [],
+          activity: '',
+          reputation: 0,
+          stats: {
+            experimentsCount: 0,
+            productsCount: 0,
+            projectsCount: 0,
+          },
+          joinedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        // If this is the first user (CEO), log the assignment in audit logs
+        if (isFirstUser) {
+          const auditLogRef = doc(collection(db, 'auditLogs'));
+          transaction.set(auditLogRef, {
+            type: 'CEO_ASSIGNED',
+            actorId: user.uid,
+            targetId: user.uid,
+            summary: 'First user automatically assigned as Main CEO',
+            metadata: { autoAssigned: true, isFirstUser: true },
+            createdAt: serverTimestamp()
+          });
+        }
       });
 
-      batch.set(userRef, {
-        uid: user.uid,
-        username: normalizedUsername,
-        displayName: normalizedUsername,
-        authEmail,
-        phoneNumber: normalizedPhoneNumber,
-        avatar: sanitizedAvatar,
-        role: ROLES.USER,
-        membershipStatus: 'none',
-        xp: 0,
-        level: 1,
-        specializations: [],
-        achievements: [],
-        joinedAt: serverTimestamp(),
-        stats: {
-          tasksCompleted: 0,
-          experimentsCount: 0,
-          productsCount: 0,
-          messagesSent: 0,
-          achievementsEarned: 0,
-        },
-        profileCustomization: {}
-      });
-
-      batch.set(publicProfileRef, {
-        uid: user.uid,
-        username: normalizedUsername,
-        displayName: normalizedUsername,
-        avatar: sanitizedAvatar,
-        role: ROLES.USER,
-        xp: 0,
-        level: 1,
-        specializations: [],
-        achievements: [],
-        certificates: [],
-        inventions: [],
-        research: [],
-        projects: [],
-        portfolios: [],
-        activity: '',
-        reputation: 0,
-        stats: {
-          experimentsCount: 0,
-          productsCount: 0,
-          projectsCount: 0,
-        },
-        joinedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      await batch.commit();
       return { user, error: null };
     } catch (err) {
       // If profile document creation fails, clean up the auth user.

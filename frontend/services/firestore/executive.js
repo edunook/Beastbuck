@@ -1,5 +1,6 @@
 import { doc, setDoc, serverTimestamp, runTransaction, collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
+import { ROLES } from '@shared/constants/roles';
 
 /**
  * Executive Service - Handles CEO/Co-CEO assignment and executive operations
@@ -15,7 +16,7 @@ export async function checkCEOExists() {
   try {
     const q = query(
       collection(db, EXECUTIVE_COLLECTION),
-      where('role', '==', 'CEO'),
+      where('role', '==', ROLES.MAIN_CEO),
       limit(1)
     );
     const snapshot = await getDocs(q);
@@ -28,7 +29,10 @@ export async function checkCEOExists() {
 
 /**
  * Assign CEO role to the very first user (one-time rule)
- * This should be called during user registration
+ * NOTE: This function is DEPRECATED and no longer used.
+ * First-user CEO assignment is now handled atomically within AuthService.signUp
+ * using a Firestore transaction to prevent race conditions.
+ * This function is kept for reference but should not be called.
  */
 export async function assignFirstCEO(uid, userData) {
   try {
@@ -40,7 +44,7 @@ export async function assignFirstCEO(uid, userData) {
     // Assign CEO role to the first user
     await setDoc(doc(db, EXECUTIVE_COLLECTION, uid), {
       ...userData,
-      role: 'CEO',
+      role: ROLES.MAIN_CEO,
       membershipStatus: 'approved',
       isExecutive: true,
       createdAt: serverTimestamp(),
@@ -52,7 +56,7 @@ export async function assignFirstCEO(uid, userData) {
       type: 'CEO_ASSIGNED',
       actorId: uid,
       targetId: uid,
-      summary: 'First user automatically assigned as CEO',
+      summary: 'First user automatically assigned as Main CEO',
       details: { autoAssigned: true }
     });
 
@@ -80,18 +84,18 @@ export async function promoteToCoCEO(actorUid, targetUid, reason = '') {
       }
 
       const actorData = actorDoc.data();
-      if (actorData.role !== 'CEO') {
-        throw new Error('Only CEO can promote to Co-CEO');
+      if (actorData.role !== ROLES.MAIN_CEO) {
+        throw new Error('Only Main CEO can promote to Co-CEO');
       }
 
       const targetData = targetDoc.data();
-      if (targetData.role === 'CEO' || targetData.role === 'Co-CEO') {
+      if (targetData.role === ROLES.MAIN_CEO || targetData.role === ROLES.CO_CEO) {
         throw new Error('User is already an executive');
       }
 
       // Update target user to Co-CEO
       transaction.update(targetRef, {
-        role: 'Co-CEO',
+        role: ROLES.CO_CEO,
         isExecutive: true,
         promotedBy: actorUid,
         promotedAt: serverTimestamp(),
@@ -105,7 +109,7 @@ export async function promoteToCoCEO(actorUid, targetUid, reason = '') {
       actorId: actorUid,
       targetId: targetUid,
       summary: 'Promoted to Co-CEO',
-      details: { newRole: 'Co-CEO', reason }
+      details: { newRole: ROLES.CO_CEO, reason }
     });
 
     return { success: true };
@@ -132,18 +136,18 @@ export async function removeCoCEO(actorUid, targetUid, reason = '') {
       }
 
       const actorData = actorDoc.data();
-      if (actorData.role !== 'CEO') {
-        throw new Error('Only CEO can remove Co-CEO');
+      if (actorData.role !== ROLES.MAIN_CEO) {
+        throw new Error('Only Main CEO can remove Co-CEO');
       }
 
       const targetData = targetDoc.data();
-      if (targetData.role !== 'Co-CEO') {
+      if (targetData.role !== ROLES.CO_CEO) {
         throw new Error('User is not a Co-CEO');
       }
 
       // Demote to Member
       transaction.update(targetRef, {
-        role: 'Member',
+        role: ROLES.MEMBER,
         isExecutive: false,
         demotedBy: actorUid,
         demotedAt: serverTimestamp(),
@@ -157,7 +161,7 @@ export async function removeCoCEO(actorUid, targetUid, reason = '') {
       actorId: actorUid,
       targetId: targetUid,
       summary: 'Removed from Co-CEO',
-      details: { previousRole: 'Co-CEO', newRole: 'Member', reason }
+      details: { previousRole: ROLES.CO_CEO, newRole: ROLES.MEMBER, reason }
     });
 
     return { success: true };

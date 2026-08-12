@@ -71,12 +71,108 @@ const PORTFOLIO_THEMES = [
     cardBg: 'rgba(168, 230, 207, 0.05)'
   },
   {
+    id: 'midnight',
+    name: 'Midnight Purple',
+    background: 'linear-gradient(135deg, #2d1b4e 0%, #1a1a2e 100%)',
+    textColor: '#e94560',
+    accentColor: '#ff00ff',
+    cardBg: 'rgba(255, 0, 255, 0.05)'
+  },
+  {
     id: 'cyberpunk',
     name: 'Cyberpunk',
     background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #2d1b4e 100%)',
     accentColor: '#ff00ff',
     textColor: '#00ff00',
     cardBg: 'rgba(255, 0, 255, 0.05)'
+  },
+  {
+    id: 'minimal',
+    name: 'Minimal Light',
+    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+    textColor: '#2d3748',
+    accentColor: '#4299e1',
+    cardBg: 'rgba(66, 153, 225, 0.05)'
+  },
+  {
+    id: 'royal',
+    name: 'Royal Gold',
+    background: 'linear-gradient(135deg, #1a1a2e 0%, #4a4a4a 50%, #ffd700 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ffd700',
+    cardBg: 'rgba(255, 215, 0, 0.05)'
+  },
+  {
+    id: 'cosmic',
+    name: 'Cosmic Space',
+    background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #2d1b4e 100%)',
+    textColor: '#e94560',
+    accentColor: '#00d4ff',
+    cardBg: 'rgba(0, 212, 255, 0.05)'
+  },
+  {
+    id: 'aurora',
+    name: 'Aurora Borealis',
+    background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+    textColor: '#ffffff',
+    accentColor: '#00ff87',
+    cardBg: 'rgba(0, 255, 135, 0.05)'
+  },
+  {
+    id: 'fire',
+    name: 'Fire & Ember',
+    background: 'linear-gradient(135deg, #1a1a2e 0%, #4a1a1a 50%, #ff6b35 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff6b35',
+    cardBg: 'rgba(255, 107, 53, 0.05)'
+  },
+  {
+    id: 'ice',
+    name: 'Ice Crystal',
+    background: 'linear-gradient(135deg, #e0f7fa 0%, #80deea 50%, #26c6da 100%)',
+    textColor: '#006064',
+    accentColor: '#00bcd4',
+    cardBg: 'rgba(0, 188, 212, 0.05)'
+  },
+  {
+    id: 'retro',
+    name: 'Retro Wave',
+    background: 'linear-gradient(135deg, #2d1b4e 0%, #ff00ff 50%, #00ffff 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff00ff',
+    cardBg: 'rgba(255, 0, 255, 0.05)'
+  },
+  {
+    id: 'nature',
+    name: 'Nature Earth',
+    background: 'linear-gradient(135deg, #5d4157 0%, #a8c0ff 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff6b6b',
+    cardBg: 'rgba(255, 107, 107, 0.05)'
+  },
+  {
+    id: 'matrix',
+    name: 'Matrix Code',
+    background: 'linear-gradient(135deg, #000000 0%, #0d0d0d 50%, #1a1a1a 100%)',
+    textColor: '#00ff00',
+    accentColor: '#00ff00',
+    cardBg: 'rgba(0, 255, 0, 0.05)'
+  },
+  {
+    id: 'sunset2',
+    name: 'California Sunset',
+    background: 'linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff6b35',
+    cardBg: 'rgba(255, 107, 53, 0.05)'
+  },
+  {
+    id: 'bronze',
+    name: 'Bronze',
+    background: 'linear-gradient(135deg, #2c1810 0%, #cd7f32 50%, #8b4513 100%)',
+    textColor: '#ffffff',
+    accentColor: '#cd7f32',
+    cardBg: 'rgba(205, 127, 50, 0.05)'
   }
 ];
 
@@ -139,25 +235,48 @@ export default function PortfolioPage() {
         }
         
         setProfile(userProfile);
-        setSelectedTheme(userProfile?.theme || 'default');
 
-        // Load portfolio data with full information (now gets from profile directly)
-        try {
-          const portfolio = await PortfolioService.getPortfolioData(username);
-          // Merge portfolio data with profile to ensure consistency
-          setPortfolioData({
-            ...portfolio,
-            ...userProfile,
-            profile: {
-              ...portfolio.profile,
-              ...userProfile
-            }
-          });
-        } catch (portfolioErr) {
-          console.error('Failed to load portfolio data:', portfolioErr);
-          // Fallback to just profile data
-          setPortfolioData(userProfile);
+        // Debug logging to see what's in the profile
+        console.log('PortfolioPage - Loaded userProfile:', userProfile);
+        console.log('PortfolioPage - userProfile.theme:', userProfile?.theme);
+        console.log('PortfolioPage - userProfile.profileCustomization:', userProfile?.profileCustomization);
+
+        // Use profileCustomization if available (from PortfolioCustomization page)
+        // Check if profileCustomization has actual content (not just empty object)
+        const hasCustomTheme = userProfile?.profileCustomization?.accentColor ||
+                             userProfile?.profileCustomization?.backgroundTheme;
+
+        if (hasCustomTheme) {
+          // User has custom color customization from PortfolioCustomization page
+          console.log('PortfolioPage - Using custom theme from profileCustomization');
+          setSelectedTheme('custom');
+        } else if (userProfile?.theme) {
+          // User has selected a preset theme from ProfileEdit
+          console.log('PortfolioPage - Using preset theme:', userProfile.theme);
+          setSelectedTheme(userProfile.theme);
+        } else {
+          // No theme selected, use default
+          console.log('PortfolioPage - No theme found, using default');
+          setSelectedTheme('default');
         }
+
+        // Use profile data directly - theme is stored in profile
+        // Skip loading additional portfolio data to avoid permission errors
+        setPortfolioData({
+          ...userProfile,
+          stats: {
+            totalXP: userProfile?.xp || 0,
+            level: userProfile?.level || 1,
+            projectsJoined: 0,
+            experimentsCreated: 0,
+            productsCreated: 0,
+            certificatesEarned: 0,
+            achievementsEarned: (userProfile?.achievements || []).length,
+          },
+          specializations: userProfile?.specializations || [],
+          achievements: userProfile?.achievements || [],
+          activity: []
+        });
 
         // Load presence status (with error handling)
         try {
@@ -216,7 +335,53 @@ export default function PortfolioPage() {
     return <div className="p-20 text-center text-white font-bold text-2xl">Portfolio Not Found</div>;
   }
 
-  const theme = PORTFOLIO_THEMES.find(t => t.id === selectedTheme) || PORTFOLIO_THEMES[0];
+  const theme = (() => {
+    // Check if profileCustomization has actual content
+    const hasCustomTheme = profile?.profileCustomization?.accentColor ||
+                         profile?.profileCustomization?.backgroundTheme;
+
+    // Use profile.theme directly instead of selectedTheme state to avoid timing issues
+    const themeToUse = hasCustomTheme ? 'custom' : (profile?.theme || 'default');
+
+    console.log('PortfolioPage - Calculating theme with:', {
+      themeToUse,
+      profileTheme: profile?.theme,
+      hasProfileCustomization: hasCustomTheme,
+      profileCustomization: profile?.profileCustomization
+    });
+
+    if (themeToUse === 'custom' && hasCustomTheme) {
+      const custom = profile.profileCustomization;
+      console.log('PortfolioPage - Rendering custom theme with accentColor:', custom.accentColor);
+      return {
+        id: 'custom',
+        name: 'Custom Theme',
+        background: custom.backgroundTheme === 'dark'
+          ? 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)'
+          : custom.backgroundTheme === 'light'
+          ? 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+          : custom.backgroundTheme === 'gradient'
+          ? `linear-gradient(135deg, ${custom.accentColor}22 0%, ${custom.accentColor}44 50%, ${custom.accentColor}66 100%)`
+          : custom.backgroundTheme === 'aurora'
+          ? `linear-gradient(135deg, ${custom.accentColor}11 0%, ${custom.accentColor}33 25%, ${custom.accentColor}55 50%, ${custom.accentColor}77 75%, ${custom.accentColor}99 100%)`
+          : 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+        accentColor: custom.accentColor || '#00d4ff',
+        textColor: custom.backgroundTheme === 'light' ? '#2d3748' : '#ffffff',
+        cardBg: custom.cardStyle === 'glass'
+          ? `rgba(255, 255, 255, 0.05)`
+          : custom.cardStyle === 'solid'
+          ? `${custom.accentColor}15`
+          : custom.cardStyle === 'bordered'
+          ? 'transparent'
+          : 'rgba(255, 255, 255, 0.02)'
+      };
+    }
+
+    // Find the preset theme by ID
+    const foundTheme = PORTFOLIO_THEMES.find(t => t.id === themeToUse);
+    console.log('PortfolioPage - Rendering preset theme:', foundTheme?.id, foundTheme?.name);
+    return foundTheme || PORTFOLIO_THEMES[0];
+  })();
   const privacy = portfolioData?.privacy || {};
 
   return (

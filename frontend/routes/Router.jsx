@@ -59,7 +59,10 @@ const AdminSecurity = React.lazy(() => import('@frontend/features/admin/AdminSec
 const AdminEvents = React.lazy(() => import('@frontend/features/admin/AdminEvents'));
 const AdminInnovation = React.lazy(() => import('@frontend/features/admin/AdminInnovation'));
 const CommandCenter = React.lazy(() => import('@frontend/features/admin/CommandCenter'));
+const PlatformControls = React.lazy(() => import('@frontend/features/admin/PlatformControls'));
+const CriticalAlerts = React.lazy(() => import('@frontend/features/admin/CriticalAlerts'));
 const MembershipCenter = React.lazy(() => import('@frontend/features/admin/MembershipCenter'));
+const MembershipApplications = React.lazy(() => import('@frontend/features/admin/MembershipApplications'));
 const ExecutiveAIAssistant = React.lazy(() => import('@frontend/features/admin/ExecutiveAIAssistant'));
 const ExecutiveRoleManagement = React.lazy(() => import('@frontend/features/admin/ExecutiveRoleManagement'));
 
@@ -430,10 +433,17 @@ export default function AppRouter() {
           <Route path="/members/:uid" element={<PublicMemberProfile />} />
         </Route>
         <Route path="/access-denied" element={<AccessDenied />} />
-        
-        {/* Membership Routes - Public for authenticated users */}
+
+        {/* Membership Routes - Redirect members to dashboard */}
         <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-          <Route path="/membership/apply" element={<MembershipApply />} />
+          <Route 
+            path="/membership/apply" 
+            element={
+              <ProtectedRoute requireMember={false}>
+                <MembershipApply />
+              </ProtectedRoute>
+            } 
+          />
         </Route>
         
         {/* AppShell Protected Routes - Member only dashboard and apps */}
@@ -505,6 +515,22 @@ export default function AppRouter() {
             element={
               <ProtectedRoute requireCeo>
                 <CommandCenter />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/platform-controls"
+            element={
+              <ProtectedRoute requireCeo>
+                <PlatformControls />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/critical-alerts"
+            element={
+              <ProtectedRoute requireCeo>
+                <CriticalAlerts />
               </ProtectedRoute>
             }
           />
@@ -868,6 +894,18 @@ export default function AppRouter() {
             <Route path="intelligence" element={<AdminIntelligence />} />
             <Route path="ecosystem" element={<AdminEcosystem />} />
           </Route>
+
+          {/* ========================================
+              MEMBERSHIP APPLICATIONS ROUTE
+              ======================================== */}
+          <Route
+            path="/admin/membership-applications"
+            element={
+              <ProtectedRoute requireAdmin>
+                <MembershipApplications />
+              </ProtectedRoute>
+            }
+          />
 
           {/* ========================================
               MISSION CONTROL ROUTES (Step 15)

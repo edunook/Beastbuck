@@ -1,17 +1,22 @@
-import { useState } from 'react';
-import { Palette, Image as ImageIcon, Layout, Layers, Sparkles, Zap, Box } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Palette, Image as ImageIcon, Layout, Layers, Sparkles, Zap, Box, Save } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
+import { useAuth } from '@frontend/features/auth/AuthContext';
+import { UsersService } from '@services/firestore/users';
 
 export default function PortfolioCustomization() {
+  const { user, roleData } = useAuth();
   const [accentColor, setAccentColor] = useState('#8B5CF6');
   const [backgroundTheme, setBackgroundTheme] = useState('dark');
   const [cardStyle, setCardStyle] = useState('glass');
   const [layout, setLayout] = useState('grid');
   const [enableAnimations, setEnableAnimations] = useState(true);
   const [enableGlassEffects, setEnableGlassEffects] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [profileData, setProfileData] = useState(null);
 
   const accentColors = [
     { name: 'Purple', value: '#8B5CF6' },
@@ -27,6 +32,60 @@ export default function PortfolioCustomization() {
   const cardStyles = ['glass', 'solid', 'bordered', 'minimal'];
   const layouts = ['grid', 'list', 'masonry', 'timeline'];
 
+  // Load user's current profile customization on mount
+  useEffect(() => {
+    async function loadProfile() {
+      if (user?.uid) {
+        try {
+          const profile = await UsersService.getUserProfile(user.uid);
+          setProfileData(profile);
+          
+          // Apply saved theme settings
+          if (profile?.profileCustomization) {
+            const custom = profile.profileCustomization;
+            if (custom.accentColor) setAccentColor(custom.accentColor);
+            if (custom.backgroundTheme) setBackgroundTheme(custom.backgroundTheme);
+            if (custom.cardStyle) setCardStyle(custom.cardStyle);
+            if (custom.layout) setLayout(custom.layout);
+            if (custom.enableAnimations !== undefined) setEnableAnimations(custom.enableAnimations);
+            if (custom.enableGlassEffects !== undefined) setEnableGlassEffects(custom.enableGlassEffects);
+          }
+        } catch (error) {
+          console.error('Failed to load profile customization:', error);
+        }
+      }
+    }
+    loadProfile();
+  }, [user?.uid]);
+
+  const handleSave = async () => {
+    if (!user?.uid) return;
+    
+    setSaving(true);
+    try {
+      const profileCustomization = {
+        accentColor,
+        backgroundTheme,
+        cardStyle,
+        layout,
+        enableAnimations,
+        enableGlassEffects,
+        updatedAt: new Date().toISOString()
+      };
+
+      await UsersService.updateUserProfile(user.uid, {
+        profileCustomization
+      });
+
+      alert('Portfolio customization saved successfully!');
+    } catch (error) {
+      console.error('Failed to save customization:', error);
+      alert('Failed to save customization. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <PageContainer>
       <PageHeader 
@@ -34,8 +93,12 @@ export default function PortfolioCustomization() {
         description="Customization options including accent color, cover image, background theme, card style, layout, widget order, animations, and glass effects with automatic saving."
         hero={true}
         action={
-          <Button className="bg-purple-600 hover:bg-purple-700">
-            Save Changes
+          <Button 
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : <><Save className="h-4 w-4 mr-2" /> Save Changes</>}
           </Button>
         }
       />

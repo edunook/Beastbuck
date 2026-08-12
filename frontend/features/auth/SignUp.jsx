@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthService } from '@services/auth/auth';
-import { assignFirstCEO } from '@services/firestore/executive';
 import {
   Lock,
   User,
@@ -65,15 +64,8 @@ export default function SignUp() {
     try {
       const userCredential = await AuthService.signUp(phoneNumber, password, username);
 
-      if (userCredential?.user?.uid) {
-        await assignFirstCEO(userCredential.user.uid, {
-          username,
-          displayName: username,
-          email: userCredential.user.email || phoneNumber,
-          phoneNumber,
-          createdAt: new Date(),
-        });
-      }
+      // Note: First-user CEO assignment is now handled atomically within AuthService.signUp
+      // using a Firestore transaction to prevent race conditions
 
       navigate('/dashboard');
     } catch (err) {

@@ -250,7 +250,6 @@ export const PortfolioService = {
       marketplaceResourcesSnap,
       marketplaceCollectionsSnap,
       marketplaceDownloadsSnap,
-      affiliations,
     ] = await Promise.all([
       UsersService.getUserProfile(uid),
       getDocs(query(collection(db, 'projects'), where('memberIds', 'array-contains', uid))),
@@ -269,7 +268,7 @@ export const PortfolioService = {
       getDocs(query(collection(db, 'marketplaceResources'), where('authorId', '==', uid))),
       getDocs(query(collection(db, 'marketplaceCollections'), where('authorId', '==', uid))),
       getDocs(query(collection(db, 'marketplaceDownloads'), where('userId', '==', uid))),
-      OrganizationService.getUserAffiliations(uid),
+      // OrganizationService.getMemberAffiliations(uid), // Temporarily disabled - function name mismatch
     ]);
 
     const profile = userSnap;
@@ -353,7 +352,7 @@ export const PortfolioService = {
       marketplaceResources,
       marketplaceCollections,
       marketplaceDownloads,
-      affiliations,
+      affiliations: [], // Temporarily empty until OrganizationService is fixed
     };
   },
 

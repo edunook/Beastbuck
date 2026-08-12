@@ -1,17 +1,13 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   BarChart3,
-  BadgeCheck,
   BrainCircuit,
   ClipboardList,
   FileWarning,
-  Gamepad2,
   LayoutDashboard,
   Network,
   Shield,
   ShieldCheck,
-  Users,
-  UserCog,
   ChevronRight,
   Calendar,
   FlaskConical,
@@ -24,20 +20,9 @@ import { cn } from '@shared/lib/utils';
 
 const adminNav = [
   { label: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, desc: 'Platform overview' },
-  { label: 'Members', path: '/admin/members', icon: Users, desc: 'Manage users' },
-  { label: 'Memberships', path: '/admin/memberships', icon: BadgeCheck, desc: 'Review access' },
-  { label: 'Roles', path: '/admin/roles', icon: UserCog, desc: 'Permission roles' },
+  { label: 'Membership Applications', path: '/admin/membership-applications', icon: ClipboardList, desc: 'Review requests' },
   { label: 'Content', path: '/admin/content', icon: FileWarning, desc: 'Moderate content' },
-  { label: 'Gamification', path: '/admin/gamification', icon: Gamepad2, desc: 'XP & badges' },
-  { label: 'Audit Logs', path: '/admin/audit-logs', icon: ClipboardList, desc: 'Activity trail' },
   { label: 'Analytics', path: '/admin/analytics', icon: BarChart3, desc: 'Growth metrics' },
-  { label: 'Security', path: '/admin/security', icon: Shield, desc: 'Platform locks' },
-  { label: 'Events', path: '/admin/events', icon: Calendar, desc: 'Manage events' },
-  { label: 'Innovation', path: '/admin/innovation', icon: FlaskConical, desc: 'Approve innovations' },
-  { label: 'Universe', path: '/admin/universe', icon: Orbit, desc: 'Intelligence layer' },
-  { label: 'Intelligence', path: '/admin/intelligence', icon: BrainCircuit, desc: 'Decision signals' },
-  { label: 'Ecosystem', path: '/admin/ecosystem', icon: Network, desc: 'System map' },
-  { label: 'Exec Roles', path: '/executive-role-management', icon: Crown, desc: 'CEO & Co-CEO roles' },
 ];
 
 const adminLayoutStyles = `
@@ -124,7 +109,7 @@ export default function AdminLayout() {
             </div>
           </div>
 
-          <nav className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-8" aria-label="Executive admin navigation">
+          <nav className="grid grid-cols-1 gap-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3" aria-label="Executive admin navigation">
             {adminNav.map(({ label, path, icon: Icon, desc }) => (
               <NavLink
                 key={path}

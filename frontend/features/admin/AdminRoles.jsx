@@ -75,7 +75,7 @@ export default function AdminRoles() {
   const isDefaultRole = (roleId) => DEFAULT_ADMIN_ROLES.some(r => r.id === roleId);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[400px_1fr]">
+    <div className="grid gap-6 grid-cols-1 xl:grid-cols-[400px_1fr]">
       {/* Create / Edit Panel */}
       <AdminPanel
         title={isEditing ? `Edit Role: ${draft.name}` : 'Create Role'}
