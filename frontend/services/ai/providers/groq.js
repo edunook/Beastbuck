@@ -1,7 +1,17 @@
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const MODEL = import.meta.env.VITE_GROQ_MODEL || 'llama-3.3-70b-versatile';
+const MODEL = import.meta.env.VITE_GROQ_MODEL || 'openai/gpt-oss-120b';
 const TIMEOUT_MS = 30000; // 30 second timeout
 const MAX_MESSAGE_CHARS = 15000; // ~3750 tokens, keeps requests under free-tier TPM limit
+
+// Import OpenRouter for fallback
+let openrouterProvider = null;
+async function getOpenRouterFallback() {
+  if (!openrouterProvider) {
+    const module = await import('./openrouter.js');
+    openrouterProvider = module.openrouterProvider;
+  }
+  return openrouterProvider;
+}
 
 function truncateMessages(messages) {
   if (messages.length <= 4) return messages;
@@ -61,6 +71,18 @@ export const groqProvider = {
       if (err.name === 'AbortError') {
         throw new Error('Groq request timed out. Please try again.', { cause: err });
       }
+      
+      // Fallback to OpenRouter if Groq fails
+      console.warn('Groq request failed, falling back to OpenRouter:', err.message);
+      try {
+        const fallback = await getOpenRouterFallback();
+        if (fallback.configured) {
+          return await fallback.chat({ messages, systemPrompt, signal });
+        }
+      } catch (fallbackErr) {
+        console.error('OpenRouter fallback also failed:', fallbackErr);
+      }
+      
       throw err;
     }
   },
