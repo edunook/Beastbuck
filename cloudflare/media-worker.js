@@ -213,15 +213,30 @@ export default {
       });
     }
 
-    // Health check endpoint
+    // Health check endpoint with safe diagnostic checks
     if (url.pathname === '/health' || url.pathname === '/cdn-health') {
+      const rawKeyId = env.B2_APPLICATION_KEY_ID || env.B2_KEY_ID || '';
+      const rawSecret = env.B2_APPLICATION_KEY || '';
       return new Response(JSON.stringify({
         status: 'healthy',
         service: 'BeastBuck Media Edge Delivery',
         timestamp: new Date().toISOString(),
-      }), {
+        diagnostics: {
+          keyIdConfigured: Boolean(rawKeyId),
+          keyIdLength: rawKeyId.trim().length,
+          keyIdPrefix: rawKeyId.trim().substring(0, 4) + '...',
+          secretConfigured: Boolean(rawSecret),
+          secretLength: rawSecret.trim().length,
+          bucket: (env.B2_BUCKET_NAME || env.B2_BUCKET || DEFAULT_B2_BUCKET).trim(),
+          endpoint: (env.B2_ENDPOINT || DEFAULT_B2_ENDPOINT).trim().replace(/^https?:\/\//, '').replace(/\/+$/, ''),
+          region: (env.B2_REGION || DEFAULT_B2_REGION).trim(),
+        },
+      }, null, 2), {
         status: 200,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
       });
     }
 
@@ -230,25 +245,25 @@ export default {
     if (!validation.valid) {
       return new Response(JSON.stringify({ error: validation.error }), {
         status: 403,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
     }
 
     const objectKey = validation.objectKey;
 
-    // 3. Resolve Environment Secrets
-    const accessKeyId = env.B2_APPLICATION_KEY_ID || env.B2_KEY_ID;
-    const secretAccessKey = env.B2_APPLICATION_KEY;
-    const bucket = env.B2_BUCKET_NAME || env.B2_BUCKET || DEFAULT_B2_BUCKET;
-    const endpointHost = (env.B2_ENDPOINT || DEFAULT_B2_ENDPOINT).replace(/^https?:\/\//, '').replace(/\/+$/, '');
-    const region = env.B2_REGION || DEFAULT_B2_REGION;
+    // 3. Resolve Environment Secrets (with automatic whitespace trimming)
+    const accessKeyId = (env.B2_APPLICATION_KEY_ID || env.B2_KEY_ID || '').trim();
+    const secretAccessKey = (env.B2_APPLICATION_KEY || '').trim();
+    const bucket = (env.B2_BUCKET_NAME || env.B2_BUCKET || DEFAULT_B2_BUCKET).trim();
+    const endpointHost = (env.B2_ENDPOINT || DEFAULT_B2_ENDPOINT).trim().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    const region = (env.B2_REGION || DEFAULT_B2_REGION).trim();
 
     if (!accessKeyId || !secretAccessKey) {
       return new Response(JSON.stringify({
         error: 'CDN Origin Credentials Not Configured. Please set B2_APPLICATION_KEY_ID and B2_APPLICATION_KEY in Cloudflare Worker Secrets.',
       }), {
         status: 500,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
     }
 
@@ -271,15 +286,30 @@ export default {
     const b2Response = await fetch(b2Request);
 
     if (!b2Response.ok && b2Response.status !== 206 && b2Response.status !== 304) {
+      let errorBody = '';
+      try {
+        errorBody = await b2Response.text();
+      } catch {}
+
       if (b2Response.status === 404) {
-        return new Response(JSON.stringify({ error: 'Media not found' }), {
+        return new Response(JSON.stringify({ error: 'Media not found', details: errorBody }), {
           status: 404,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
         });
       }
-      return new Response(JSON.stringify({ error: `Origin returned HTTP ${b2Response.status}` }), {
+      return new Response(JSON.stringify({
+        error: `Origin returned HTTP ${b2Response.status}`,
+        details: errorBody,
+        hint: errorBody.includes('InvalidAccessKeyId')
+          ? 'Check B2_APPLICATION_KEY_ID in Cloudflare secrets'
+          : errorBody.includes('SignatureDoesNotMatch')
+          ? 'Check B2_APPLICATION_KEY secret or ensure no extra spaces'
+          : errorBody.includes('AccessDenied')
+          ? 'Check bucket permissions or key capability in Backblaze'
+          : undefined,
+      }), {
         status: b2Response.status,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
       });
     }
 
