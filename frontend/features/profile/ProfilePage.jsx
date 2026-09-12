@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate, useParams, useSearchParams, Link } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Activity,
   Award,
@@ -33,8 +33,12 @@ import {
   ExternalLink,
   Crown,
   Code,
+  LogOut,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
+import { AuthService } from '@services/auth/auth';
 import { UsersService } from '@services/firestore/users';
 import { PortfolioService } from '@services/firestore/portfolio';
 import { normalizeMediaUrl } from '@services/storage/b2Client';
@@ -751,10 +755,10 @@ function getVerificationHalo(role, badges) {
 // Portfolio Helper Components
 function StatCard({ icon: Icon, label, value, theme }) {
   return (
-    <div 
+    <div
       className="rounded-2xl border p-6 transition-all hover:scale-105"
-      style={{ 
-        borderColor: `${theme.accentColor}40`, 
+      style={{
+        borderColor: `${theme.accentColor}40`,
         background: theme.cardBg || 'rgba(255, 255, 255, 0.05)'
       }}
     >
@@ -767,10 +771,10 @@ function StatCard({ icon: Icon, label, value, theme }) {
 
 function QuickInfoCard({ icon: Icon, label, value, theme }) {
   return (
-    <div 
+    <div
       className="rounded-xl border p-4 transition-all hover:scale-105"
-      style={{ 
-        borderColor: `${theme.accentColor}40`, 
+      style={{
+        borderColor: `${theme.accentColor}40`,
         background: theme.cardBg || 'rgba(255, 255, 255, 0.05)'
       }}
     >
@@ -793,7 +797,7 @@ function PortfolioSection({ title, icon: Icon, items, theme }) {
       <CardContent>
         <div className="grid gap-4 sm:grid-cols-2">
           {items?.slice(0, 4).map((item, index) => (
-            <div 
+            <div
               key={index}
               className="rounded-xl border p-4 transition-all hover:scale-105"
               style={{ borderColor: `${theme.accentColor}40` }}
@@ -891,7 +895,7 @@ function MembershipCard({ userId, role }) {
 
 function CustomSectionsCard({ profile, theme }) {
   const customSections = profile?.customSections || [];
-  
+
   if (customSections.length === 0) return null;
 
   return (
@@ -904,10 +908,10 @@ function CustomSectionsCard({ profile, theme }) {
       </CardHeader>
       <CardContent className="space-y-4">
         {customSections.map((section, index) => (
-          <div 
+          <div
             key={index}
             className="rounded-xl border p-4 transition-all hover:scale-[1.02]"
-            style={{ 
+            style={{
               borderColor: `${theme.accentColor}30`,
               background: `${theme.accentColor}10`
             }}
@@ -928,7 +932,7 @@ function CustomSectionsCard({ profile, theme }) {
 function EducationInterestsCard({ profile, theme }) {
   const education = profile?.education;
   const interests = profile?.interests;
-  
+
   if (!education && !interests) return null;
 
   return (
@@ -951,10 +955,10 @@ function EducationInterestsCard({ profile, theme }) {
             <h3 className="mb-2 font-bold" style={{ color: theme.textColor }}>Interests</h3>
             <div className="flex flex-wrap gap-2">
               {interests.split(',').map((interest, index) => (
-                <span 
+                <span
                   key={index}
                   className="rounded-lg px-3 py-1 text-xs font-bold transition-all hover:scale-105"
-                  style={{ 
+                  style={{
                     background: `${theme.accentColor}20`,
                     color: theme.accentColor,
                     border: `1px solid ${theme.accentColor}40`
@@ -999,10 +1003,10 @@ function ShareActions({ profile, theme }) {
       <button
         onClick={handleShare}
         className="inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-bold transition-all hover:scale-105"
-        style={{ 
+        style={{
           borderColor: theme.accentColor,
           background: `${theme.accentColor}20`,
-          color: theme.accentColor 
+          color: theme.accentColor
         }}
       >
         <Share2 className="h-4 w-4" />
@@ -1011,10 +1015,10 @@ function ShareActions({ profile, theme }) {
       <button
         onClick={handlePrint}
         className="inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-bold transition-all hover:scale-105"
-        style={{ 
+        style={{
           borderColor: theme.accentColor,
           background: `${theme.accentColor}20`,
-          color: theme.accentColor 
+          color: theme.accentColor
         }}
       >
         <Edit className="h-4 w-4" />
@@ -1031,9 +1035,9 @@ function ProfileHero({ profile, status, isOwnProfile }) {
   const theme = getThemeById(profile?.theme);
 
   return (
-    <section 
+    <section
       className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-2 p-6 sm:p-8 md:p-12 shadow-2xl md:p-6 animate-scale-in"
-      style={{ 
+      style={{
         background: theme.background,
         borderColor: theme.accentColor,
         color: theme.textColor,
@@ -1042,16 +1046,16 @@ function ProfileHero({ profile, status, isOwnProfile }) {
     >
       <div className="absolute -right-20 -top-20 h-40 w-40 rounded-full opacity-20 blur-3xl" style={{ background: theme.accentColor }} />
       <div className="absolute -left-20 -bottom-20 h-40 w-40 rounded-full opacity-20 blur-3xl" style={{ background: theme.accentColor }} />
-      
+
       <div className="relative flex flex-col gap-6 sm:gap-8 md:flex-row md:items-start md:justify-between">
         <div className="flex flex-col gap-5 sm:gap-6 sm:flex-row sm:items-center md:flex-row md:items-center w-full">
           <div className="relative h-28 w-28 sm:h-36 sm:w-36 md:h-44 md:w-44 shrink-0 overflow-hidden rounded-2xl sm:rounded-3xl border-4 shadow-2xl transition-all duration-300 hover:scale-105" style={{ borderColor: theme.accentColor }}>
             {profile.photoURL || profile.avatar ? (
               <>
-                <img 
-                  src={normalizeMediaUrl(profile.photoURL || profile.avatar)} 
-                  alt={`Avatar of ${profile.displayName || profile.username}`} 
-                  className="h-full w-full object-cover" 
+                <img
+                  src={normalizeMediaUrl(profile.photoURL || profile.avatar)}
+                  alt={`Avatar of ${profile.displayName || profile.username}`}
+                  className="h-full w-full object-cover"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                     if (e.currentTarget.nextElementSibling) {
@@ -1076,7 +1080,7 @@ function ProfileHero({ profile, status, isOwnProfile }) {
               <h1 className="break-words font-heading text-3xl sm:text-4xl md:text-5xl font-black">
                 {profile.displayName || profile.username || 'BeastBuck Member'}
               </h1>
-              <span className="rounded-lg px-3 py-1.5 text-xs sm:text-sm font-bold uppercase tracking-widest shadow-lg" style={{ 
+              <span className="rounded-lg px-3 py-1.5 text-xs sm:text-sm font-bold uppercase tracking-widest shadow-lg" style={{
                 background: `${theme.accentColor}30`,
                 color: theme.accentColor,
                 border: `1px solid ${theme.accentColor}`
@@ -1085,13 +1089,13 @@ function ProfileHero({ profile, status, isOwnProfile }) {
               </span>
             </div>
             <p className="mb-3 text-base sm:text-lg font-medium opacity-90">@{profile.username || 'member'}</p>
-            
+
             {profile.bio && (
               <p className="mb-4 text-sm sm:text-base opacity-80 line-clamp-2 sm:line-clamp-3">
                 {profile.bio}
               </p>
             )}
-            
+
             <div className="flex flex-wrap justify-center gap-3 sm:gap-4 text-sm opacity-70 sm:justify-start">
               <span className="inline-flex items-center gap-2">
                 <span className={`h-2.5 w-2.5 rounded-full ${presenceColor}`} />
@@ -1113,12 +1117,12 @@ function ProfileHero({ profile, status, isOwnProfile }) {
             {(profile.website || profile.company) && (
               <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
                 {profile.website && (
-                  <a 
-                    href={profile.website} 
-                    target="_blank" 
+                  <a
+                    href={profile.website}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors hover:scale-105"
-                    style={{ 
+                    style={{
                       background: `${theme.accentColor}20`,
                       color: theme.accentColor,
                       border: `1px solid ${theme.accentColor}40`
@@ -1129,7 +1133,7 @@ function ProfileHero({ profile, status, isOwnProfile }) {
                   </a>
                 )}
                 {profile.company && (
-                  <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all hover:scale-105" style={{ 
+                  <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all hover:scale-105" style={{
                     background: `${theme.accentColor}20`,
                     color: theme.accentColor
                   }}>
@@ -1148,10 +1152,10 @@ function ProfileHero({ profile, status, isOwnProfile }) {
             <Link
               to={`/profile/${profile.id}/edit`}
               className="inline-flex items-center gap-2 rounded-xl border-2 px-5 py-3 text-sm sm:text-base font-bold transition-all hover:scale-105 shadow-lg"
-              style={{ 
+              style={{
                 borderColor: theme.accentColor,
                 background: `${theme.accentColor}30`,
-                color: theme.accentColor 
+                color: theme.accentColor
               }}
             >
               <Edit className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -1233,9 +1237,9 @@ function SpecializationsCard({
       </CardHeader>
       <CardContent>
         {assigned.length === 0 ? (
-          <EmptyState 
-            icon={Award} 
-            title="No specializations assigned yet" 
+          <EmptyState
+            icon={Award}
+            title="No specializations assigned yet"
             description="Specializations showcase your expertise in specific domains."
             compact={true}
           />
@@ -1423,9 +1427,9 @@ function AffiliationsCard({ affiliations }) {
             Departments
           </h3>
           {departments.length === 0 ? (
-            <EmptyState 
-              icon={Building2} 
-              title="No department affiliation yet" 
+            <EmptyState
+              icon={Building2}
+              title="No department affiliation yet"
               description="Join a department to collaborate with team members."
               compact={true}
             />
@@ -1441,9 +1445,9 @@ function AffiliationsCard({ affiliations }) {
             Labs
           </h3>
           {labs.length === 0 ? (
-            <EmptyState 
-              icon={FlaskConical} 
-              title="No lab affiliation yet" 
+            <EmptyState
+              icon={FlaskConical}
+              title="No lab affiliation yet"
               description="Join a lab to work on research and innovation projects."
               compact={true}
             />
@@ -1459,9 +1463,9 @@ function AffiliationsCard({ affiliations }) {
             Active Projects
           </h3>
           {projects.length === 0 ? (
-            <EmptyState 
-              icon={FolderKanban} 
-              title="No active projects yet" 
+            <EmptyState
+              icon={FolderKanban}
+              title="No active projects yet"
               description="Join a project to collaborate on meaningful work."
               compact={true}
             />
@@ -1492,9 +1496,9 @@ function ActivityFeed({ activity }) {
       </CardHeader>
       <CardContent>
         {activity.length === 0 ? (
-          <EmptyState 
-            icon={Activity} 
-            title="No recent profile activity yet" 
+          <EmptyState
+            icon={Activity}
+            title="No recent profile activity yet"
             description="Your activity will appear here as you engage with the platform."
             compact={true}
           />
@@ -1526,6 +1530,7 @@ function ActivityFeed({ activity }) {
 export default function ProfilePage() {
   const { uid } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, roleData } = useAuth();
   const usernameParam = searchParams.get('username');
   const [resolvedUid, setResolvedUid] = useState(null);
@@ -1540,10 +1545,71 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [managing, setManaging] = useState(false);
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
+  const [confirmUsername, setConfirmUsername] = useState('');
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [copiedShare, setCopiedShare] = useState(false);
   const canManageMembers = hasPermission(roleData?.role, 'canManageMembers');
 
   const isOwnProfile = user?.uid === profileUid;
   const profileTheme = useMemo(() => getThemeById(profile?.theme || 'default'), [profile?.theme]);
+
+  const expectedUsername = useMemo(() => {
+    return (
+      roleData?.username ||
+      (isOwnProfile ? profile?.username : null) ||
+      user?.displayName ||
+      user?.email?.split('@')[0] ||
+      'user'
+    ).trim();
+  }, [roleData?.username, isOwnProfile, profile?.username, user?.displayName, user?.email]);
+
+  const isMatch = useMemo(() => {
+    const input = confirmUsername.trim().replace(/^@/, '').toLowerCase();
+    const target = expectedUsername.trim().replace(/^@/, '').toLowerCase();
+    return input.length > 0 && input === target;
+  }, [confirmUsername, expectedUsername]);
+
+  useEffect(() => {
+    if (!showSignOutModal) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isSigningOut) {
+        setShowSignOutModal(false);
+        setConfirmUsername('');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSignOutModal, isSigningOut]);
+
+  useEffect(() => {
+    if (showSignOutModal) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [showSignOutModal]);
+
+  const handleSignOut = async () => {
+    if (!isMatch || isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      if (user?.uid) {
+        try {
+          await PresenceService.updateStatus(user.uid, 'offline');
+        } catch (err) {
+          console.warn('Presence status update failed:', err);
+        }
+      }
+      await AuthService.logOut();
+      navigate('/signin');
+    } catch (err) {
+      console.error('Sign out failed:', err);
+      setIsSigningOut(false);
+    }
+  };
 
   const pageTitle = useMemo(() => {
     if (!profile) return 'Member Profile';
@@ -1649,7 +1715,7 @@ export default function ProfilePage() {
       .then(([profileData, journey, goals]) => {
         if (!cancelled) setUniverseSummary({ profile: profileData, journey, goals });
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { cancelled = true; };
   }, [profileUid]);
 
@@ -1750,9 +1816,9 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Portfolio Cover Section with Dynamic Styling */}
-      <section 
+      <section
         className="relative overflow-hidden border-b-2 p-8 md:p-12 lg:p-16 transition-all duration-500"
-        style={{ 
+        style={{
           background: profileTheme.background,
           borderColor: profileTheme.accentColor,
           color: profileTheme.textColor
@@ -1762,24 +1828,24 @@ export default function ProfilePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-black/20" />
         <div className="absolute -right-32 -top-32 h-64 w-64 rounded-full opacity-30 blur-3xl transition-all duration-700 animate-pulse" style={{ background: profileTheme.accentColor }} />
         <div className="absolute -left-32 -bottom-32 h-64 w-64 rounded-full opacity-30 blur-3xl transition-all duration-700 animate-pulse" style={{ background: profileTheme.accentColor }} />
-        
+
         <div className="relative mx-auto max-w-6xl">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
             {/* Avatar with Glowing Halo */}
             <div className="flex items-center gap-6">
-              <div 
+              <div
                 className="relative h-32 w-32 md:h-40 md:w-40 shrink-0 overflow-hidden rounded-2xl border-4 shadow-2xl transition-all duration-300 hover:scale-105"
-                style={{ 
+                style={{
                   borderColor: profileTheme.accentColor,
                   boxShadow: getVerificationHalo(profile?.role, profile?.badges)?.glow || 'none'
                 }}
               >
                 {profile.photoURL || profile.avatar ? (
                   <>
-                    <img 
-                      src={normalizeMediaUrl(profile.photoURL || profile.avatar)} 
-                      alt={profile.displayName} 
-                      className="h-full w-full object-cover" 
+                    <img
+                      src={normalizeMediaUrl(profile.photoURL || profile.avatar)}
+                      alt={profile.displayName}
+                      className="h-full w-full object-cover"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                         if (e.currentTarget.nextElementSibling) {
@@ -1824,32 +1890,38 @@ export default function ProfilePage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {isOwnProfile && (
                 <Link
                   to={`/profile/${profile.uid}/edit`}
-                  className="inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 font-bold transition-all hover:scale-105"
-                  style={{ 
+                  className="inline-flex items-center gap-2 rounded-xl border-2 px-3 sm:px-4 py-2 text-sm sm:text-base font-bold transition-all hover:scale-105"
+                  style={{
                     borderColor: profileTheme.accentColor,
                     background: `${profileTheme.accentColor}20`,
-                    color: profileTheme.accentColor 
+                    color: profileTheme.accentColor
                   }}
                 >
                   <Edit className="h-4 w-4" />
-                  Edit Portfolio
+                  <span>Edit Portfolio</span>
                 </Link>
               )}
               <button
-                onClick={() => navigator.clipboard.writeText(window.location.href)}
-                className="inline-flex items-center gap-2 rounded-xl border-2 px-4 py-2 font-bold transition-all hover:scale-105"
-                style={{ 
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  setCopiedShare(true);
+                  setTimeout(() => setCopiedShare(false), 2000);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl border-2 px-3 sm:px-4 py-2 text-sm sm:text-base font-bold transition-all hover:scale-105 cursor-pointer"
+                style={{
                   borderColor: profileTheme.accentColor,
                   background: `${profileTheme.accentColor}20`,
-                  color: profileTheme.accentColor 
+                  color: profileTheme.accentColor
                 }}
+                title="Share profile link"
               >
-                <Share2 className="h-4 w-4" />
-                Share
+                {copiedShare ? <Check className="h-4 w-4 text-emerald-400" /> : <Share2 className="h-4 w-4" />}
+                <span>{copiedShare ? 'Copied!' : 'Share'}</span>
               </button>
             </div>
           </div>
@@ -1860,25 +1932,25 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-6xl space-y-8 p-6 md:p-8">
         {/* Quick Info Cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <QuickInfoCard 
+          <QuickInfoCard
             icon={Briefcase}
             label="Role"
             value={profile?.role || 'Member'}
             theme={profileTheme}
           />
-          <QuickInfoCard 
+          <QuickInfoCard
             icon={GraduationCap}
             label="Level"
             value={`Level ${portfolioData?.stats?.level || profile?.level || 1}`}
             theme={profileTheme}
           />
-          <QuickInfoCard 
+          <QuickInfoCard
             icon={Star}
             label="Total XP"
             value={portfolioData?.stats?.totalXP || profile?.xp || 0}
             theme={profileTheme}
           />
-          <QuickInfoCard 
+          <QuickInfoCard
             icon={Zap}
             label="Impact"
             value={portfolioData?.stats?.impact || profile?.stats?.impact || 0}
@@ -1917,27 +1989,27 @@ export default function ProfilePage() {
 
         {/* Stats Section */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard 
-            icon={FolderKanban} 
-            label="Projects" 
+          <StatCard
+            icon={FolderKanban}
+            label="Projects"
             value={portfolioData?.stats?.projectsJoined || affiliations?.activeProjects?.length || 0}
             theme={profileTheme}
           />
-          <StatCard 
-            icon={FlaskConical} 
-            label="Research" 
+          <StatCard
+            icon={FlaskConical}
+            label="Research"
             value={portfolioData?.stats?.researchProjectsCount || 0}
             theme={profileTheme}
           />
-          <StatCard 
-            icon={Award} 
-            label="Achievements" 
+          <StatCard
+            icon={Award}
+            label="Achievements"
             value={portfolioData?.stats?.achievementsEarned || normalizeAchievements(profile).length}
             theme={profileTheme}
           />
-          <StatCard 
-            icon={TrendingUp} 
-            label="Impact Score" 
+          <StatCard
+            icon={TrendingUp}
+            label="Impact Score"
             value={portfolioData?.stats?.impact || profile?.stats?.impact || 0}
             theme={profileTheme}
           />
@@ -1945,8 +2017,8 @@ export default function ProfilePage() {
 
         {/* Projects Section */}
         {portfolioData?.projects?.length > 0 && (
-          <PortfolioSection 
-            title="Featured Projects" 
+          <PortfolioSection
+            title="Featured Projects"
             icon={FolderKanban}
             items={portfolioData.projects}
             theme={profileTheme}
@@ -1955,8 +2027,8 @@ export default function ProfilePage() {
 
         {/* Research Section */}
         {portfolioData?.researchProjects?.length > 0 && (
-          <PortfolioSection 
-            title="Research Papers" 
+          <PortfolioSection
+            title="Research Papers"
             icon={FlaskConical}
             items={portfolioData.researchProjects}
             theme={profileTheme}
@@ -1965,8 +2037,8 @@ export default function ProfilePage() {
 
         {/* Achievements Section */}
         {portfolioData?.achievements?.length > 0 && (
-          <PortfolioSection 
-            title="Achievements" 
+          <PortfolioSection
+            title="Achievements"
             icon={Award}
             items={portfolioData.achievements}
             theme={profileTheme}
@@ -2077,7 +2149,199 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Account Session / Sign Out Section - At the very bottom of the profile page */}
+        {user && (
+          <div className="pt-8 pb-4 border-t border-border/60">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl border border-rose-500/20 bg-gradient-to-r from-rose-950/15 via-surface to-surface backdrop-blur-md shadow-lg transition-all hover:border-rose-500/30">
+              <div className="flex flex-col sm:flex-row items-center gap-3.5 text-center sm:text-left">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/15 text-rose-400 shadow-inner">
+                  <LogOut className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-white">Account Session</h3>
+                  <p className="text-xs sm:text-sm text-text-muted mt-0.5">
+                    Signed in as <span className="font-mono text-rose-300 font-semibold">@{expectedUsername}</span> · Ready to end your session?
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmUsername('');
+                  setShowSignOutModal(true);
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border-2 border-rose-500/40 bg-rose-500/15 px-6 py-2.5 text-sm sm:text-base font-bold text-rose-400 transition-all hover:scale-105 hover:bg-rose-500/25 hover:border-rose-400 active:scale-95 shadow-md shadow-rose-950/30 min-h-[44px] cursor-pointer"
+                title="Sign out of your account"
+                aria-label="Sign Out"
+              >
+                <LogOut className="h-4 w-4 shrink-0" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+      {/* Sign Out Confirmation Modal */}
+      {showSignOutModal && (
+        <div
+          className="fixed inset-0 z-[100000] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md transition-all animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSigningOut) {
+              setShowSignOutModal(false);
+              setConfirmUsername('');
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="signout-modal-title"
+        >
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-rose-500/30 bg-[#0c0c14] p-5 sm:p-6 shadow-2xl shadow-black/80 text-white animate-in zoom-in-95 duration-200">
+            {/* Ambient subtle glow effect */}
+            <div className="pointer-events-none absolute -top-20 -left-20 h-40 w-40 rounded-full bg-rose-500/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-rose-600/15 blur-3xl" />
+
+            {/* Header */}
+            <div className="relative flex items-start justify-between gap-3 pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/15 text-rose-400 shadow-inner">
+                  <LogOut className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 id="signout-modal-title" className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                    Confirm Sign Out
+                  </h3>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    Security confirmation required
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isSigningOut}
+                onClick={() => {
+                  setShowSignOutModal(false);
+                  setConfirmUsername('');
+                }}
+                className="rounded-lg p-2 text-text-muted hover:text-white hover:bg-white/10 transition-colors disabled:opacity-50 cursor-pointer"
+                aria-label="Close dialog"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="relative mt-4 space-y-4">
+              <p className="text-xs sm:text-sm text-text-soft leading-relaxed">
+                To prevent accidental sign-outs, please type your username below to confirm you want to log out.
+              </p>
+
+              {/* Username Display Badge */}
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface/80 px-3.5 py-2.5">
+                <span className="text-xs text-text-muted font-medium">Your username:</span>
+                <span className="font-mono text-xs sm:text-sm font-bold text-rose-300 bg-rose-500/15 border border-rose-500/30 px-2.5 py-1 rounded-lg select-all">
+                  @{expectedUsername}
+                </span>
+              </div>
+
+              {/* Verification Input */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="signout-confirm-input"
+                  className="block text-xs font-semibold uppercase tracking-wider text-text-muted"
+                >
+                  Type <span className="text-rose-400 font-mono font-bold">@{expectedUsername}</span> to confirm
+                </label>
+                <div className="relative">
+                  <input
+                    id="signout-confirm-input"
+                    type="text"
+                    autoFocus
+                    disabled={isSigningOut}
+                    value={confirmUsername}
+                    onChange={(e) => setConfirmUsername(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && isMatch && !isSigningOut) {
+                        e.preventDefault();
+                        handleSignOut();
+                      }
+                    }}
+                    placeholder={`Type ${expectedUsername}`}
+                    className={`w-full rounded-xl border px-3.5 py-2.5 text-sm sm:text-base text-white placeholder:text-text-muted/40 outline-none transition-all duration-200 bg-black/40 ${confirmUsername.length === 0
+                        ? 'border-border focus:border-rose-400 focus:ring-1 focus:ring-rose-400/30'
+                        : isMatch
+                          ? 'border-emerald-500/80 bg-emerald-950/20 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400/30'
+                          : 'border-rose-500/70 bg-rose-950/20 focus:border-rose-400 focus:ring-1 focus:ring-rose-400/30'
+                      }`}
+                  />
+                  {confirmUsername.length > 0 && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                      {isMatch ? (
+                        <Check className="h-4 w-4 text-emerald-400" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-rose-400" />
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Status validation message */}
+                <div className="min-h-[20px] pt-1">
+                  {confirmUsername.length === 0 ? (
+                    <p className="text-[11px] sm:text-xs text-text-muted/70">
+                      The sign out button activates once your username matches.
+                    </p>
+                  ) : isMatch ? (
+                    <p className="flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-emerald-400">
+                      <Check className="h-3.5 w-3.5" /> Identity verified. Ready to sign out.
+                    </p>
+                  ) : (
+                    <p className="flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-rose-400">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Username doesn't match yet
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="relative mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                disabled={isSigningOut}
+                onClick={() => {
+                  setShowSignOutModal(false);
+                  setConfirmUsername('');
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-border bg-surface hover:bg-surface-200 text-text font-semibold text-sm transition-all min-h-[44px] flex items-center justify-center cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!isMatch || isSigningOut}
+                onClick={handleSignOut}
+                className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all min-h-[44px] shadow-lg ${isMatch && !isSigningOut
+                    ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30 active:scale-95 cursor-pointer'
+                    : 'bg-rose-950/40 text-rose-300/40 border border-rose-900/30 cursor-not-allowed opacity-50'
+                  }`}
+              >
+                {isSigningOut ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Signing out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="h-4 w-4" />
+                    <span>Sign Out</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
