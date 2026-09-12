@@ -65,7 +65,7 @@ async function runTests() {
   assert(Boolean(config.bucket), `Bucket configured: ${config.bucket}`);
   assert(config.multipartThresholdBytes === 50 * 1024 * 1024, `Multipart threshold is 50MB (${config.multipartThresholdBytes} bytes)`);
   assert(config.maxUploadSizeBytes === 50 * 1024 * 1024 * 1024, `Max upload limit is 50GB`);
-  assert(config.cdnBaseUrl === 'https://media.beastbuck.com', `CDN URL configured: ${config.cdnBaseUrl}`);
+  assert(Boolean(config.cdnBaseUrl) && (config.cdnBaseUrl.includes('workers.dev') || config.cdnBaseUrl.includes('media.beastbuck.com')), `CDN URL configured: ${config.cdnBaseUrl}`);
 
   // Test 2: File Validation
   console.log('\n[Test Suite 2: MIME & Size Validation]');
@@ -144,7 +144,7 @@ async function runTests() {
   // Test 7: Public vs Private CDN Delivery URLs
   console.log('\n[Test Suite 7: Public CDN vs Private Protected Delivery URLs]');
   const publicCdnUrl = `${config.cdnBaseUrl}/media/prod/user1/image/2026/09/photo.webp`;
-  assert(publicCdnUrl.startsWith('https://media.beastbuck.com'), 'Public media routes through Cloudflare CDN hostname');
+  assert(publicCdnUrl.startsWith(config.cdnBaseUrl) && (publicCdnUrl.includes('workers.dev') || publicCdnUrl.includes('media.beastbuck.com')), 'Public media routes through Cloudflare CDN hostname');
 
   console.log('\n===============================================================');
   console.log(`[Verification Results] Passed: ${passCount} | Failed: ${failCount}`);

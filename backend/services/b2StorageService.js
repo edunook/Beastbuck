@@ -17,7 +17,7 @@ import crypto from 'node:crypto';
 const DEFAULT_B2_ENDPOINT = process.env.B2_ENDPOINT || 'https://s3.us-east-005.backblazeb2.com';
 const DEFAULT_B2_REGION = process.env.B2_REGION || 'us-east-005';
 const DEFAULT_B2_BUCKET = process.env.B2_BUCKET || 'beastbuck-media';
-const DEFAULT_CDN_BASE_URL = process.env.CDN_MEDIA_BASE_URL || process.env.VITE_CDN_MEDIA_BASE_URL || 'https://s3.us-east-005.backblazeb2.com/beastbuck-media';
+const DEFAULT_CDN_BASE_URL = process.env.MEDIA_CDN_BASE_URL || process.env.VITE_MEDIA_CDN_BASE_URL || process.env.CDN_MEDIA_BASE_URL || process.env.VITE_CDN_MEDIA_BASE_URL || 'https://beastbuck-media.workers.dev';
 
 // Configurable thresholds & limits
 export function getStorageConfig() {
@@ -26,13 +26,19 @@ export function getStorageConfig() {
   const maxVideoSizeGB = parseInt(process.env.MAX_VIDEO_SIZE_GB, 10) || 50; // Default 50GB
   const minPartSizeMB = parseInt(process.env.MIN_PART_SIZE_MB, 10) || 10; // Default 10MB (B2 min is 5MB)
 
+  const cdnUrl = process.env.MEDIA_CDN_BASE_URL ||
+    process.env.VITE_MEDIA_CDN_BASE_URL ||
+    process.env.CDN_MEDIA_BASE_URL ||
+    process.env.VITE_CDN_MEDIA_BASE_URL ||
+    DEFAULT_CDN_BASE_URL;
+
   return {
     endpoint: process.env.B2_ENDPOINT || DEFAULT_B2_ENDPOINT,
     region: process.env.B2_REGION || DEFAULT_B2_REGION,
     bucket: process.env.B2_BUCKET || DEFAULT_B2_BUCKET,
     keyId: process.env.B2_KEY_ID || process.env.B2_APPLICATION_KEY_ID,
     applicationKey: process.env.B2_APPLICATION_KEY,
-    cdnBaseUrl: (process.env.CDN_MEDIA_BASE_URL || process.env.VITE_CDN_MEDIA_BASE_URL || DEFAULT_CDN_BASE_URL).replace(/\/+$/, ''),
+    cdnBaseUrl: cdnUrl.replace(/\/+$/, ''),
     multipartThresholdBytes: multipartThresholdMB * 1024 * 1024,
     maxUploadSizeBytes: maxUploadSizeGB * 1024 * 1024 * 1024,
     maxVideoSizeBytes: maxVideoSizeGB * 1024 * 1024 * 1024,

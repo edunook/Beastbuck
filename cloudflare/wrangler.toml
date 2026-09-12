@@ -1,0 +1,12 @@
+name = "beastbuck-media"
+main = "media-worker.js"
+compatibility_date = "2024-09-01"
+
+[vars]
+B2_BUCKET_NAME = "beastbuck-media"
+B2_ENDPOINT = "s3.us-east-005.backblazeb2.com"
+B2_REGION = "us-east-005"
+
+# Note: Store secrets via Wrangler CLI or Cloudflare Dashboard:
+#   wrangler secret put B2_APPLICATION_KEY_ID   (Enter read-only beastbuck-cdn key ID)
+#   wrangler secret put B2_APPLICATION_KEY      (Enter read-only beastbuck-cdn key secret)

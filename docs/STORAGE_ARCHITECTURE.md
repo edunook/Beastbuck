@@ -39,15 +39,15 @@ BeastBuck Users ◄─── 6. Fast Edge Caching & Range Playback ─── Clo
 ### Backend / Server Environment (Never commit secrets to client builds)
 
 ```env
-# Backblaze B2 S3-Compatible Configuration
+# Backblaze B2 S3-Compatible Configuration (Vercel Project Settings → Environment Variables)
 B2_ENDPOINT=https://s3.us-east-005.backblazeb2.com
 B2_REGION=us-east-005
 B2_BUCKET=beastbuck-media
 B2_KEY_ID=your_b2_application_key_id
 B2_APPLICATION_KEY=your_b2_application_key
 
-# Cloudflare CDN Delivery
-CDN_MEDIA_BASE_URL=https://media.beastbuck.com
+# Centralized Media Delivery Base URL (Cloudflare Worker Edge Delivery)
+MEDIA_CDN_BASE_URL=https://beastbuck-media.workers.dev
 
 # Upload Thresholds & Capacity
 MULTIPART_THRESHOLD_MB=50
@@ -59,53 +59,34 @@ MIN_PART_SIZE_MB=10
 ### Client Frontend Environment (Vite bundle safe)
 
 ```env
-# Public CDN Hostname for Media Asset Resolution
-VITE_CDN_MEDIA_BASE_URL=https://media.beastbuck.com
+# Centralized Media CDN Base URL (Changeable to https://media.beastbuck.com with 0 code edits)
+VITE_MEDIA_CDN_BASE_URL=https://beastbuck-media.workers.dev
+VITE_CDN_MEDIA_BASE_URL=https://beastbuck-media.workers.dev
 ```
 
 ---
 
-## 4. Backblaze B2 Bucket & CORS Configuration
+## 4. Backblaze B2 Bucket & Restrictive CORS Configuration
 
 ### Bucket Setup
-1. Create a Bucket in Backblaze B2:
-   - **Bucket Name**: `beastbuck-media`
-   - **Bucket Type**: Private or Public (Public files are delivered via Cloudflare CDN; private files are accessed via short-lived presigned GET URLs).
-   - **Default Encryption**: Enabled (SSE-B2).
-   - **Lifecycle Rules**: Delete incomplete multipart uploads after 1 day.
+1. Bucket Name: `beastbuck-media`
+2. Bucket Type: **Private** (Public media is cached by Cloudflare CDN; private media is access-controlled).
+3. Default Encryption: Enabled (**SSE-B2**).
+4. Lifecycle Rules: Delete incomplete multipart uploads after 1 day.
 
-### CORS Rules (Required for direct browser PUT uploads)
-In the Backblaze B2 Console → Buckets → **CORS Rules**, set:
+### Restrictive S3 CORS Configuration
+B2 CORS must be set via the S3 API with restrictive origins:
+- Production: `https://beastbuck.vercel.app`
+- Development: `http://localhost:5173`, `http://127.0.0.1:5173`
 
-```json
-[
-  {
-    "corsRuleName": "beastbuck-browser-direct-uploads",
-    "allowedOrigins": [
-      "https://beastbuck.com",
-      "https://*.beastbuck.com",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173"
-    ],
-    "allowedOperations": [
-      "s3_put",
-      "s3_post",
-      "s3_get",
-      "s3_head",
-      "s3_delete"
-    ],
-    "allowedHeaders": [
-      "*"
-    ],
-    "exposeHeaders": [
-      "ETag",
-      "Content-Length",
-      "Content-Type",
-      "Last-Modified"
-    ],
-    "maxAgeSeconds": 3600
-  }
-]
+Inspect current CORS:
+```bash
+npm run setup:b2-cors
+```
+
+Apply production restrictive CORS rules:
+```bash
+npm run setup:b2-cors -- --apply
 ```
 
 ---

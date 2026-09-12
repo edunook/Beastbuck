@@ -7,27 +7,59 @@ import { B2Uploader } from './b2Uploader.js';
 
 export const isStorageConfigured = true;
 
-/** Resolved CDN base URL — falls back to direct B2 if env var not set */
-const CDN_BASE = (
-  import.meta.env.VITE_CDN_MEDIA_BASE_URL || '/api/media/file'
-).replace(/\/+$/, '');
+const configuredCdn = (
+  import.meta.env.VITE_MEDIA_CDN_BASE_URL ||
+  import.meta.env.VITE_CDN_MEDIA_BASE_URL ||
+  ''
+).trim().replace(/\/+$/, '');
+
+const isPlaceholder = !configuredCdn ||
+  configuredCdn.includes('media.beastbuck.com') ||
+  configuredCdn === 'https://beastbuck-media.workers.dev';
 
 /**
- * Normalize any stored media URL to the current CDN base.
- * Rewrites old media.beastbuck.com or direct B2 URLs to the working CDN/proxy URL.
+ * Centralized Media Delivery Base URL.
+ * In local dev (when the CDN domain is an unassigned placeholder), routes to /api/media/file
+ * so media loads instantly without ERR_NAME_NOT_RESOLVED.
+ * In production, routes directly to the Cloudflare Worker.
+ */
+export const MEDIA_CDN_BASE_URL = (
+  import.meta.env.DEV && isPlaceholder
+    ? '/api/media/file'
+    : (configuredCdn || 'https://beastbuck-media.learningaurstudywala.workers.dev')
+);
+
+const CDN_BASE = MEDIA_CDN_BASE_URL;
+
+/**
+ * Normalize any stored media URL to the centralized CDN base.
+ * Rewrites old media.beastbuck.com, unresolvable workers.dev placeholders,
+ * legacy /api/media/file proxies, or direct B2 URLs to the canonical CDN base URL.
  * Safe to call on any string — returns it unchanged if it's not a media URL.
  */
 export function normalizeMediaUrl(url) {
   if (!url) return url;
   if (typeof url !== 'string') return url;
 
-  // Rewrite any old media.beastbuck.com URLs to current CDN base
+  // Rewrite legacy Vercel streaming proxy URLs (/api/media/file/...)
+  if (url.includes('/api/media/file/')) {
+    const objectKey = url.replace(/^.*\/api\/media\/file\/?/, '');
+    return `${CDN_BASE}/${objectKey}`;
+  }
+
+  // Rewrite unresolved media.beastbuck.com URLs to active CDN base
   if (url.includes('media.beastbuck.com')) {
     const objectKey = url.replace(/^https?:\/\/media\.beastbuck\.com\/?/, '');
     return `${CDN_BASE}/${objectKey}`;
   }
 
-  // Rewrite direct B2 URLs to proxy if CDN_BASE is a proxy route
+  // Rewrite placeholder beastbuck-media.workers.dev URLs
+  if (url.includes('beastbuck-media.workers.dev') && !url.includes('beastbuck-media.learningaurstudywala.workers.dev')) {
+    const objectKey = url.replace(/^https?:\/\/beastbuck-media\.workers\.dev\/?/, '');
+    return `${CDN_BASE}/${objectKey}`;
+  }
+
+  // Rewrite direct B2 URLs
   if (url.includes('backblazeb2.com/beastbuck-media')) {
     const objectKey = url.replace(/^https?:\/\/[^/]+\/beastbuck-media\/?/, '');
     return `${CDN_BASE}/${objectKey}`;

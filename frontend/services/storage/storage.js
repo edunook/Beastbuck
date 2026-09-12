@@ -19,6 +19,8 @@ export {
   getMediaUrl,
   getGatewayUrl,
   getBackupGatewayUrls,
+  MEDIA_CDN_BASE_URL,
+  normalizeMediaUrl,
   isStorageConfigured,
   isStorageConfigured as isIPFSConfigured,
   isStorageConfigured as isFirebaseStorageConfigured,
