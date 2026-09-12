@@ -1,0 +1,74 @@
+{
+  "startedAt": "2026-09-12T15:18:20.051Z",
+  "mode": "dry-run",
+  "totalScanned": 9,
+  "migratedCount": 0,
+  "skippedCount": 0,
+  "failedCount": 0,
+  "items": [
+    {
+      "collection": "funflix_videos",
+      "docId": "HV5HQNjvXKKIO7m2OHnV",
+      "field": "videoUrl",
+      "source": "https://gateway.pinata.cloud/ipfs/bafybeif6dsxh53zzg2thjga34s2bs3yzryhhvo2otvyzhbus5d3uhnd6be",
+      "targetKey": "media/migrated/funflix_videos/HV5HQNjvXKKIO7m2OHnV/bafybeif6dsxh53zzg2thjga34s2bs3y",
+      "targetCdnUrl": "https://beastbuck-media.learningaurstudywala.workers.dev/media/migrated/funflix_videos/HV5HQNjvXKKIO7m2OHnV/bafybeif6dsxh53zzg2thjga34s2bs3y",
+      "status": "PENDING_MIGRATION"
+    },
+    {
+      "collection": "funflix_videos",
+      "docId": "HV5HQNjvXKKIO7m2OHnV",
+      "field": "thumbnail",
+      "source": "https://gateway.pinata.cloud/ipfs/bafybeihelnhqlxhrl4urm66jujdvi6uzy2wdauma3udnb5v6zeugncf4ha",
+      "targetKey": "media/migrated/funflix_videos/HV5HQNjvXKKIO7m2OHnV/bafybeihelnhqlxhrl4urm66jujdvi6u",
+      "targetCdnUrl": "https://beastbuck-media.learningaurstudywala.workers.dev/media/migrated/funflix_videos/HV5HQNjvXKKIO7m2OHnV/bafybeihelnhqlxhrl4urm66jujdvi6u",
+      "status": "PENDING_MIGRATION"
+    },
+    {
+      "collection": "users",
+      "docId": "AEAPCWdM4ogj5SAqkFuZ5xFyv9X2",
+      "field": "photoURL",
+      "source": "https://gateway.pinata.cloud/ipfs/bafybeibzts64yg2x3tku4vnghhmzrlhh3mtzblgh567odaotbedm2dusiu",
+      "targetKey": "media/migrated/users/AEAPCWdM4ogj5SAqkFuZ5xFyv9X2/bafybeibzts64yg2x3tku4vnghhmzrlh",
+      "targetCdnUrl": "https://beastbuck-media.learningaurstudywala.workers.dev/media/migrated/users/AEAPCWdM4ogj5SAqkFuZ5xFyv9X2/bafybeibzts64yg2x3tku4vnghhmzrlh",
+      "status": "PENDING_MIGRATION"
+    },
+    {
+      "collection": "users",
+      "docId": "EzNq6EumFecF7x5g31Vsul3M9gr2",
+      "field": "photoURL",
+      "source": "https://gateway.pinata.cloud/ipfs/bafybeieifgcidfoyzk7dnecuotmqkm4dc32kz2hkcdtxd2zcky673p4qoa",
+      "targetKey": "media/migrated/users/EzNq6EumFecF7x5g31Vsul3M9gr2/bafybeieifgcidfoyzk7dnecuotmqkm4",
+      "targetCdnUrl": "https://beastbuck-media.learningaurstudywala.workers.dev/media/migrated/users/EzNq6EumFecF7x5g31Vsul3M9gr2/bafybeieifgcidfoyzk7dnecuotmqkm4",
+      "status": "PENDING_MIGRATION"
+    },
+    {
+      "collection": "users",
+      "docId": "VQhdRey3skZetUPKbAEyCVRodKy2",
+      "field": "photoURL",
+      "source": "https://gateway.pinata.cloud/ipfs/bafkreicwwtebll6f62pkr3yr7zrrtfepxerqibys2gaw2agbz2oartxn7i",
+      "targetKey": "media/migrated/users/VQhdRey3skZetUPKbAEyCVRodKy2/bafkreicwwtebll6f62pkr3yr7zrrtfe",
+      "targetCdnUrl": "https://beastbuck-media.learningaurstudywala.workers.dev/media/migrated/users/VQhdRey3skZetUPKbAEyCVRodKy2/bafkreicwwtebll6f62pkr3yr7zrrtfe",
+      "status": "PENDING_MIGRATION"
+    },
+    {
+      "collection": "users",
+      "docId": "dvAfYLSl4QbKHYE4pH4E8DhxiCs2",
+      "field": "photoURL",
+      "source": "https://gateway.pinata.cloud/ipfs/bafybeietbgg6jxcyqrqaxrdzvd3m2okytvknvi65ii7q47xyktn62itsti",
+      "targetKey": "media/migrated/users/dvAfYLSl4QbKHYE4pH4E8DhxiCs2/bafybeietbgg6jxcyqrqaxrdzvd3m2ok",
+      "targetCdnUrl": "https://beastbuck-media.learningaurstudywala.workers.dev/media/migrated/users/dvAfYLSl4QbKHYE4pH4E8DhxiCs2/bafybeietbgg6jxcyqrqaxrdzvd3m2ok",
+      "status": "PENDING_MIGRATION"
+    },
+    {
+      "collection": "users",
+      "docId": "kxPmrtK8mATgQUJPF8Gdrptavt23",
+      "field": "photoURL",
+      "source": "https://gateway.pinata.cloud/ipfs/bafybeidhhn4secyrt5xfj5igx5qgdqzfmfvaf3olcgrfmzvuyjafxhjtva",
+      "targetKey": "media/migrated/users/kxPmrtK8mATgQUJPF8Gdrptavt23/bafybeidhhn4secyrt5xfj5igx5qgdqz",
+      "targetCdnUrl": "https://beastbuck-media.learningaurstudywala.workers.dev/media/migrated/users/kxPmrtK8mATgQUJPF8Gdrptavt23/bafybeidhhn4secyrt5xfj5igx5qgdqz",
+      "status": "PENDING_MIGRATION"
+    }
+  ],
+  "completedAt": "2026-09-12T15:18:22.093Z"
+}

@@ -132,12 +132,8 @@ const creativityStyles = `
   }
 `;
 
-const PUBLIC_GATEWAYS = [
-  'https://gateway.pinata.cloud/ipfs/',
-  'https://ipfs.io/ipfs/',
-  'https://dweb.link/ipfs/',
-  'https://cloudflare-ipfs.com/ipfs/',
-];
+// Media is now served exclusively via Backblaze B2 + Cloudflare CDN.
+// Legacy IPFS/Pinata gateways have been removed.
 
 function getLikeCount(work) {
   return Array.isArray(work?.likes) ? work.likes.length : Number(work?.likes || 0);
@@ -207,22 +203,14 @@ export function SafeImage({ src, alt, className }) {
   };
 
   const [currentSrc, setCurrentSrc] = useState(() => resolveSrc(src));
-  const [gatewayIndex, setGatewayIndex] = useState(0);
 
   useEffect(() => {
     setCurrentSrc(resolveSrc(src));
-    setGatewayIndex(0);
   }, [src]);
 
+  // On CDN error, hide the broken image silently
   const handleError = () => {
-    if (currentSrc && currentSrc.includes('/ipfs/')) {
-      const cid = currentSrc.split('/ipfs/').pop();
-      if (cid && gatewayIndex + 1 < PUBLIC_GATEWAYS.length) {
-        const nextIndex = gatewayIndex + 1;
-        setGatewayIndex(nextIndex);
-        setCurrentSrc(`${PUBLIC_GATEWAYS[nextIndex]}${cid}`);
-      }
-    }
+    setCurrentSrc('');
   };
 
   if (!currentSrc) return null;

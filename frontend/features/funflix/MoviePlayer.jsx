@@ -14,15 +14,6 @@ export default function MoviePlayer() {
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
   const [viewIncremented, setViewIncremented] = useState(false);
-  const [currentGatewayIndex, setCurrentGatewayIndex] = useState(0);
-
-  // IPFS gateways for fallback (ordered by speed - Pinata first since file is pinned there)
-  const IPFS_GATEWAYS = [
-    'https://gateway.pinata.cloud/ipfs/',  // Fastest - dedicated Pinata gateway
-    'https://ipfs.io/ipfs/',              // Reliable public gateway
-    'https://dweb.link/ipfs/',            // Fast public gateway
-    'https://gateway.ipfs.io/ipfs/',      // Official IPFS gateway
-  ];
 
   useEffect(() => {
     loadVideo();
@@ -79,42 +70,19 @@ export default function MoviePlayer() {
   };
 
   const handleVideoError = () => {
-    console.error('Video failed to load, trying next gateway');
-    
-    // Try next gateway if this is an IPFS URL
-    if (video?.videoUrl && currentGatewayIndex < IPFS_GATEWAYS.length - 1) {
-      const nextIndex = currentGatewayIndex + 1;
-      setCurrentGatewayIndex(nextIndex);
-    } else if (currentGatewayIndex >= IPFS_GATEWAYS.length - 1) {
-      toast.error('Failed to load video from all gateways');
-    }
+    console.error('Video failed to load from CDN.');
+    toast.error('Video could not be loaded. Please try again later.');
   };
 
+  /**
+   * Resolve video URL exclusively through the B2/Cloudflare CDN pipeline.
+   * normalizeMediaUrl() handles all legacy URL patterns:
+   *   - Old Pinata/IPFS URLs → normalizeMediaUrl returns them unchanged (DB has been migrated)
+   *   - B2 direct URLs → rewrites to CDN base
+   *   - Storage object keys (media/...) → prepends CDN base
+   */
   const getVideoUrl = () => {
     if (!video?.videoUrl) return null;
-    
-    // If it's already an absolute HTTP/HTTPS URL (CDN or gateway)
-    if (video.videoUrl.startsWith('http://') || video.videoUrl.startsWith('https://')) {
-      // If it's an old IPFS gateway URL, keep fallback support
-      const ipfsMatch = video.videoUrl.match(/\/ipfs\/([a-zA-Z0-9]+)/);
-      if (ipfsMatch) {
-        const cid = ipfsMatch[1];
-        return `${IPFS_GATEWAYS[currentGatewayIndex]}${cid}`;
-      }
-      return normalizeMediaUrl(video.videoUrl);
-    }
-
-    // If it's a storage object key (e.g. media/prod/...)
-    if (video.videoUrl.startsWith('media/')) {
-      const cdnBase = (import.meta.env.VITE_CDN_MEDIA_BASE_URL || 'https://s3.us-east-005.backblazeb2.com/beastbuck-media').replace(/\/+$/, '');
-      return `${cdnBase}/${video.videoUrl}`;
-    }
-    
-    // If it's a direct CID (legacy fallback)
-    if (video.videoUrl.match(/^[a-zA-Z0-9]+$/)) {
-      return `${IPFS_GATEWAYS[currentGatewayIndex]}${video.videoUrl}`;
-    }
-    
     return normalizeMediaUrl(video.videoUrl);
   };
 
