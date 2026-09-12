@@ -8,6 +8,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/media/**",
+        "function": "mediaApi"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

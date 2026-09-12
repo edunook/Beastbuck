@@ -202,3 +202,9 @@ exports.onMarketplaceItemWritten = onDocumentWritten('marketplaceItems/{itemId}'
   
   await regeneratePortfolioForUser(data.creatorId);
 });
+
+// Backblaze B2 Media Storage API & Scheduled Cleanup
+const mediaFunctions = require('./mediaApi');
+exports.mediaApi = mediaFunctions.mediaApi;
+exports.cleanupStaleUploads = mediaFunctions.cleanupStaleUploads;
+

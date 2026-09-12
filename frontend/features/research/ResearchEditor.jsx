@@ -5,8 +5,7 @@ import { Upload, Save, X, CheckCircle2, FileText } from 'lucide-react';
 import { AIResearchAssistant } from '@frontend/components/research/AIResearchAssistant';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
-import { Input } from '@frontend/components/ui/Input';
-import { uploadToPinata } from '@services/storage/pinata';
+import { uploadFile } from '@services/storage/storage';
 
 const RESEARCH_MILESTONES = [
   { id: 'title', label: 'Add a compelling title', completed: false },
@@ -81,7 +80,7 @@ export function ResearchEditor() {
 
     setUploading(true);
     try {
-      const attachmentData = await uploadToPinata(file);
+      const attachmentData = await uploadFile(file, { folder: 'research/attachments' });
       setAttachments(prev => [...prev, attachmentData]);
     } catch (error) {
       console.error('Upload failed:', error);

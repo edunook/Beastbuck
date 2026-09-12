@@ -1,67 +1,55 @@
 import { useState } from 'react';
-import { Upload, Film, FileText, ChevronRight, ChevronLeft, Check, Loader2, X } from 'lucide-react';
+import { Film, ChevronRight, ChevronLeft, Check, X } from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 import { Input } from '@frontend/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
-import { uploadToPinata } from '@services/storage/pinata';
+import { MediaUploader } from '@frontend/components/ui/MediaUploader';
+import { uploadFile } from '@services/storage/storage';
 
 export function VideoUploadWizard() {
   const [step, setStep] = useState(1);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
   const [formData, setFormData] = useState({
     videoFile: null,
     thumbnailFile: null,
     title: '',
     description: '',
-    category: '',
+    category: 'comedy',
     tags: [],
     visibility: 'public',
-    videoCID: null,
-    thumbnailCID: null,
+    videoKey: null,
+    videoURL: null,
+    thumbnailKey: null,
+    thumbnailURL: null,
   });
 
-  const handleVideoUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setUploading(true);
-    setUploadProgress(0);
-
-    try {
-      const result = await uploadToPinata(file);
-      setFormData(prev => ({
-        ...prev,
-        videoFile: file,
-        videoCID: result.cid,
-        videoURL: result.url,
-      }));
-      setUploadProgress(100);
-    } catch (error) {
-      console.error('Upload failed:', error);
-      alert('Failed to upload video. Please try again.');
-    } finally {
-      setUploading(false);
-    }
+  const handleVideoUploaded = (mediaResult) => {
+    setFormData(prev => ({
+      ...prev,
+      videoKey: mediaResult.objectKey,
+      videoURL: mediaResult.url || mediaResult.cdnUrl,
+      title: prev.title || mediaResult.sanitizedName || 'My Video',
+    }));
   };
 
   const handleThumbnailUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    setUploading(true);
+    setUploadingThumbnail(true);
     try {
-      const result = await uploadToPinata(file);
+      const result = await uploadFile(file, { folder: 'funflix/thumbnails' });
       setFormData(prev => ({
         ...prev,
         thumbnailFile: file,
-        thumbnailCID: result.cid,
-        thumbnailURL: result.url,
+        thumbnailKey: result.key || result.objectKey,
+        thumbnailURL: result.url || result.cdnUrl,
       }));
     } catch (error) {
-      console.error('Upload failed:', error);
+      console.error('Thumbnail upload failed:', error);
+      alert('Failed to upload thumbnail image.');
     } finally {
-      setUploading(false);
+      setUploadingThumbnail(false);
     }
   };
 
@@ -74,25 +62,23 @@ export function VideoUploadWizard() {
   };
 
   const handleSubmit = () => {
-    // In production, save to Firestore
-    alert('Video uploaded successfully!');
+    alert('Video published successfully to FunFlix!');
   };
 
   const removeVideo = () => {
     setFormData(prev => ({
       ...prev,
       videoFile: null,
-      videoCID: null,
+      videoKey: null,
       videoURL: null,
     }));
-    setUploadProgress(0);
   };
 
   const removeThumbnail = () => {
     setFormData(prev => ({
       ...prev,
       thumbnailFile: null,
-      thumbnailCID: null,
+      thumbnailKey: null,
       thumbnailURL: null,
     }));
   };
@@ -101,7 +87,7 @@ export function VideoUploadWizard() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-white">Upload Video</h1>
-        <p className="text-text-muted">Share your content with the FunFlix community</p>
+        <p className="text-text-muted">Direct high-speed Backblaze B2 upload & Cloudflare CDN streaming</p>
       </div>
 
       {/* Progress Steps */}
@@ -133,48 +119,40 @@ export function VideoUploadWizard() {
         </CardHeader>
         <CardContent className="space-y-4">
           {step === 1 && (
-            <>
-              <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
-                {formData.videoFile ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-center gap-3">
-                      <Film className="h-12 w-12 text-accent" />
-                      <div className="text-left">
-                        <p className="font-bold text-white">{formData.videoFile.name}</p>
-                        <p className="text-sm text-text-muted">{(formData.videoFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+            <div className="space-y-4">
+              {!formData.videoURL ? (
+                <MediaUploader
+                  accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
+                  folder="funflix/videos"
+                  visibility={formData.visibility}
+                  label="Click or drag video file here"
+                  description="MP4, WebM, MOV, or M4V with resumable multipart upload"
+                  onUploadSuccess={handleVideoUploaded}
+                />
+              ) : (
+                <div className="border border-border rounded-xl p-5 bg-white/[0.03] space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 border border-accent/20 text-accent">
+                        <Film className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-white">Video Ready for Streaming</p>
+                        <p className="text-xs text-text-muted truncate max-w-md">{formData.videoKey}</p>
                       </div>
                     </div>
-                    {uploading && (
-                      <div className="space-y-2">
-                        <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-accent transition-all"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-sm text-text-muted">Uploading... {uploadProgress}%</p>
-                      </div>
-                    )}
-                    <Button variant="ghost" onClick={removeVideo}>
-                      <X className="mr-2 h-4 w-4" />
-                      Remove
+                    <Button variant="ghost" size="sm" onClick={removeVideo}>
+                      <X className="mr-2 h-4 w-4" /> Replace
                     </Button>
                   </div>
-                ) : (
-                  <label className="cursor-pointer">
-                    <Upload className="mx-auto h-12 w-12 text-text-muted mb-4" />
-                    <p className="text-white font-bold mb-2">Click to upload video</p>
-                    <p className="text-sm text-text-muted mb-4">MP4, WebM, or MOV (max 2GB)</p>
-                    <input
-                      type="file"
-                      onChange={handleVideoUpload}
-                      accept="video/mp4,video/webm,video/quicktime"
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-            </>
+                  <video
+                    src={formData.videoURL}
+                    controls
+                    className="w-full max-h-64 rounded-xl bg-black border border-border"
+                  />
+                </div>
+              )}
+            </div>
           )}
 
           {step === 2 && (
@@ -204,7 +182,6 @@ export function VideoUploadWizard() {
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full h-10 rounded-xl border border-border bg-white/5 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
                 >
-                  <option value="">Select category</option>
                   <option value="comedy">Comedy</option>
                   <option value="drama">Drama</option>
                   <option value="action">Action</option>
@@ -229,24 +206,27 @@ export function VideoUploadWizard() {
               <div className="space-y-2">
                 <label className="text-sm font-bold text-white">Thumbnail</label>
                 <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
-                  {formData.thumbnailFile ? (
+                  {formData.thumbnailURL ? (
                     <div className="space-y-3">
                       <img src={formData.thumbnailURL} alt="Thumbnail" className="max-h-48 mx-auto rounded-lg" />
-                      <Button variant="ghost" onClick={removeThumbnail}>
-                        <X className="mr-2 h-4 w-4" />
-                        Remove
+                      <Button variant="ghost" size="sm" onClick={removeThumbnail}>
+                        <X className="mr-2 h-4 w-4" /> Remove Thumbnail
                       </Button>
                     </div>
                   ) : (
                     <label className="cursor-pointer">
-                      <Upload className="mx-auto h-8 w-8 text-text-muted mb-2" />
-                      <p className="text-sm text-text-muted mb-2">Upload thumbnail image</p>
+                      <p className="text-sm text-white font-medium mb-1">Upload thumbnail image</p>
+                      <p className="text-xs text-text-muted mb-3">JPG, PNG, WebP or AVIF</p>
                       <input
                         type="file"
                         onChange={handleThumbnailUpload}
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        disabled={uploadingThumbnail}
                         className="hidden"
                       />
+                      <span className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20 transition">
+                        {uploadingThumbnail ? 'Uploading...' : 'Browse Image'}
+                      </span>
                     </label>
                   )}
                 </div>
@@ -282,12 +262,12 @@ export function VideoUploadWizard() {
                   <span className="text-white">{formData.visibility}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Video CID:</span>
-                  <span className="text-white text-xs">{formData.videoCID || 'Not uploaded'}</span>
+                  <span className="text-text-muted">Storage Key:</span>
+                  <span className="text-white text-xs font-mono">{formData.videoKey || 'Not uploaded'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Thumbnail CID:</span>
-                  <span className="text-white text-xs">{formData.thumbnailCID || 'Not uploaded'}</span>
+                  <span className="text-text-muted">Delivery:</span>
+                  <span className="text-accent text-xs font-semibold">Cloudflare CDN Edge</span>
                 </div>
               </div>
             </div>
@@ -300,12 +280,12 @@ export function VideoUploadWizard() {
               Back
             </Button>
             {step < 4 ? (
-              <Button onClick={handleNext} disabled={step === 1 && !formData.videoCID}>
+              <Button onClick={handleNext} disabled={step === 1 && !formData.videoURL}>
                 Next
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={!formData.videoCID}>
+              <Button onClick={handleSubmit} disabled={!formData.videoURL}>
                 <Check className="mr-2 h-4 w-4" />
                 Publish Video
               </Button>

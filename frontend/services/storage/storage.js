@@ -1,10 +1,11 @@
 /**
- * Storage service — delegates 100% to IPFS/Pinata (free, no credit card).
- * Firebase Storage is NOT used (it's a paid service).
- *
- * All upload functions return: { type, name, url, cid, path, size, uploadedAt, provider, backupUrls }
- * The `url` field is the primary Pinata gateway URL ready for direct use in <img src="..." />.
+ * BeastBuck Unified Storage Service
+ * Powered by Backblaze B2 Object Storage + Cloudflare CDN Edge Delivery.
+ * 
+ * Replaces legacy Pinata/IPFS with direct browser-to-B2 presigned uploads,
+ * parallel multipart chunks, retry resiliency, and IndexedDB session recovery.
  */
+
 export {
   uploadFile,
   uploadExperimentMedia,
@@ -13,9 +14,15 @@ export {
   uploadCreativeMedia,
   uploadFunFlixMedia,
   uploadProofFile,
+  uploadProfilePhoto,
   deleteFile,
+  getMediaUrl,
   getGatewayUrl,
   getBackupGatewayUrls,
-  isIPFSConfigured as isStorageConfigured,
-  isIPFSConfigured as isFirebaseStorageConfigured,
-} from './ipfs';
+  isStorageConfigured,
+  isStorageConfigured as isIPFSConfigured,
+  isStorageConfigured as isFirebaseStorageConfigured,
+  isStorageConfigured as isCloudinaryConfigured,
+} from './b2Client';
+
+export { B2Uploader } from './b2Uploader';

@@ -3,7 +3,7 @@ import { Bot, Sparkles, Settings, Upload, ChevronRight, ChevronLeft, Check } fro
 import Button from '@frontend/components/ui/Button';
 import { Input } from '@frontend/components/ui/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
-import { uploadToPinata } from '@services/storage/pinata';
+import { uploadFile } from '@services/storage/storage';
 
 const MODELS = [
   { id: 'gpt-4', name: 'GPT-4', description: 'Most capable model for complex tasks' },
@@ -47,7 +47,7 @@ export function AIBuilderWizard() {
 
     setUploading(true);
     try {
-      const uploadPromises = files.map(file => uploadToPinata(file));
+      const uploadPromises = files.map(file => uploadFile(file, { folder: 'ai-studio/knowledge' }));
       const results = await Promise.all(uploadPromises);
       setFormData(prev => ({
         ...prev,

@@ -1,13 +1,20 @@
-// Re-export from IPFS storage for backward compatibility
+/**
+ * Cloudinary Storage Facade (Deprecated -> Migrated to Backblaze B2 & Cloudflare CDN)
+ * Re-exports from unified storage for backward compatibility.
+ */
+
 export {
-  uploadProofFile,
+  uploadFile,
   uploadExperimentMedia,
   uploadChallengeMedia,
   uploadProductMedia,
   uploadCreativeMedia,
   uploadFunFlixMedia,
-  isIPFSConfigured as isCloudinaryConfigured,
+  uploadProofFile,
+  uploadProfilePhoto,
   deleteFile,
+  getMediaUrl,
   getGatewayUrl,
   getBackupGatewayUrls,
-} from './ipfs';
+  isStorageConfigured as isCloudinaryConfigured,
+} from './b2Client';

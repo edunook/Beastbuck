@@ -5,8 +5,7 @@ import { UploadCloud, X, Loader2, ImagePlus, CheckCircle2, Film } from 'lucide-r
 import { Link, useNavigate } from 'react-router-dom';
 import { cn } from '@shared/lib/utils';
 import { useAuth } from '../auth/AuthContext';
-import { uploadFunFlixMedia, isCloudinaryConfigured } from '@services/storage/cloudinary';
-import { uploadFile } from '@services/storage/ipfs';
+import { uploadFunFlixMedia, uploadFile, isStorageConfigured } from '@services/storage/storage';
 import { FunFlixService } from '@services/firestore/funflix';
 
 export default function MovieUploadWizard() {
@@ -100,7 +99,7 @@ export default function MovieUploadWizard() {
   const handleSubmit = async () => {
     if (!videoFile) { setUploadError('Please select a video file'); return; }
     if (!title.trim()) { setUploadError('Please enter a title'); return; }
-    if (!isCloudinaryConfigured) {
+    if (!isStorageConfigured) {
       setUploadError('Storage is not configured. Please check environment variables.');
       return;
     }

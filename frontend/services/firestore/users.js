@@ -17,6 +17,16 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { SPECIALIZATIONS } from '@shared/constants/specializations';
+import { normalizeMediaUrl } from '@services/storage/b2Client';
+
+function normalizeUserProfile(profile) {
+  if (!profile) return profile;
+  return {
+    ...profile,
+    photoURL: normalizeMediaUrl(profile.photoURL),
+    avatar: normalizeMediaUrl(profile.avatar),
+  };
+}
 
 export const UsersService = {
   /**
@@ -25,7 +35,7 @@ export const UsersService = {
   async getUserProfile(uid) {
     const docRef = doc(db, 'users', uid);
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+    return docSnap.exists() ? normalizeUserProfile({ id: docSnap.id, ...docSnap.data() }) : null;
   },
 
   async getUidForUsername(username) {
@@ -40,7 +50,7 @@ export const UsersService = {
     return onSnapshot(
       docRef,
       (snap) => {
-        onProfile(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+        onProfile(snap.exists() ? normalizeUserProfile({ id: snap.id, ...snap.data() }) : null);
       },
       (error) => {
         onError?.(error);
@@ -138,14 +148,36 @@ export const UsersService = {
 
   async getUserActivity(uid, maxCount = 8) {
     const logsRef = collection(db, 'activityLogs');
-    const q = query(
-      logsRef,
-      where('userId', '==', uid),
-      orderBy('timestamp', 'desc'),
-      limit(maxCount),
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    try {
+      const q = query(
+        logsRef,
+        where('userId', '==', uid),
+        orderBy('timestamp', 'desc'),
+        limit(maxCount),
+      );
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (err) {
+      console.warn('getUserActivity indexed query failed, falling back to unindexed query:', err.message);
+      try {
+        const fallbackQuery = query(
+          logsRef,
+          where('userId', '==', uid),
+          limit(maxCount * 3),
+        );
+        const querySnapshot = await getDocs(fallbackQuery);
+        const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        items.sort((a, b) => {
+          const tA = a.timestamp?.seconds || (a.timestamp ? new Date(a.timestamp).getTime() / 1000 : 0);
+          const tB = b.timestamp?.seconds || (b.timestamp ? new Date(b.timestamp).getTime() / 1000 : 0);
+          return tB - tA;
+        });
+        return items.slice(0, maxCount);
+      } catch (fallbackErr) {
+        console.error('getUserActivity fallback failed:', fallbackErr);
+        return [];
+      }
+    }
   },
 
   /**

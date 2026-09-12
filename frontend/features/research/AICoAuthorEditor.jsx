@@ -5,7 +5,7 @@ import { Save, Upload, X } from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@frontend/components/ui/Card';
 import { AIResearchAssistant } from '@frontend/components/research/AIResearchAssistant';
-import { uploadToPinata } from '@services/storage/pinata';
+import { uploadFile } from '@services/storage/storage';
 
 export function AICoAuthorEditor() {
   const [title, setTitle] = useState('');
@@ -35,7 +35,7 @@ export function AICoAuthorEditor() {
 
     setUploading(true);
     try {
-      const uploadPromises = files.map(file => uploadToPinata(file));
+      const uploadPromises = files.map(file => uploadFile(file, { folder: 'research/co-author' }));
       const results = await Promise.all(uploadPromises);
       setAttachments(prev => [...prev, ...results]);
     } catch (error) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { UsersService } from '@services/firestore/users';
 import { PortfolioService } from '@services/firestore/portfolio';
+import { normalizeMediaUrl } from '@services/storage/b2Client';
 import { LoadingState } from '@frontend/components/ui/UIElements';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import { 
@@ -951,7 +952,22 @@ export default function PortfolioPage() {
                 }}
               >
                 {profile.photoURL || profile.avatar ? (
-                  <img src={profile.photoURL || profile.avatar} alt={profile.displayName} className="h-full w-full object-cover" />
+                  <>
+                    <img 
+                      src={normalizeMediaUrl(profile.photoURL || profile.avatar)} 
+                      alt={profile.displayName} 
+                      className="h-full w-full object-cover" 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        if (e.currentTarget.nextElementSibling) {
+                          e.currentTarget.nextElementSibling.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    <div className="hidden h-full w-full items-center justify-center text-4xl font-black" style={{ color: theme.accentColor }}>
+                      {profile.displayName?.[0] || 'M'}
+                    </div>
+                  </>
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-4xl font-black" style={{ color: theme.accentColor }}>
                     {profile.displayName?.[0] || 'M'}
@@ -1423,17 +1439,20 @@ function PortfolioSection({ title, icon: Icon, items, theme }) {
                 <div className="mb-3 rounded-lg overflow-hidden">
                   {item.media[0].type === 'video' ? (
                     <video 
-                      src={item.media[0].url} 
+                      src={normalizeMediaUrl(item.media[0].url)} 
                       controls
                       className="w-full h-auto object-cover"
                       style={{ maxHeight: '200px' }}
                     />
                   ) : (
                     <img 
-                      src={item.media[0].url} 
+                      src={normalizeMediaUrl(item.media[0].url)} 
                       alt={item.title}
                       className="w-full h-auto object-cover"
                       style={{ maxHeight: '200px' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   )}
                 </div>

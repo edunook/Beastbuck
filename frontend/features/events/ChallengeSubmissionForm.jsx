@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Upload, X, Loader2, Link as LinkIcon, CheckCircle2 } from 'lucide-react';
-import { isCloudinaryConfigured, uploadChallengeMedia } from '@services/storage/cloudinary';
+import { isStorageConfigured, uploadChallengeMedia } from '@services/storage/storage';
 
 export default function ChallengeSubmissionForm({ onSubmit, isSubmitting }) {
   const [content, setContent] = useState('');
@@ -29,7 +29,7 @@ export default function ChallengeSubmissionForm({ onSubmit, isSubmitting }) {
 
   const handleFileSelect = async (e) => {
     const selected = Array.from(e.target.files);
-    if (!selected.length || !isCloudinaryConfigured) return;
+    if (!selected.length || !isStorageConfigured) return;
 
     setUploading(true);
     setError(null);
@@ -39,7 +39,7 @@ export default function ChallengeSubmissionForm({ onSubmit, isSubmitting }) {
       setFiles(prev => [...prev, ...results]);
     } catch (err) {
       console.error('Upload failed:', err);
-      setError('Media upload failed. Try a smaller file or check Cloudinary settings.');
+      setError('Media upload failed. Please try again.');
     } finally {
       setUploading(false);
     }

@@ -3,7 +3,7 @@ import { X, Upload, Trash2, FileText, Link, Zap } from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 import { TasksService } from '@services/firestore/tasks';
 import { useAuth } from '../../auth/AuthContext';
-import { isCloudinaryConfigured, uploadProofFile } from '@services/storage/cloudinary';
+import { isStorageConfigured, uploadProofFile } from '@services/storage/storage';
 
 export function TaskSubmissionForm({ task, onClose, onSuccess }) {
   const { user } = useAuth();
@@ -164,12 +164,12 @@ export function TaskSubmissionForm({ task, onClose, onSuccess }) {
                   <div>
                     <div className="text-xs font-bold text-white">Upload proof file</div>
                     <p className="mt-0.5 text-[10px] text-text-muted">
-                      Images, videos, and documents upload to Cloudinary.
+                      Images, videos, and documents upload securely.
                     </p>
                   </div>
                   <label
                     className={`inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border/50 px-3 py-2 text-xs font-bold text-white transition-all ${
-                      isCloudinaryConfigured && !uploadingFile
+                      isStorageConfigured && !uploadingFile
                         ? 'bg-white/10 hover:bg-white/20'
                         : 'bg-white/5 opacity-50'
                     }`}
@@ -180,15 +180,10 @@ export function TaskSubmissionForm({ task, onClose, onSuccess }) {
                       type="file"
                       className="sr-only"
                       onChange={handleFileUpload}
-                      disabled={!isCloudinaryConfigured || uploadingFile}
+                      disabled={!isStorageConfigured || uploadingFile}
                     />
                   </label>
                 </div>
-                {!isCloudinaryConfigured && (
-                  <p className="mt-2 text-[10px] text-status-warning">
-                    Add VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET to enable uploads.
-                  </p>
-                )}
               </div>
 
               <select

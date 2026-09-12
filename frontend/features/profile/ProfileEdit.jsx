@@ -5,6 +5,7 @@ import { useAuth } from '@frontend/features/auth/AuthContext';
 import { UsersService } from '@services/firestore/users';
 import { ThemesService } from '@services/firestore/themes';
 import { uploadProfilePhoto, isIPFSConfigured } from '@services/storage/ipfs';
+import { normalizeMediaUrl } from '@services/storage/b2Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import { LoadingState } from '@frontend/components/ui/UIElements';
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -720,7 +721,7 @@ export default function ProfileEdit() {
           customSections: nextProfile?.customSections || []
         });
         setSelectedTheme(nextProfile?.theme || 'default');
-        setProfilePhotoPreview(nextProfile?.photoURL || null);
+        setProfilePhotoPreview(normalizeMediaUrl(nextProfile?.photoURL) || null);
         setLoading(false);
       },
       onError: (err) => {
@@ -967,11 +968,11 @@ export default function ProfileEdit() {
         theme: selectedTheme
       };
 
-      // If there's a new profile photo, upload it first using IPFS
+      // If there's a new profile photo, upload it first using B2 storage
       if (profilePhoto) {
         const photoResult = await uploadProfilePhoto(profilePhoto);
-        updateData.photoURL = photoResult.url;
-        updateData.photoCID = photoResult.cid;
+        updateData.photoURL = normalizeMediaUrl(photoResult.url);
+        updateData.photoCID = photoResult.cid || null;
       }
 
       await UsersService.updateUserProfile(profileUid, updateData);
@@ -1038,9 +1039,12 @@ export default function ProfileEdit() {
                   <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border-2 border-border bg-surface">
                     {profilePhotoPreview ? (
                       <img
-                        src={profilePhotoPreview}
+                        src={normalizeMediaUrl(profilePhotoPreview)}
                         alt="Profile preview"
                         className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-text-muted">

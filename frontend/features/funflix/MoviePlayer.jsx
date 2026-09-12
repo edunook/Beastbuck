@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { FunFlixService } from '@services/firestore/funflix';
 import { useAuth } from '../auth/AuthContext';
 import { toast } from 'react-hot-toast';
+import { normalizeMediaUrl } from '@services/storage/b2Client';
 
 export default function MoviePlayer() {
   const { movieId } = useParams();
@@ -92,20 +93,29 @@ export default function MoviePlayer() {
   const getVideoUrl = () => {
     if (!video?.videoUrl) return null;
     
-    // If it's already an IPFS gateway URL, try to extract CID and use current gateway
-    const ipfsMatch = video.videoUrl.match(/\/ipfs\/([a-zA-Z0-9]+)/);
-    if (ipfsMatch) {
-      const cid = ipfsMatch[1];
-      return `${IPFS_GATEWAYS[currentGatewayIndex]}${cid}`;
+    // If it's already an absolute HTTP/HTTPS URL (CDN or gateway)
+    if (video.videoUrl.startsWith('http://') || video.videoUrl.startsWith('https://')) {
+      // If it's an old IPFS gateway URL, keep fallback support
+      const ipfsMatch = video.videoUrl.match(/\/ipfs\/([a-zA-Z0-9]+)/);
+      if (ipfsMatch) {
+        const cid = ipfsMatch[1];
+        return `${IPFS_GATEWAYS[currentGatewayIndex]}${cid}`;
+      }
+      return normalizeMediaUrl(video.videoUrl);
+    }
+
+    // If it's a storage object key (e.g. media/prod/...)
+    if (video.videoUrl.startsWith('media/')) {
+      const cdnBase = (import.meta.env.VITE_CDN_MEDIA_BASE_URL || 'https://s3.us-east-005.backblazeb2.com/beastbuck-media').replace(/\/+$/, '');
+      return `${cdnBase}/${video.videoUrl}`;
     }
     
-    // If it's a direct CID (no gateway), use current gateway
+    // If it's a direct CID (legacy fallback)
     if (video.videoUrl.match(/^[a-zA-Z0-9]+$/)) {
       return `${IPFS_GATEWAYS[currentGatewayIndex]}${video.videoUrl}`;
     }
     
-    // Otherwise return as-is (non-IPFS URL)
-    return video.videoUrl;
+    return normalizeMediaUrl(video.videoUrl);
   };
 
   if (loading) {

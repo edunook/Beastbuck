@@ -1,83 +1,27 @@
-import { errorHandler } from '@shared/utils/errorHandler';
+/**
+ * Pinata Storage Facade (Deprecated -> Migrated to Backblaze B2 & Cloudflare CDN)
+ * Re-exports from unified storage for backward compatibility.
+ */
 
-const PINATA_API_KEY = 'b08efa6f2e9836bc4404';
-const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs';
+import { uploadFile } from './b2Client';
 
 export async function uploadToPinata(file) {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const metadata = JSON.stringify({
-    name: file.name,
-    keyvalues: {
-      uploadedAt: new Date().toISOString(),
-    },
-  });
-  formData.append('pinataMetadata', metadata);
-  
-  const options = JSON.stringify({
-    cidVersion: 0,
-  });
-  formData.append('pinataOptions', options);
-
-  try {
-    const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PINATA_API_KEY}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const error = new Error('Failed to upload to Pinata');
-      errorHandler.error(error, 'Pinata Upload', { fileName: file.name, fileSize: file.size }, true);
-      throw error;
-    }
-
-    const data = await response.json();
-    return {
-      cid: data.IpfsHash,
-      url: `${PINATA_GATEWAY}/${data.IpfsHash}`,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    };
-  } catch (error) {
-    errorHandler.error(error, 'Pinata Upload', { fileName: file.name }, true);
-    throw error;
-  }
+  const result = await uploadFile(file);
+  return {
+    cid: result.key,
+    url: result.url || result.cdnUrl,
+    name: result.name,
+    size: result.size,
+    type: result.mimeType,
+  };
 }
 
 export async function uploadJSONToPinata(jsonData, name) {
-  try {
-    const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${PINATA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        pinataContent: jsonData,
-        pinataMetadata: {
-          name: name || 'uploaded-data',
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const error = new Error('Failed to upload JSON to Pinata');
-      errorHandler.error(error, 'Pinata JSON Upload', { name }, true);
-      throw error;
-    }
-
-    const data = await response.json();
-    return {
-      cid: data.IpfsHash,
-      url: `${PINATA_GATEWAY}/${data.IpfsHash}`,
-    };
-  } catch (error) {
-    errorHandler.error(error, 'Pinata JSON Upload', { name }, true);
-    throw error;
-  }
+  const jsonBlob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+  const jsonFile = new File([jsonBlob], `${name || 'uploaded-data'}.json`, { type: 'application/json' });
+  const result = await uploadFile(jsonFile);
+  return {
+    cid: result.key,
+    url: result.url || result.cdnUrl,
+  };
 }

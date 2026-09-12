@@ -4,6 +4,8 @@ import { compile } from 'tailwindcss'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
+import { beastbuckMediaDevPlugin } from './backend/middleware/viteDevMediaPlugin.js'
+
 
 const tailwindInput = String.raw`
 @import "tailwindcss";
@@ -248,7 +250,7 @@ function beastbuckTailwind() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [beastbuckTailwind(), react()],
+  plugins: [beastbuckTailwind(), react(), beastbuckMediaDevPlugin()],
   server: {
     host: true,
     strictPort: false,

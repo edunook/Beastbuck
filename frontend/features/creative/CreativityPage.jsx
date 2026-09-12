@@ -22,6 +22,7 @@ import { useAuth } from '../auth/AuthContext';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import Button from '@frontend/components/ui/Button';
 import { uploadCreativeMedia, isIPFSConfigured as isStorageConfigured } from '@services/storage/ipfs';
+import { normalizeMediaUrl } from '@services/storage/b2Client';
 import { CREATIVE_CATEGORIES, CreativeService } from '@services/firestore/creative';
 import { MembershipService } from '@services/firestore/membership';
 import { cn } from '@shared/lib/utils';
@@ -195,11 +196,21 @@ export function getCreativeMediaList(work) {
 }
 
 export function SafeImage({ src, alt, className }) {
-  const [currentSrc, setCurrentSrc] = useState(src);
+  const resolveSrc = (raw) => {
+    if (!raw) return '';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return normalizeMediaUrl(raw);
+    if (raw.startsWith('media/')) {
+      const cdnBase = (import.meta.env.VITE_CDN_MEDIA_BASE_URL || 'https://s3.us-east-005.backblazeb2.com/beastbuck-media').replace(/\/+$/, '');
+      return `${cdnBase}/${raw}`;
+    }
+    return normalizeMediaUrl(raw);
+  };
+
+  const [currentSrc, setCurrentSrc] = useState(() => resolveSrc(src));
   const [gatewayIndex, setGatewayIndex] = useState(0);
 
   useEffect(() => {
-    setCurrentSrc(src);
+    setCurrentSrc(resolveSrc(src));
     setGatewayIndex(0);
   }, [src]);
 

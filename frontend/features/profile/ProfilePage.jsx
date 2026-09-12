@@ -37,6 +37,7 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { UsersService } from '@services/firestore/users';
 import { PortfolioService } from '@services/firestore/portfolio';
+import { normalizeMediaUrl } from '@services/storage/b2Client';
 import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import { getLevelProgress } from '@services/firestore/gamification';
 import { OrganizationService } from '@services/firestore/organization';
@@ -1046,7 +1047,22 @@ function ProfileHero({ profile, status, isOwnProfile }) {
         <div className="flex flex-col gap-5 sm:gap-6 sm:flex-row sm:items-center md:flex-row md:items-center w-full">
           <div className="relative h-28 w-28 sm:h-36 sm:w-36 md:h-44 md:w-44 shrink-0 overflow-hidden rounded-2xl sm:rounded-3xl border-4 shadow-2xl transition-all duration-300 hover:scale-105" style={{ borderColor: theme.accentColor }}>
             {profile.photoURL || profile.avatar ? (
-              <img src={profile.photoURL || profile.avatar} alt={`Avatar of ${profile.displayName || profile.username}`} className="h-full w-full object-cover" />
+              <>
+                <img 
+                  src={normalizeMediaUrl(profile.photoURL || profile.avatar)} 
+                  alt={`Avatar of ${profile.displayName || profile.username}`} 
+                  className="h-full w-full object-cover" 
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    if (e.currentTarget.nextElementSibling) {
+                      e.currentTarget.nextElementSibling.style.display = 'flex';
+                    }
+                  }}
+                />
+                <div className="hidden h-full w-full items-center justify-center text-4xl sm:text-5xl md:text-6xl font-black" style={{ color: theme.accentColor }}>
+                  {getInitials(profile)}
+                </div>
+              </>
             ) : (
               <div className="flex h-full w-full items-center justify-center text-4xl sm:text-5xl md:text-6xl font-black" style={{ color: theme.accentColor }}>
                 {getInitials(profile)}
@@ -1759,7 +1775,22 @@ export default function ProfilePage() {
                 }}
               >
                 {profile.photoURL || profile.avatar ? (
-                  <img src={profile.photoURL || profile.avatar} alt={profile.displayName} className="h-full w-full object-cover" />
+                  <>
+                    <img 
+                      src={normalizeMediaUrl(profile.photoURL || profile.avatar)} 
+                      alt={profile.displayName} 
+                      className="h-full w-full object-cover" 
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        if (e.currentTarget.nextElementSibling) {
+                          e.currentTarget.nextElementSibling.style.display = 'flex';
+                        }
+                      }}
+                    />
+                    <div className="hidden h-full w-full items-center justify-center text-4xl font-black" style={{ color: profileTheme.accentColor }}>
+                      {profile.displayName?.[0] || 'M'}
+                    </div>
+                  </>
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-4xl font-black" style={{ color: profileTheme.accentColor }}>
                     {profile.displayName?.[0] || 'M'}
