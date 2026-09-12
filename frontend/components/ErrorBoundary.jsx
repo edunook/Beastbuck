@@ -12,11 +12,29 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+
+    // Check if error is due to a stale deployment / chunk hash mismatch
+    const errorMessage = error?.message || '';
+    const isDynamicImportError =
+      errorMessage.includes('Failed to fetch dynamically imported module') ||
+      errorMessage.includes('Expected a JavaScript-or-Wasm module script') ||
+      errorMessage.includes('error loading dynamically imported module');
+
+    if (isDynamicImportError) {
+      const hasReloaded = sessionStorage.getItem('chunk_reload_attempted');
+      if (!hasReloaded) {
+        sessionStorage.setItem('chunk_reload_attempted', 'true');
+        window.location.reload();
+        return;
+      }
+    }
+
     this.setState({ error, errorInfo });
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    sessionStorage.removeItem('chunk_reload_attempted');
+    window.location.reload();
   };
 
   render() {
