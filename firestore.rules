@@ -163,25 +163,18 @@ service cloud.firestore {
       // Scalable User Subcollections
       match /notifications/{notificationId} {
         allow read: if isAuthenticated() && request.auth.uid == userId;
-        allow create: if canManageMembers(); // System/CEOs send notifications
-        allow create: if isAuthenticated()
-                      && request.resource.data.actorId == request.auth.uid
-                      && request.resource.data.keys().hasOnly([
-                        'type',
-                        'title',
-                        'message',
-                        'link',
-                        'read',
-                        'createdAt',
-                        'actorId'
-                      ])
-                      && request.resource.data.type in ['MENTION', 'ANNOUNCEMENT', 'ACHIEVEMENT']
-                      && request.resource.data.read == false
-                      && request.resource.data.link is string
-                      && request.resource.data.title is string
-                      && request.resource.data.message is string;
+        allow create: if isAuthenticated();
         allow update, delete: if isAuthenticated() && request.auth.uid == userId;
       }
+
+    // ----------------------------------------
+    // SYSTEM NOTIFICATIONS & PUBLIC EVENTS
+    // ----------------------------------------
+    match /system_notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
 
       match /aiHistory/{historyId} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
@@ -2472,7 +2465,44 @@ service cloud.firestore {
                     && request.resource.data.phoneNumber is string
                     && request.resource.data.newPassword is string
                     && request.resource.data.newPassword.size() >= 6;
-      allow read, update, delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
+    // MEMOBOOK SYSTEM
+    // ----------------------------------------
+    match /memobooks/{memobookId} {
+      // Read: owner always; others only if visibility == 'public'
+      allow read: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        resource.data.visibility == 'public'
+      );
+
+      // Create: only for yourself
+      allow create: if isAuthenticated()
+                    && request.resource.data.createdBy == request.auth.uid;
+
+      // Update:
+      //  - Owner can update anything
+      //  - Collab editors can update content/colors only (public + allowCollabEdit)
+      //  - Admins can update anything
+      allow update: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        canManageMembers() ||
+        (
+          resource.data.visibility == 'public' &&
+          resource.data.allowCollabEdit == true &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'content', 'bgColor', 'textColor', 'updatedAt'
+          ])
+        )
+      );
+
+      // Delete: owner or admin only
+      allow delete: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid ||
+        canManageMembers()
+      );
     }
   }
 }
+

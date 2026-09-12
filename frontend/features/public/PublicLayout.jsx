@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { PublicFooter } from './PublicPages';
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { NotificationBell } from '@frontend/components/layout/NotificationBell';
+import { usePagePresenceTracker } from '@frontend/hooks/usePagePresenceTracker';
 
 const navItems = [
   ['About', '/about'],
@@ -12,6 +13,7 @@ const navItems = [
 ];
 
 export default function PublicLayout() {
+  usePagePresenceTracker();
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
 

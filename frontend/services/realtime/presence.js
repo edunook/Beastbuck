@@ -1,5 +1,5 @@
 import { ref, onValue, onDisconnect, set, serverTimestamp, get } from 'firebase/database';
-import { doc, setDoc, onSnapshot, getDoc, serverTimestamp as firestoreTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, getDoc, serverTimestamp as firestoreTimestamp } from 'firebase/firestore';
 import { rtdb, db } from '@services/firebase/config';
 import { errorHandler } from '@shared/utils/errorHandler';
 
@@ -230,6 +230,98 @@ export const PresenceService = {
     );
 
     return () => unsubs.forEach(u => u());
+  },
+
+  /**
+   * Subscribe to all online members across the entire BeastBuck platform in real time.
+   * Enforces a 120-second stale heartbeat threshold so offline/stale users resolve to 'offline'.
+   */
+  subscribeToAllPresence(callback) {
+    const firestoreMap = {};
+    const rtdbMap = {};
+    const STALE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+
+    const publishCleanMap = () => {
+      const now = Date.now();
+      const finalMap = {};
+
+      // Combine RTDB and Firestore records
+      const allUids = new Set([...Object.keys(firestoreMap), ...Object.keys(rtdbMap)]);
+
+      allUids.forEach(uid => {
+        const fsDoc = firestoreMap[uid] || {};
+        const rtDoc = rtdbMap[uid] || {};
+
+        // Parse timestamps
+        const fsTime = fsDoc.updatedAt?.toDate ? fsDoc.updatedAt.toDate().getTime() : (fsDoc.lastSeen?.toDate ? fsDoc.lastSeen.toDate().getTime() : 0);
+        const rtTime = rtDoc.last_changed ? (typeof rtDoc.last_changed === 'number' ? rtDoc.last_changed : new Date(rtDoc.last_changed).getTime()) : 0;
+
+        const maxTime = Math.max(fsTime, rtTime);
+        const isFresh = maxTime > 0 && (now - maxTime < STALE_THRESHOLD_MS);
+
+        let resolvedState = 'offline';
+        if (rtDoc.state && rtDoc.state !== 'offline') {
+          resolvedState = rtDoc.state;
+        } else if (fsDoc.state && fsDoc.state !== 'offline' && isFresh) {
+          resolvedState = fsDoc.state;
+        }
+
+        finalMap[uid] = {
+          uid,
+          state: resolvedState,
+          displayName: rtDoc.displayName || fsDoc.displayName || 'Member',
+          avatar: rtDoc.avatar || fsDoc.avatar || '',
+          activity: rtDoc.activity !== undefined ? rtDoc.activity : (fsDoc.activity || (resolvedState !== 'offline' ? 'Active' : 'Offline')),
+          activeWorkspace: rtDoc.activeWorkspace !== undefined ? rtDoc.activeWorkspace : fsDoc.activeWorkspace,
+          lastSeen: maxTime || Date.now(),
+        };
+      });
+
+      callback(finalMap);
+    };
+
+    // 1. Listen to Firestore presence collection
+    const unsubFirestore = onSnapshot(
+      collection(db, 'presence'),
+      (snap) => {
+        snap.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data?.uid) {
+            firestoreMap[data.uid] = data;
+          }
+        });
+        publishCleanMap();
+      },
+      (err) => {
+        errorHandler.warn('Firestore presence collection listener failed:', 'Presence Stream', { error: err.message });
+      }
+    );
+
+    // 2. Listen to Realtime Database /presence node
+    let unsubRTDB = () => {};
+    try {
+      const allPresenceRef = ref(rtdb, '/presence');
+      unsubRTDB = onValue(allPresenceRef, (snap) => {
+        const val = snap.val();
+        if (val) {
+          Object.entries(val).forEach(([uid, rich]) => {
+            if (rich) {
+              rtdbMap[uid] = rich;
+            }
+          });
+        } else {
+          Object.keys(rtdbMap).forEach(key => delete rtdbMap[key]);
+        }
+        publishCleanMap();
+      });
+    } catch (err) {
+      console.warn('RTDB presence stream fallback:', err);
+    }
+
+    return () => {
+      unsubFirestore();
+      unsubRTDB();
+    };
   },
 
   async getUserPresence(uid) {

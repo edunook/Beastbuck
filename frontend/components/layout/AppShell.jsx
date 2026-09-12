@@ -6,9 +6,11 @@ import MobileDrawer from './MobileDrawer';
 import MobileBottomNav from './MobileBottomNav';
 import GlobalPresencePanel from './GlobalPresencePanel';
 import { useGlobalStore } from '@frontend/store/useGlobalStore';
+import { usePagePresenceTracker } from '@frontend/hooks/usePagePresenceTracker';
 import { cn } from '@shared/lib/utils';
 
 export default function AppShell({ secondaryNav = null }) {
+  usePagePresenceTracker();
   const { isSidebarCollapsed, isPresencePanelOpen, togglePresencePanel } = useGlobalStore();
   const location = useLocation();
 
