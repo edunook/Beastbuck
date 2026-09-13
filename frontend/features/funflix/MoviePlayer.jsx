@@ -114,7 +114,7 @@ export default function MoviePlayer() {
   return (
     <PageContainer>
       <div className="max-w-5xl mx-auto">
-        <div className="aspect-video bg-black rounded-xl overflow-hidden relative group border border-border shadow-2xl mb-6">
+        <div className="aspect-video bg-black rounded-2xl overflow-hidden relative group border border-border/20 shadow-2xl shadow-black/50 mb-8 ring-1 ring-white/10">
           {currentVideoUrl ? (
             <video 
               key={currentVideoUrl}
@@ -127,64 +127,75 @@ export default function MoviePlayer() {
               Your browser does not support the video tag.
             </video>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Play className="w-20 h-20 text-white/20" />
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-surface/20 to-background-500">
+              <Play className="w-24 h-24 text-white/30" />
             </div>
           )}
         </div>
 
         <div className="flex flex-col md:flex-row justify-between items-start gap-8">
           <div className="flex-1">
-            <div className="flex gap-2 mb-2">
-              <span className="bg-white/10 text-text-muted text-xs px-2 py-1 rounded font-bold uppercase">{video.category}</span>
-              <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-1 rounded font-bold uppercase">Members Only</span>
+            <div className="flex gap-2 mb-3">
+              <span className="bg-accent/20 text-accent text-xs px-3 py-1.5 rounded-full font-semibold uppercase tracking-wide">{video.category}</span>
+              <span className="bg-white/10 text-white/80 text-xs px-3 py-1.5 rounded-full font-semibold uppercase tracking-wide">Members Only</span>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">{video.title}</h1>
-            <p className="text-text-muted text-sm mb-6">{viewCount.toLocaleString()} views · {createdAt.toLocaleDateString()}</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3 leading-tight">{video.title}</h1>
+            <p className="text-text-muted text-sm mb-8 flex items-center gap-2">
+              <span>{viewCount.toLocaleString()} views</span>
+              <span className="w-1 h-1 bg-text-muted rounded-full"></span>
+              <span>{createdAt.toLocaleDateString()}</span>
+            </p>
             
-            <div className="flex items-center justify-between border-y border-border/50 py-4 mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-surface border border-border flex items-center justify-center text-white font-bold">
-                  {video.creatorName?.charAt(0) || 'U'}
-                </div>
-                <div>
-                  <h3 className="font-bold text-white text-sm">{video.creatorName || video.creatorUsername || 'Creator'}</h3>
-                  <p className="text-xs text-text-muted">Content Creator</p>
-                </div>
+            <div className="flex items-center gap-4 mb-8 p-4 bg-surface/30 rounded-xl border border-border/30">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent to-accent-alt flex items-center justify-center text-white font-bold text-xl shadow-lg ring-2 ring-white/10">
+                {video.creatorName?.charAt(0) || video.creatorUsername?.charAt(0) || 'U'}
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base">{video.creatorName || video.creatorUsername || 'Creator'}</h3>
+                <p className="text-xs text-text-muted mt-0.5">Content Creator</p>
               </div>
             </div>
 
-            <div className="bg-surface/40 border border-border rounded-xl p-4 text-sm text-text-muted leading-relaxed">
+            <div className="bg-surface/30 border border-border/30 rounded-xl p-5 text-sm text-text-muted leading-relaxed">
               {video.description || 'No description provided.'}
               {video.tags && video.tags.length > 0 && (
-                <>
-                  <br/><br/>
-                  {video.tags.map(tag => `#${tag}`).join(' ')}
-                </>
+                <div className="mt-4 pt-4 border-t border-border/30 flex flex-wrap gap-2">
+                  {video.tags.map(tag => (
+                    <span key={tag} className="bg-white/5 text-text-muted px-2 py-1 rounded text-xs">#{tag}</span>
+                  ))}
+                </div>
               )}
             </div>
           </div>
 
           <div className="w-full md:w-80 flex flex-col gap-4">
-            <div className="bg-surface/40 border border-border rounded-xl p-4 flex justify-around">
+            <div className="bg-surface/30 border border-border/30 rounded-2xl p-5 flex justify-around shadow-lg">
               <button 
                 onClick={handleLike}
-                className={`flex flex-col items-center gap-1 ${liked ? 'text-red-500' : 'text-white hover:text-accent'}`}
+                className={`flex flex-col items-center gap-2 transition-all duration-200 ${liked ? 'text-red-500 scale-110' : 'text-white hover:text-accent hover:scale-105'}`}
               >
-                <Heart className={`w-6 h-6 ${liked ? 'fill-current' : ''}`} />
-                <span className="text-xs">{likeCount}</span>
+                <div className={`p-2 rounded-full ${liked ? 'bg-red-500/20' : 'bg-white/5 hover:bg-white/10'}`}>
+                  <Heart className={`w-6 h-6 ${liked ? 'fill-current' : ''}`} />
+                </div>
+                <span className="text-xs font-medium">{likeCount}</span>
               </button>
-              <button className="flex flex-col items-center gap-1 text-white hover:text-blue-400">
-                <MessageSquare className="w-6 h-6" />
-                <span className="text-xs">Comments</span>
+              <button className="flex flex-col items-center gap-2 text-white hover:text-blue-400 transition-all duration-200 hover:scale-105">
+                <div className="p-2 rounded-full bg-white/5 hover:bg-white/10">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-medium">Comments</span>
               </button>
-              <button className="flex flex-col items-center gap-1 text-white hover:text-emerald-400">
-                <Bookmark className="w-6 h-6" />
-                <span className="text-xs">Save</span>
+              <button className="flex flex-col items-center gap-2 text-white hover:text-emerald-400 transition-all duration-200 hover:scale-105">
+                <div className="p-2 rounded-full bg-white/5 hover:bg-white/10">
+                  <Bookmark className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-medium">Save</span>
               </button>
-              <button className="flex flex-col items-center gap-1 text-white hover:text-purple-400">
-                <Share2 className="w-6 h-6" />
-                <span className="text-xs">Share</span>
+              <button className="flex flex-col items-center gap-2 text-white hover:text-purple-400 transition-all duration-200 hover:scale-105">
+                <div className="p-2 rounded-full bg-white/5 hover:bg-white/10">
+                  <Share2 className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-medium">Share</span>
               </button>
             </div>
           </div>
