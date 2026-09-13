@@ -6,7 +6,7 @@ import { useAuth } from '../../auth/AuthContext';
 import { DynamicEmptyState } from '@frontend/components/dashboard/DynamicEmptyStates';
 
 const DISCOVERY_TYPES = {
-  ai: { label: 'Featured AI', icon: Sparkles, path: '/ai' },
+  ai: { label: 'Featured AI', icon: Sparkles, path: '/ai-studio' },
   funflix: { label: 'FunFlix Highlight', icon: Play, path: '/funflix' },
   marketplace: { label: 'Marketplace Discovery', icon: ShoppingBag, path: '/marketplace' },
   experiment: { label: 'New Experiment', icon: FlaskConical, path: '/workspace/experiments' },

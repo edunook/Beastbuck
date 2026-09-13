@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@frontend/features/auth/AuthContext';
-import { hasPermission } from '@shared/permissions/permissions';
+import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
 import AppShell from '@frontend/components/layout/AppShell';
 import NotFound from '@frontend/components/NotFound';
 
@@ -20,7 +20,6 @@ const MembershipApply = React.lazy(() => import('@frontend/features/membership/M
 const AdminMemberships = React.lazy(() => import('@frontend/features/admin/AdminMemberships'));
 const Dashboard = React.lazy(() => import('@frontend/features/dashboard/Dashboard'));
 const CEOPanel = React.lazy(() => import('@frontend/features/dashboard/CEOPanel'));
-const MissionControl = React.lazy(() => import('@frontend/features/mission-control/MissionControl'));
 const TasksHub = React.lazy(() => import('@frontend/features/tasks/TasksHub'));
 const ChatPage = React.lazy(() => import('@frontend/features/chat/ChatPage'));
 const ProfilePage = React.lazy(() => import('@frontend/features/profile/ProfilePage'));
@@ -37,13 +36,10 @@ const ChallengesPage = React.lazy(() => import('@frontend/features/challenges/Ch
 const ChallengeResponses = React.lazy(() => import('@frontend/features/challenges/ChallengeResponses'));
 const SkillsHub = React.lazy(() => import('@frontend/features/skills/SkillsHub'));
 const SkillDetail = React.lazy(() => import('@frontend/features/skills/SkillDetail'));
-const AIOS = React.lazy(() => import('@frontend/features/ai/AIOS'));
 const AccessDenied = React.lazy(() => import('@frontend/features/auth/AccessDenied'));
 const SignIn = React.lazy(() => import('@frontend/features/auth/SignIn'));
 const SignUp = React.lazy(() => import('@frontend/features/auth/SignUp'));
 const ForgotPassword = React.lazy(() => import('@frontend/features/auth/ForgotPassword'));
-const WorkspaceDashboard = React.lazy(() => import('@frontend/features/digital-workspace/WorkspaceDashboard'));
-const WorkspaceDetail = React.lazy(() => import('@frontend/features/digital-workspace/WorkspaceDetail'));
 const ModulePage = React.lazy(() => import('@frontend/features/dashboard/ModulePage'));
 const NotificationsCenter = React.lazy(() => import('@frontend/features/notifications/NotificationsCenter'));
 // --- Admin Routes (Lazy Loaded) ---
@@ -59,12 +55,10 @@ const AdminSecurity = React.lazy(() => import('@frontend/features/admin/AdminSec
 const AdminEvents = React.lazy(() => import('@frontend/features/admin/AdminEvents'));
 const AdminInnovation = React.lazy(() => import('@frontend/features/admin/AdminInnovation'));
 const CommandCenter = React.lazy(() => import('@frontend/features/admin/CommandCenter'));
-const PlatformControls = React.lazy(() => import('@frontend/features/admin/PlatformControls'));
 const CriticalAlerts = React.lazy(() => import('@frontend/features/admin/CriticalAlerts'));
 const MembershipCenter = React.lazy(() => import('@frontend/features/admin/MembershipCenter'));
 const MembershipApplications = React.lazy(() => import('@frontend/features/admin/MembershipApplications'));
-const ExecutiveAIAssistant = React.lazy(() => import('@frontend/features/admin/ExecutiveAIAssistant'));
-const ExecutiveRoleManagement = React.lazy(() => import('@frontend/features/admin/ExecutiveRoleManagement'));
+const MemberModeration = React.lazy(() => import('@frontend/features/admin/MemberModeration'));
 
 // --- Research System (Phase 18) ---
 const FunResearchMode = React.lazy(() => import('@frontend/features/research/FunResearchMode'));
@@ -224,7 +218,6 @@ const NotificationActions = React.lazy(() => import('@frontend/features/notifica
 const SmartFiltering = React.lazy(() => import('@frontend/features/notifications/SmartFiltering'));
 const NotificationSearch = React.lazy(() => import('@frontend/features/notifications/NotificationSearch'));
 const NotificationSettings = React.lazy(() => import('@frontend/features/notifications/NotificationSettings'));
-const ExecutiveNotifications = React.lazy(() => import('@frontend/features/notifications/ExecutiveNotifications'));
 const NotificationDesign = React.lazy(() => import('@frontend/features/notifications/NotificationDesign'));
 
 // --- Presence (Phase 27) ---
@@ -245,8 +238,6 @@ const CrossBrowserVerification = React.lazy(() => import('@frontend/features/qa/
 const ProductionLaunch = React.lazy(() => import('@frontend/features/qa/ProductionLaunch'));
 
 // --- Executive (Phase 16) ---
-const AdminExecutiveNotifications = React.lazy(() => import('@frontend/features/admin/ExecutiveNotifications'));
-const ExecutiveSecurity = React.lazy(() => import('@frontend/features/admin/ExecutiveSecurity'));
 
 // --- Intelligence & Predictive AI OS (Step 35) ---
 const TrendAnalytics = React.lazy(() => import('@frontend/features/intelligence/TrendAnalytics'));
@@ -266,17 +257,6 @@ const LegacyHallOfFame = React.lazy(() => import('@frontend/features/legacy/Hall
 const GlobalRankings = React.lazy(() => import('@frontend/features/legacy/GlobalRankings'));
 const AILegacyAdvisor = React.lazy(() => import('@frontend/features/legacy/AILegacyAdvisor'));
 const AdminEcosystem = React.lazy(() => import('@frontend/features/admin/AdminEcosystem'));
-
-// --- Mission Control Routes (Lazy Loaded) ---
-const MissionControlLayout = React.lazy(() => import('@frontend/features/mission-control/MissionControlLayout'));
-const MissionControlDashboard = React.lazy(() => import('@frontend/features/mission-control/MissionControlDashboard'));
-const ExecutiveAlerts = React.lazy(() => import('@frontend/features/mission-control/ExecutiveAlerts'));
-const ProjectHealth = React.lazy(() => import('@frontend/features/mission-control/ProjectHealth'));
-const MemberAnalytics = React.lazy(() => import('@frontend/features/mission-control/MemberAnalytics'));
-const GlobalSearch = React.lazy(() => import('@frontend/features/mission-control/GlobalSearch'));
-const ReportsCenter = React.lazy(() => import('@frontend/features/mission-control/ReportsCenter'));
-const AIInsights = React.lazy(() => import('@frontend/features/mission-control/AIInsights'));
-const InnovationHealth = React.lazy(() => import('@frontend/features/mission-control/InnovationHealth'));
 
 // --- Events & Challenges (Step 16) ---
 const EventsPage = React.lazy(() => import('@frontend/features/events/EventsPage'));
@@ -306,7 +286,6 @@ const IntegrationSecurityCenter = React.lazy(() => import('@frontend/features/in
 const GlobalEventsHub = React.lazy(() => import('@frontend/features/global-ecosystem/GlobalEventsHub'));
 const GlobalSearchCenter = React.lazy(() => import('@frontend/features/global-ecosystem/GlobalSearchCenter'));
 const ComplianceCenter = React.lazy(() => import('@frontend/features/global-ecosystem/ComplianceCenter'));
-const GlobalMissionControl = React.lazy(() => import('@frontend/features/global-ecosystem/GlobalMissionControl'));
 const AdminGlobalEcosystem = React.lazy(() => import('@frontend/features/global-ecosystem/AdminGlobalEcosystem'));
 
 const RecognitionCenter = React.lazy(() => import('@frontend/features/legacy/RecognitionCenter'));
@@ -328,7 +307,6 @@ const MoviePlayer = React.lazy(() => import('@frontend/features/funflix/MoviePla
 const FunFlixCreatorProfile = React.lazy(() => import('@frontend/features/funflix/CreatorProfile'));
 const MoviePlaylists = React.lazy(() => import('@frontend/features/funflix/MoviePlaylists'));
 const AIFunFlixAssistant = React.lazy(() => import('@frontend/features/funflix/AIFunFlixAssistant'));
-const FunFlixAnalytics = React.lazy(() => import('@frontend/features/mission-control/FunFlixAnalytics'));
 const AdminFunFlix = React.lazy(() => import('@frontend/features/admin/AdminFunFlix'));
 
 // --- AI Creator Studio & Marketplace (Step 42) ---
@@ -336,7 +314,6 @@ const AIStudioUnified = React.lazy(() => import('@frontend/features/ai-creator/A
 const AIProfilePage = React.lazy(() => import('@frontend/features/ai-creator/AIProfilePage'));
 const AIChatPage = React.lazy(() => import('@frontend/features/ai-creator/AIChatPage'));
 const AIMarketplaceBrowser = React.lazy(() => import('@frontend/features/ai-creator/AIMarketplaceBrowser'));
-const AIEcosystemAnalytics = React.lazy(() => import('@frontend/features/mission-control/AIEcosystemAnalytics'));
 const AdminAIStudio = React.lazy(() => import('@frontend/features/admin/AdminAIStudio'));
 
 // Mobile/Desktop mock views
@@ -351,7 +328,6 @@ const UniverseHome = React.lazy(() => import('@frontend/features/universe/Univer
 const UnifiedSearchPage = React.lazy(() => import('@frontend/features/universe/UnifiedSearchPage'));
 const UniverseGoals = React.lazy(() => import('@frontend/features/universe/UniverseGoals'));
 const AdminUniverse = React.lazy(() => import('@frontend/features/admin/AdminUniverse'));
-const UniverseAnalytics = React.lazy(() => import('@frontend/features/mission-control/UniverseAnalytics'));
 
 // --- Generic Fullscreen Loader ---
 export const FullScreenLoader = () => (
@@ -379,12 +355,8 @@ const ProtectedRoute = ({ children, requireMember, requireCeo, requireAdmin, req
                   normalizedRole === 'co ceo';
 
   // Check membership status if requireMember is true
-  // A user is considered an approved member if:
-  //   1. membershipStatus === 'approved', OR
-  //   2. Their role inherently implies membership (Member, Leader, Co-CEO, Main CEO)
-  const MEMBER_ROLES = ['member', 'leader', 'co-ceo', 'co ceo', 'main ceo'];
-  const isMemberByRole = normalizedRole && MEMBER_ROLES.includes(normalizedRole);
-  const isApprovedMember = membershipStatus === 'approved' || isMemberByRole;
+  // Accounts that are actively suspended or demoted will return false
+  const isApprovedMember = PERMISSIONS.isApprovedMember(roleData);
   if (requireMember && !isApprovedMember && !isAdmin) {
     return <Navigate to="/membership/apply" replace />;
   }
@@ -459,27 +431,17 @@ export default function AppRouter() {
 
           <Route path="/tasks" element={<TasksHub />} />
           <Route path="/chat" element={<ProtectedRoute requireMember><ChatPage /></ProtectedRoute>} />
-          <Route path="/workspace" element={<WorkspaceDashboard />} />
-          <Route path="/workspace/:id" element={<WorkspaceDetail />} />
-          <Route path="/workspace/experiments" element={<ProtectedRoute requireMember><ExperimentsLab /></ProtectedRoute>} />
-          <Route path="/workspace/experiments/:experimentId" element={<ExperimentDetail />} />
-          <Route path="/workspace/products" element={<ProtectedRoute requireMember><ProductsMarketplace /></ProtectedRoute>} />
-          <Route path="/workspace/products/:productId" element={<ProductDetail />} />
-          <Route path="/workspace/creative" element={<CreativeHub />} />
-          <Route path="/workspace/creative/:id" element={<CreativeDetail />} />
           <Route path="/creativity" element={<CreativityPage />} />
           <Route path="/challenges" element={<ChallengesPage />} />
           <Route path="/challenges/:challengeId/responses" element={<ChallengeResponses />} />
-          
+
           {/* ========================================
               ORGANIZATION OS ROUTES (Step 20) - Member Only
               ======================================== */}
           <Route path="/creative" element={<ModulePage type="creative" />} />
-          <Route path="/workspace/skills" element={<SkillsHub />} />
-          <Route path="/workspace/skills/:skillId" element={<SkillDetail />} />
           <Route path="/leaderboards" element={<LeaderboardsPage />} />
           <Route path="/notifications" element={<NotificationsCenter />} />
-          <Route path="/ai" element={<AIOS />} />
+          <Route path="/ai" element={<Navigate to="/dashboard" replace />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/edit" element={<ProfileEdit />} />
           <Route path="/profile/:uid/edit" element={<ProfileEdit />} />
@@ -499,30 +461,12 @@ export default function AppRouter() {
             }
           />
 
-          {/* Mission Control (Phase 29) */}
-          <Route
-            path="/mission-control"
-            element={
-              <ProtectedRoute requireCeo>
-                <MissionControl />
-              </ProtectedRoute>
-            }
-          />
-
           {/* Executive Routes (Phase 16) */}
           <Route
             path="/command-center"
             element={
               <ProtectedRoute requireCeo>
                 <CommandCenter />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/platform-controls"
-            element={
-              <ProtectedRoute requireCeo>
-                <PlatformControls />
               </ProtectedRoute>
             }
           />
@@ -535,42 +479,22 @@ export default function AppRouter() {
             }
           />
           <Route
+            path="/membership-applications"
+            element={
+              <ProtectedRoute requireCeo>
+                <MembershipApplications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/membership-center"
-            element={
-              <ProtectedRoute requireCeo>
-                <MembershipCenter />
-              </ProtectedRoute>
-            }
+            element={<Navigate to="/membership-applications" replace />}
           />
           <Route
-            path="/executive-ai"
+            path="/member-moderation"
             element={
               <ProtectedRoute requireCeo>
-                <ExecutiveAIAssistant />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/executive-notifications"
-            element={
-              <ProtectedRoute requireCeo>
-                <AdminExecutiveNotifications />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/executive-security"
-            element={
-              <ProtectedRoute requireCeo>
-                <ExecutiveSecurity />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/executive-role-management"
-            element={
-              <ProtectedRoute requireCeo>
-                <ExecutiveRoleManagement />
+                <MemberModeration />
               </ProtectedRoute>
             }
           />
@@ -618,7 +542,6 @@ export default function AppRouter() {
           <Route path="/global/events" element={<GlobalEventsHub />} />
           <Route path="/global/search" element={<GlobalSearchCenter />} />
           <Route path="/global/compliance" element={<ComplianceCenter />} />
-          <Route path="/mission-control/global" element={<GlobalMissionControl />} />
           <Route path="/admin/global" element={<AdminGlobalEcosystem />} />
 
           <Route path="/legacy/hall-of-fame" element={<LegacyCenter />} />
@@ -646,7 +569,6 @@ export default function AppRouter() {
           <Route path="/funflix/upload" element={<ProtectedRoute requireMember><MovieUploadWizard /></ProtectedRoute>} />
           <Route path="/funflix/playlists" element={<ProtectedRoute requireMember><MoviePlaylists /></ProtectedRoute>} />
           <Route path="/funflix/ai" element={<AIFunFlixAssistant />} />
-          <Route path="/mission-control/funflix" element={<FunFlixAnalytics />} />
           <Route path="/admin/funflix" element={<AdminFunFlix />} />
 
           {/* ========================================
@@ -656,7 +578,6 @@ export default function AppRouter() {
           <Route path="/ais" element={<AIMarketplaceBrowser />} />
           <Route path="/ais/:aiId" element={<AIProfilePage />} />
           <Route path="/ais/:aiId/chat" element={<AIChatPage />} />
-          <Route path="/mission-control/ai-ecosystem" element={<AIEcosystemAnalytics />} />
           <Route path="/admin/ai-studio" element={<AdminAIStudio />} />
 
           {/* ========================================
@@ -813,7 +734,6 @@ export default function AppRouter() {
           <Route path="/notifications/filtering" element={<SmartFiltering />} />
           <Route path="/notifications/search" element={<NotificationSearch />} />
           <Route path="/notifications/settings" element={<NotificationSettings />} />
-          <Route path="/notifications/executive" element={<ExecutiveNotifications />} />
           <Route path="/notifications/design" element={<NotificationDesign />} />
 
           {/* ========================================
@@ -837,11 +757,6 @@ export default function AppRouter() {
           <Route path="/qa/browser-verification" element={<CrossBrowserVerification />} />
           <Route path="/qa/production-launch" element={<ProductionLaunch />} />
 
-          {/* ========================================
-              EXECUTIVE ROUTES (Phase 16)
-              ======================================== */}
-          <Route path="/executive/notifications" element={<AdminExecutiveNotifications />} />
-          <Route path="/executive/security" element={<ExecutiveSecurity />} />
 
           {/* ========================================
               INTELLIGENCE & PREDICTIVE AI OS ROUTES (Step 35)
@@ -906,29 +821,6 @@ export default function AppRouter() {
               </ProtectedRoute>
             }
           />
-
-          {/* ========================================
-              MISSION CONTROL ROUTES (Step 15)
-              ======================================== */}
-          <Route
-            path="/mission-control"
-            element={
-              <ProtectedRoute requireCeo>
-                <MissionControlLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="dashboard" element={<MissionControlDashboard />} />
-            <Route path="alerts" element={<ExecutiveAlerts />} />
-            <Route path="projects" element={<ProjectHealth />} />
-
-            <Route path="members" element={<MemberAnalytics />} />
-            <Route path="search" element={<GlobalSearch />} />
-            <Route path="reports" element={<ReportsCenter />} />
-            <Route path="ai" element={<AIInsights />} />
-            <Route path="innovation" element={<InnovationHealth />} />
-            <Route path="universe" element={<UniverseAnalytics />} />
-          </Route>
         </Route>
 
         {/* Fallback 404 */}

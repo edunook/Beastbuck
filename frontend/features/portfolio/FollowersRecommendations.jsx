@@ -7,6 +7,7 @@ import Button from '@frontend/components/ui/Button';
 import { collection, query, limit, getDocs } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
 import { useAuth } from '@frontend/features/auth/AuthContext';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 import EmptyState from '@frontend/components/ui/EmptyState';
 
 export default function FollowersRecommendations() {
@@ -18,11 +19,11 @@ export default function FollowersRecommendations() {
     const fetchMembers = async () => {
       try {
         setLoading(true);
-        const usersQuery = query(collection(db, 'users'), limit(20));
+        const usersQuery = query(collection(db, 'users'), limit(50));
         const snap = await getDocs(usersQuery);
         const list = snap.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(u => u.id !== user?.uid);
+          .filter(u => u.id !== user?.uid && PERMISSIONS.isApprovedMember(u));
         setMembers(list);
       } catch (err) {
         console.error('Failed to load members for recommendations:', err);

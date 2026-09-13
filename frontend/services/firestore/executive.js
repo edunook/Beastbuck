@@ -1,4 +1,4 @@
-import { doc, setDoc, serverTimestamp, runTransaction, collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, runTransaction, collection, getDocs, query, where, orderBy, limit, getDoc } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
 import { ROLES } from '@shared/constants/roles';
 
@@ -88,6 +88,21 @@ export async function promoteToCoCEO(actorUid, targetUid, reason = '') {
         throw new Error('Only Main CEO can promote to Co-CEO');
       }
 
+      // ── Enforce ONE Co-CEO limit ──────────────────────────────────────
+      // We do a regular getDocs outside the transaction for the check
+      // (transactions only support get() on DocumentRefs, not queries).
+      // The backend Firestore Security Rules enforce this server-side too.
+      const existingCoCEOQuery = query(
+        collection(db, EXECUTIVE_COLLECTION),
+        where('role', '==', ROLES.CO_CEO),
+        limit(1)
+      );
+      const existingCoCEOSnap = await getDocs(existingCoCEOQuery);
+      if (!existingCoCEOSnap.empty) {
+        throw new Error('A Co-CEO already exists. Remove the current Co-CEO before promoting a new one.');
+      }
+      // ─────────────────────────────────────────────────────────────────
+
       const targetData = targetDoc.data();
       if (targetData.role === ROLES.MAIN_CEO || targetData.role === ROLES.CO_CEO) {
         throw new Error('User is already an executive');
@@ -115,6 +130,101 @@ export async function promoteToCoCEO(actorUid, targetUid, reason = '') {
     return { success: true };
   } catch (error) {
     console.error('Error promoting to Co-CEO:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Resign as Main CEO — strips the CEO's role back to Member.
+ * Requires that no position successor is needed (or use designateSuccessor instead).
+ */
+export async function resignAsCEO(actorUid, reason = '') {
+  try {
+    await runTransaction(db, async (transaction) => {
+      const actorRef = doc(db, EXECUTIVE_COLLECTION, actorUid);
+      const actorDoc = await transaction.get(actorRef);
+
+      if (!actorDoc.exists()) throw new Error('User not found');
+
+      const actorData = actorDoc.data();
+      if (actorData.role !== ROLES.MAIN_CEO) {
+        throw new Error('Only the Main CEO can use this action');
+      }
+
+      transaction.update(actorRef, {
+        role: ROLES.MEMBER,
+        isExecutive: false,
+        resignedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    });
+
+    await logAuditEvent({
+      type: 'CEO_RESIGNED',
+      actorId: actorUid,
+      targetId: actorUid,
+      summary: 'Main CEO resigned from position',
+      details: { reason }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error resigning as CEO:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Designate a successor: atomically transfers the Main CEO role
+ * to the chosen member and demotes the current CEO to Member.
+ */
+export async function designateSuccessor(actorUid, successorUid, reason = '') {
+  try {
+    await runTransaction(db, async (transaction) => {
+      const actorRef = doc(db, EXECUTIVE_COLLECTION, actorUid);
+      const successorRef = doc(db, EXECUTIVE_COLLECTION, successorUid);
+
+      const actorDoc = await transaction.get(actorRef);
+      const successorDoc = await transaction.get(successorRef);
+
+      if (!actorDoc.exists() || !successorDoc.exists()) {
+        throw new Error('User not found');
+      }
+
+      const actorData = actorDoc.data();
+      if (actorData.role !== ROLES.MAIN_CEO) {
+        throw new Error('Only the Main CEO can designate a successor');
+      }
+
+      // Demote current CEO to Member
+      transaction.update(actorRef, {
+        role: ROLES.MEMBER,
+        isExecutive: false,
+        resignedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // Promote successor to Main CEO
+      transaction.update(successorRef, {
+        role: ROLES.MAIN_CEO,
+        isExecutive: true,
+        promotedBy: actorUid,
+        promotedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    });
+
+    await logAuditEvent({
+      type: 'CEO_SUCCESSION',
+      actorId: actorUid,
+      targetId: successorUid,
+      summary: 'Main CEO transferred leadership via succession',
+      details: { newCeoUid: successorUid, reason }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error designating successor:', error);
     return { success: false, error: error.message };
   }
 }
@@ -291,5 +401,335 @@ export async function getActivityFeed(limit = 20) {
   } catch (error) {
     console.error('Error fetching activity feed:', error);
     return [];
+  }
+}
+
+/**
+ * Send user notification to their subcollection
+ */
+async function sendUserNotification(userId, notificationData) {
+  try {
+    const notifRef = doc(collection(db, EXECUTIVE_COLLECTION, userId, 'notifications'));
+    await setDoc(notifRef, {
+      ...notificationData,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error('Error sending user notification:', err);
+  }
+}
+
+/**
+ * Demote a Member to standard User (Main CEO & Co-CEO only)
+ */
+export async function demoteMemberToUser(actorUid, targetUid, reason = '') {
+  try {
+    const result = await runTransaction(db, async (transaction) => {
+      const actorRef = doc(db, EXECUTIVE_COLLECTION, actorUid);
+      const targetRef = doc(db, EXECUTIVE_COLLECTION, targetUid);
+
+      const actorDoc = await transaction.get(actorRef);
+      const targetDoc = await transaction.get(targetRef);
+
+      if (!actorDoc.exists() || !targetDoc.exists()) {
+        throw new Error('User not found');
+      }
+
+      const actorData = actorDoc.data();
+      const isActorCeo = actorData.role === ROLES.MAIN_CEO || actorData.role === 'Main CEO';
+      const isActorCoCeo = actorData.role === ROLES.CO_CEO || actorData.role === 'Co-CEO';
+      if (!isActorCeo && !isActorCoCeo) {
+        throw new Error('Only Main CEO or Co-CEO can demote members');
+      }
+
+      const targetData = targetDoc.data();
+      if (targetData.role === ROLES.MAIN_CEO || targetData.role === ROLES.CO_CEO || targetData.isExecutive) {
+        throw new Error('Cannot demote an Executive (Main CEO or Co-CEO)');
+      }
+
+      transaction.update(targetRef, {
+        role: ROLES.USER,
+        membershipStatus: 'revoked',
+        isExecutive: false,
+        suspended: false,
+        suspendedUntil: null,
+        accountStatus: 'user',
+        demotedAt: serverTimestamp(),
+        demotedBy: actorUid,
+        demoteReason: reason || 'Demoted from Member to User by Executive',
+        updatedAt: serverTimestamp()
+      });
+
+      return { success: true };
+    });
+
+    await logAuditEvent({
+      type: 'MEMBER_DEMOTED_TO_USER',
+      actorId: actorUid,
+      targetId: targetUid,
+      summary: 'Member demoted to standard User',
+      details: { reason, previousRole: ROLES.MEMBER, newRole: ROLES.USER }
+    });
+
+    await sendUserNotification(targetUid, {
+      type: 'MEMBERSHIP_REVOKED',
+      title: 'Membership Status Changed',
+      message: `Your membership has been revoked by executive leadership. Your account is now a standard User.${reason ? ` Reason: ${reason}` : ''}`,
+      severity: 'warning'
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error demoting member to user:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Suspend a Member for a specific time period (Main CEO & Co-CEO only)
+ */
+export async function suspendMember(actorUid, targetUid, { durationHours, customUntilDate, reason = '' }) {
+  try {
+    let untilDate = null;
+    if (customUntilDate) {
+      untilDate = new Date(customUntilDate);
+    } else if (durationHours) {
+      untilDate = new Date(Date.now() + Number(durationHours) * 3600 * 1000);
+    } else {
+      untilDate = new Date(Date.now() + 24 * 3600 * 1000); // default 24h
+    }
+
+    if (isNaN(untilDate.getTime())) {
+      throw new Error('Invalid suspension end date or duration');
+    }
+
+    const isoUntil = untilDate.toISOString();
+
+    const result = await runTransaction(db, async (transaction) => {
+      const actorRef = doc(db, EXECUTIVE_COLLECTION, actorUid);
+      const targetRef = doc(db, EXECUTIVE_COLLECTION, targetUid);
+
+      const actorDoc = await transaction.get(actorRef);
+      const targetDoc = await transaction.get(targetRef);
+
+      if (!actorDoc.exists() || !targetDoc.exists()) {
+        throw new Error('User not found');
+      }
+
+      const actorData = actorDoc.data();
+      const isActorCeo = actorData.role === ROLES.MAIN_CEO || actorData.role === 'Main CEO';
+      const isActorCoCeo = actorData.role === ROLES.CO_CEO || actorData.role === 'Co-CEO';
+      if (!isActorCeo && !isActorCoCeo) {
+        throw new Error('Only Main CEO or Co-CEO can suspend members');
+      }
+
+      const targetData = targetDoc.data();
+      if (targetData.role === ROLES.MAIN_CEO || targetData.role === ROLES.CO_CEO || targetData.isExecutive) {
+        throw new Error('Cannot suspend an Executive (Main CEO or Co-CEO)');
+      }
+
+      transaction.update(targetRef, {
+        suspended: true,
+        accountStatus: 'suspended',
+        suspendedAt: serverTimestamp(),
+        suspendedUntil: isoUntil,
+        suspendedReason: reason || 'Temporary suspension applied by Executive',
+        suspendedBy: actorUid,
+        updatedAt: serverTimestamp()
+      });
+
+      return { success: true, suspendedUntil: isoUntil };
+    });
+
+    await logAuditEvent({
+      type: 'MEMBER_SUSPENDED',
+      actorId: actorUid,
+      targetId: targetUid,
+      summary: `Member suspended until ${untilDate.toLocaleString()}`,
+      details: { reason, suspendedUntil: isoUntil, durationHours }
+    });
+
+    await sendUserNotification(targetUid, {
+      type: 'ACCOUNT_SUSPENDED',
+      title: 'Membership Temporarily Suspended',
+      message: `Your membership privileges have been temporarily suspended until ${untilDate.toLocaleString()}.${reason ? ` Reason: ${reason}` : ''}`,
+      severity: 'danger'
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error suspending member:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Lift suspension on a Member early (Main CEO & Co-CEO only)
+ */
+export async function unsuspendMember(actorUid, targetUid, reason = '') {
+  try {
+    const result = await runTransaction(db, async (transaction) => {
+      const actorRef = doc(db, EXECUTIVE_COLLECTION, actorUid);
+      const targetRef = doc(db, EXECUTIVE_COLLECTION, targetUid);
+
+      const actorDoc = await transaction.get(actorRef);
+      const targetDoc = await transaction.get(targetRef);
+
+      if (!actorDoc.exists() || !targetDoc.exists()) {
+        throw new Error('User not found');
+      }
+
+      const actorData = actorDoc.data();
+      const isActorCeo = actorData.role === ROLES.MAIN_CEO || actorData.role === 'Main CEO';
+      const isActorCoCeo = actorData.role === ROLES.CO_CEO || actorData.role === 'Co-CEO';
+      if (!isActorCeo && !isActorCoCeo) {
+        throw new Error('Only Main CEO or Co-CEO can unsuspend members');
+      }
+
+      transaction.update(targetRef, {
+        suspended: false,
+        accountStatus: 'active',
+        suspendedUntil: null,
+        unsuspendedAt: serverTimestamp(),
+        unsuspendedBy: actorUid,
+        unsuspendReason: reason || 'Suspension lifted by Executive',
+        updatedAt: serverTimestamp()
+      });
+
+      return { success: true };
+    });
+
+    await logAuditEvent({
+      type: 'MEMBER_UNSUSPENDED',
+      actorId: actorUid,
+      targetId: targetUid,
+      summary: 'Member suspension lifted',
+      details: { reason }
+    });
+
+    await sendUserNotification(targetUid, {
+      type: 'ACCOUNT_UNSUSPENDED',
+      title: 'Membership Restored',
+      message: `Your membership suspension has been lifted by executive leadership. You now have full member privileges.`,
+      severity: 'success'
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error unsuspending member:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Reinstate a User back to Member (Main CEO & Co-CEO only)
+ */
+export async function reinstateMember(actorUid, targetUid, reason = '') {
+  try {
+    const result = await runTransaction(db, async (transaction) => {
+      const actorRef = doc(db, EXECUTIVE_COLLECTION, actorUid);
+      const targetRef = doc(db, EXECUTIVE_COLLECTION, targetUid);
+
+      const actorDoc = await transaction.get(actorRef);
+      const targetDoc = await transaction.get(targetRef);
+
+      if (!actorDoc.exists() || !targetDoc.exists()) {
+        throw new Error('User not found');
+      }
+
+      const actorData = actorDoc.data();
+      const isActorCeo = actorData.role === ROLES.MAIN_CEO || actorData.role === 'Main CEO';
+      const isActorCoCeo = actorData.role === ROLES.CO_CEO || actorData.role === 'Co-CEO';
+      if (!isActorCeo && !isActorCoCeo) {
+        throw new Error('Only Main CEO or Co-CEO can reinstate members');
+      }
+
+      transaction.update(targetRef, {
+        role: ROLES.MEMBER,
+        membershipStatus: 'approved',
+        suspended: false,
+        suspendedUntil: null,
+        accountStatus: 'active',
+        reinstatedAt: serverTimestamp(),
+        reinstatedBy: actorUid,
+        reinstateReason: reason || 'Reinstated as Member by Executive',
+        updatedAt: serverTimestamp()
+      });
+
+      return { success: true };
+    });
+
+    await logAuditEvent({
+      type: 'MEMBER_REINSTATED',
+      actorId: actorUid,
+      targetId: targetUid,
+      summary: 'User reinstated to Member',
+      details: { reason }
+    });
+
+    await sendUserNotification(targetUid, {
+      type: 'MEMBERSHIP_REINSTATED',
+      title: 'Membership Approved',
+      message: `Congratulations! Your membership has been reinstated with full member privileges.`,
+      severity: 'success'
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error reinstating member:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Fetch all accounts for moderation overview
+ */
+export async function getAllAccountsForModeration() {
+  try {
+    const usersRef = collection(db, EXECUTIVE_COLLECTION);
+    const snap = await getDocs(usersRef);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (error) {
+    console.error('Error fetching accounts for moderation:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch moderation audit logs
+ */
+export async function getModerationAuditLogs(maxLogs = 30) {
+  try {
+    const q = query(
+      collection(db, AUDIT_LOGS_COLLECTION),
+      where('type', 'in', ['MEMBER_DEMOTED_TO_USER', 'MEMBER_SUSPENDED', 'MEMBER_UNSUSPENDED', 'MEMBER_REINSTATED']),
+      limit(maxLogs)
+    );
+    const snap = await getDocs(q);
+    const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    logs.sort((a, b) => {
+      const tA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+      const tB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+      return tB - tA;
+    });
+    return logs;
+  } catch (error) {
+    console.warn('Moderation logs indexed query fallback:', error.message);
+    try {
+      const snap = await getDocs(query(collection(db, AUDIT_LOGS_COLLECTION), limit(maxLogs * 2)));
+      const logs = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(l => ['MEMBER_DEMOTED_TO_USER', 'MEMBER_SUSPENDED', 'MEMBER_UNSUSPENDED', 'MEMBER_REINSTATED'].includes(l.type));
+      logs.sort((a, b) => {
+        const tA = a.createdAt?.seconds || (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+        const tB = b.createdAt?.seconds || (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+        return tB - tA;
+      });
+      return logs.slice(0, maxLogs);
+    } catch (err) {
+      console.error('Fallback moderation logs failed:', err);
+      return [];
+    }
   }
 }

@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { ROLES } from '@shared/constants/roles';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 import { PresenceService } from '@services/realtime/presence';
 
 // Theme Templates - Same as ProfilePage for consistency
@@ -752,6 +753,7 @@ export default function PortfolioPage() {
   const { username } = useParams();
   const { user, roleData } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [isNotApprovedMember, setIsNotApprovedMember] = useState(false);
   const [profile, setProfile] = useState(null);
   const [portfolioData, setPortfolioData] = useState(null);
   const [selectedTheme, setSelectedTheme] = useState('default');
@@ -770,6 +772,12 @@ export default function PortfolioPage() {
         const userProfile = await UsersService.getUserProfile(uid);
         if (!userProfile) {
           console.error('User profile not found for uid:', uid);
+          setLoading(false);
+          return;
+        }
+
+        if (!PERMISSIONS.isApprovedMember(userProfile)) {
+          setIsNotApprovedMember(true);
           setLoading(false);
           return;
         }
@@ -869,6 +877,25 @@ export default function PortfolioPage() {
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-background"><LoadingState text="Loading portfolio..." /></div>;
+  }
+
+  if (isNotApprovedMember) {
+    return (
+      <PageContainer>
+        <Card className="max-w-xl mx-auto my-16 border-amber-500/20 bg-amber-500/5 text-center p-8">
+          <CardContent className="space-y-4">
+            <Lock className="w-12 h-12 text-amber-400 mx-auto" />
+            <h2 className="text-xl font-bold text-white">Member Portfolio Restricted</h2>
+            <p className="text-text-muted text-sm">
+              Portfolios on BeastBuck are reserved exclusively for approved members. This account is currently pending membership approval or is not an active member.
+            </p>
+            <Link to="/portfolio">
+              <Button className="mt-4">Back to Member Portfolios</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </PageContainer>
+    );
   }
 
   if (!profile) {

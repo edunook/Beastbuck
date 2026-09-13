@@ -23,9 +23,8 @@ function getRouteActivityName(pathname) {
   if (path.startsWith('/challenges')) return 'In Challenges Hub';
   if (path.startsWith('/profile')) return 'Viewing Member Profile';
   if (path.startsWith('/settings')) return 'Configuring Settings';
-  if (path.startsWith('/membership-center') || path.startsWith('/membership')) return 'Membership Center';
+  if (path.startsWith('/membership-applications') || path.startsWith('/membership-center') || path.startsWith('/membership')) return 'Reviewing Membership Applications';
   if (path.startsWith('/command-center')) return 'Operating Command Center';
-  if (path.startsWith('/mission-control')) return 'In Mission Control';
   if (path.startsWith('/hall-of-fame')) return 'Viewing Hall of Fame';
   if (path.startsWith('/universe')) return 'Exploring Universe Hub';
 

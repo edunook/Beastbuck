@@ -9,7 +9,7 @@ const CONTINUE_ITEMS = [
   { id: 'research', label: 'Continue Research', path: '/research', icon: BookOpen },
   { id: 'project', label: 'Continue Project', path: '/projects', icon: FileText },
   { id: 'experiment', label: 'Continue Experiment', path: '/workspace/experiments', icon: FlaskConical },
-  { id: 'ai', label: 'Continue AI Chat', path: '/ai', icon: Zap },
+  { id: 'ai', label: 'Continue AI Studio', path: '/ai-studio', icon: Zap },
   { id: 'funflix', label: 'Continue FunFlix', path: '/funflix', icon: Play },
   { id: 'marketplace', label: 'Continue Marketplace', path: '/marketplace', icon: ShoppingBag },
 ];

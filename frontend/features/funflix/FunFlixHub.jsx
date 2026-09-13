@@ -583,7 +583,7 @@ export default function FunFlixHub() {
                             <Link to={`/funflix/watch/${movie.id}`} className="hover:text-white p-1" title="Watch Video">
                               <Eye className="w-4 h-4" />
                             </Link>
-                            <Link to={`/mission-control/funflix`} className="hover:text-amber-400 p-1" title="Analytics">
+                            <Link to={`/admin/funflix`} className="hover:text-amber-400 p-1" title="Analytics">
                               <BarChart2 className="w-4 h-4" />
                             </Link>
                           </div>

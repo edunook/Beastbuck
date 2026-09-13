@@ -145,6 +145,21 @@ export const MembershipService = {
     const snap = await getDoc(userRef);
     if (!snap.exists()) return false;
     const userData = snap.data();
+
+    // Check if account is actively suspended
+    if (userData.suspended || userData.accountStatus === 'suspended') {
+      if (userData.suspendedUntil) {
+        const untilMs = userData.suspendedUntil?.toMillis 
+          ? userData.suspendedUntil.toMillis() 
+          : (typeof userData.suspendedUntil === 'number' ? userData.suspendedUntil : new Date(userData.suspendedUntil).getTime());
+        if (!isNaN(untilMs) && untilMs > Date.now()) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    }
+
     if (userData.membershipStatus === 'approved') return true;
     if (userData.role) {
       const normalized = userData.role.toLowerCase().trim();

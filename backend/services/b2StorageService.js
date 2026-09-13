@@ -17,7 +17,7 @@ import crypto from 'node:crypto';
 const DEFAULT_B2_ENDPOINT = process.env.B2_ENDPOINT || 'https://s3.us-east-005.backblazeb2.com';
 const DEFAULT_B2_REGION = process.env.B2_REGION || 'us-east-005';
 const DEFAULT_B2_BUCKET = process.env.B2_BUCKET || 'beastbuck-media';
-const DEFAULT_CDN_BASE_URL = process.env.MEDIA_CDN_BASE_URL || process.env.VITE_MEDIA_CDN_BASE_URL || process.env.CDN_MEDIA_BASE_URL || process.env.VITE_CDN_MEDIA_BASE_URL || 'https://beastbuck-media.workers.dev';
+const DEFAULT_CDN_BASE_URL = process.env.MEDIA_CDN_BASE_URL || process.env.VITE_MEDIA_CDN_BASE_URL || process.env.CDN_MEDIA_BASE_URL || process.env.VITE_CDN_MEDIA_BASE_URL || 'https://s3.us-east-005.backblazeb2.com/beastbuck-media';
 
 // Configurable thresholds & limits
 export function getStorageConfig() {

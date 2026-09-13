@@ -13,7 +13,6 @@ import {
   updateDoc,
   where,
 } from 'firebase/firestore';
-import { MissionControlService } from './missionControl';
 import { CommunityService } from './community';
 
 function docsFrom(snap) {
@@ -276,7 +275,7 @@ export const UniverseService = {
   async unifiedSearch(searchTerm, { category = 'All', sortBy = 'relevance', limitCount = 60 } = {}) {
     if (!searchTerm || searchTerm.length < 2) return { results: [], suggestions: [] };
 
-    const base = await MissionControlService.globalSearch(searchTerm);
+    const base = [];
     const term = searchTerm.toLowerCase();
 
     const extraQueries = await Promise.all([

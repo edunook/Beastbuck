@@ -17,6 +17,7 @@ import { UsersService } from './users';
 import { CertificateService } from './certificates';
 import { getSpecializationById } from '@shared/constants/specializations';
 import { OrganizationService } from './organization';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 
 function docsFrom(snap) {
   return snap.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -361,7 +362,7 @@ export const PortfolioService = {
     try {
       const portfoliosSnap = await getDocs(query(collection(db, 'portfolios'), orderBy('totalXP', 'desc')));
       if (!portfoliosSnap.empty) {
-        return docsFrom(portfoliosSnap);
+        return docsFrom(portfoliosSnap).filter(p => PERMISSIONS.isApprovedMember(p));
       }
     } catch (err) {
       console.error('Failed to get pre-generated portfolios, falling back to dynamic generation:', err);
@@ -369,7 +370,7 @@ export const PortfolioService = {
 
     // Fallback to dynamic generation
     const usersSnap = await getDocs(query(collection(db, 'users')));
-    const users = docsFrom(usersSnap);
+    const users = docsFrom(usersSnap).filter(user => PERMISSIONS.isApprovedMember(user));
     
     const portfolios = await Promise.all(
       users.map(async (user) => {
@@ -380,6 +381,9 @@ export const PortfolioService = {
             displayName: user.displayName,
             avatar: user.avatar,
             role: user.role,
+            membershipStatus: user.membershipStatus,
+            suspended: user.suspended,
+            accountStatus: user.accountStatus,
             level: portfolioData.stats.level,
             totalXP: portfolioData.stats.totalXP,
             projectsCount: portfolioData.stats.projectsJoined,
@@ -393,7 +397,7 @@ export const PortfolioService = {
       })
     );
 
-    return portfolios.filter(Boolean).sort((a, b) => b.totalXP - a.totalXP);
+    return portfolios.filter(Boolean).filter(p => PERMISSIONS.isApprovedMember(p)).sort((a, b) => b.totalXP - a.totalXP);
   },
 
   async generateAndStorePortfolio(username) {

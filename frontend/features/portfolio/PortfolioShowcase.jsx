@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Sparkles, Trophy, ArrowRight, Zap, Award, Search, Users, TrendingUp, Star, Shield, Crown, Medal } from 'lucide-react';
 import { UsersService } from '@services/firestore/users';
 import { GamificationService } from '@services/firestore/gamification';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 import { PageContainer, SectionWrapper } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader, LoadingState } from '@frontend/components/ui/UIElements';
 
@@ -17,7 +18,8 @@ export default function PortfolioShowcase() {
   useEffect(() => {
     async function load() {
       try {
-        const members = await UsersService.getAllMembers();
+        const rawMembers = await UsersService.getAllMembers();
+        const members = (rawMembers || []).filter(m => PERMISSIONS.isApprovedMember(m));
         setAllMembers(members);
         setFilteredMembers(members);
       } catch (err) {
@@ -25,8 +27,9 @@ export default function PortfolioShowcase() {
         try {
           // Fallback to leaderboard if getAllMembers fails
           const topMembers = await GamificationService.getLeaderboard({ type: 'xp', maxCount: 50 });
-          setAllMembers(topMembers);
-          setFilteredMembers(topMembers);
+          const approvedLeaderboard = (topMembers || []).filter(m => PERMISSIONS.isApprovedMember(m));
+          setAllMembers(approvedLeaderboard);
+          setFilteredMembers(approvedLeaderboard);
         } catch (fallbackErr) {
           console.error('Fallback also failed:', fallbackErr);
           setAllMembers([]);

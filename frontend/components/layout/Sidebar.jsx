@@ -7,11 +7,11 @@ import { ROLES } from '@shared/constants/roles';
 import { 
   LayoutDashboard, 
   UsersRound,
-  FolderKanban,
+  ClipboardList,
   Film,
   Sparkles,
-  Scale,
   ShieldCheck,
+  ShieldAlert,
   Shield,
   Bell,
   User, 
@@ -20,54 +20,27 @@ import {
   ChevronRight,
   Star,
   Trophy,
+  Medal,
   Crown,
   Palette,
   BookOpen,
+  MessageSquare,
+  CheckSquare,
 } from 'lucide-react';
 import { cn } from '@shared/lib/utils';
 
 const NAV_ITEMS = [
-  { name: 'Home', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Portfolios', path: '/portfolio', icon: User },
-  { name: 'Creativity', path: '/creativity', icon: Palette },
-  { name: 'Challenges', path: '/challenges', icon: Trophy },
-  {
-    label: 'Workspace',
-    icon: FolderKanban,
-    path: '/workspace',
-    subItems: [
-      { label: 'Skills', path: '/workspace/skills' },
-      { label: 'Creative Hub', path: '/creative' },
-      { label: 'Experiments', path: '/workspace/experiments' },
-      { label: 'Products', path: '/workspace/products' },
-    ],
-  },
-  {
-    label: 'FunFlix',
-    icon: Film,
-    path: '/funflix',
-  },
-  {
-    label: 'My AIs',
-    icon: Sparkles,
-    path: '/ai-studio',
-  },
-  {
-    label: 'AI Marketplace',
-    icon: Sparkles,
-    path: '/ais',
-  },
-  {
-    label: 'AI Assistant',
-    icon: Sparkles,
-    path: '/ai',
-  },
-  {
-    label: 'Memobook',
-    icon: BookOpen,
-    path: '/memobook',
-    memberOnly: true,
-  },
+  { name: 'Home',          path: '/dashboard',    icon: LayoutDashboard },
+  { name: 'Portfolios',    path: '/portfolio',    icon: User },
+  { name: 'Creativity',    path: '/creativity',   icon: Palette },
+  { name: 'Challenges',    path: '/challenges',   icon: Trophy },
+  { name: 'Chat',          path: '/chat',         icon: MessageSquare },
+  { name: 'Tasks',         path: '/tasks',        icon: CheckSquare },
+  { name: 'Leaderboards',  path: '/leaderboards', icon: Medal },
+  { name: 'FunFlix',       path: '/funflix',      icon: Film },
+  { name: 'My AIs',        path: '/ai-studio',    icon: Sparkles },
+  { name: 'AI Marketplace',path: '/ais',          icon: Sparkles },
+  { name: 'Memobook',      path: '/memobook',     icon: BookOpen, memberOnly: true },
 ];
 
 const BOTTOM_NAV_ITEMS = [
@@ -117,6 +90,7 @@ export default function Sidebar() {
   
   // Case-insensitive role matching for robustness
   const normalizedRole = role?.toLowerCase().trim();
+  const isMainCeo = normalizedRole === 'main ceo' || role === ROLES.MAIN_CEO;
   const isAdmin = hasPermission(role, 'canAccessCeoPanel') || 
                   normalizedRole === 'main ceo' || 
                   normalizedRole === 'co-ceo' || 
@@ -189,38 +163,20 @@ export default function Sidebar() {
             {!isSidebarCollapsed && (
               <p className="px-3 pb-1 text-badge font-bold uppercase tracking-widest text-text-muted/50">Executive</p>
             )}
+            {isMainCeo && (
+              <NavItem
+                item={{ name: 'Command Center', path: '/command-center', icon: ShieldCheck }}
+                isSidebarCollapsed={isSidebarCollapsed}
+                isAdmin
+              />
+            )}
             <NavItem
-              item={{ name: 'Mission Control', path: '/mission-control', icon: Scale }}
+              item={{ name: 'Member Moderation', path: '/member-moderation', icon: ShieldAlert }}
               isSidebarCollapsed={isSidebarCollapsed}
               isAdmin
             />
             <NavItem
-              item={{ name: 'Command Center', path: '/command-center', icon: ShieldCheck }}
-              isSidebarCollapsed={isSidebarCollapsed}
-              isAdmin
-            />
-            <NavItem
-              item={{ name: 'Membership Center', path: '/membership-center', icon: UsersRound }}
-              isSidebarCollapsed={isSidebarCollapsed}
-              isAdmin
-            />
-            <NavItem
-              item={{ name: 'Executive AI', path: '/executive-ai', icon: Sparkles }}
-              isSidebarCollapsed={isSidebarCollapsed}
-              isAdmin
-            />
-            <NavItem
-              item={{ name: 'Executive Notifications', path: '/executive-notifications', icon: Bell }}
-              isSidebarCollapsed={isSidebarCollapsed}
-              isAdmin
-            />
-            <NavItem
-              item={{ name: 'Executive Security', path: '/executive-security', icon: Shield }}
-              isSidebarCollapsed={isSidebarCollapsed}
-              isAdmin
-            />
-            <NavItem
-              item={{ name: 'Role Management', path: '/executive-role-management', icon: Crown }}
+              item={{ name: 'Membership Applications', path: '/membership-applications', icon: ClipboardList }}
               isSidebarCollapsed={isSidebarCollapsed}
               isAdmin
             />

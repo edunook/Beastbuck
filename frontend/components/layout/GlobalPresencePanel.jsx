@@ -5,6 +5,7 @@ import PresenceIndicator from '../ui/PresenceIndicator';
 import { PresenceService } from '@services/realtime/presence';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 
 export default function GlobalPresencePanel({ isOpen, onClose }) {
   const { onlineMembers } = usePresenceStore();
@@ -18,7 +19,10 @@ export default function GlobalPresencePanel({ isOpen, onClose }) {
       try {
         const snap = await getDocs(collection(db, 'users'));
         if (isMounted) {
-          setUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          const membersOnly = snap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(u => PERMISSIONS.isApprovedMember(u));
+          setUsers(membersOnly);
         }
       } catch (err) {
         console.warn('Error loading members list for presence:', err);

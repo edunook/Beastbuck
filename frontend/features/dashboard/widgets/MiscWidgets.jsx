@@ -76,7 +76,7 @@ export function QuickActionsPanel() {
 
   actions.push({
     label: 'AI Studio Workspace',
-    path: '/ai',
+    path: '/ai-studio',
     icon: Sparkles,
   });
 

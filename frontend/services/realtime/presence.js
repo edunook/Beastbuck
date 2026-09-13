@@ -2,6 +2,7 @@ import { ref, onValue, onDisconnect, set, serverTimestamp, get } from 'firebase/
 import { collection, doc, setDoc, onSnapshot, getDoc, serverTimestamp as firestoreTimestamp } from 'firebase/firestore';
 import { rtdb, db } from '@services/firebase/config';
 import { errorHandler } from '@shared/utils/errorHandler';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 
 export const PRESENCE_STATES = [
   'online',
@@ -88,6 +89,10 @@ export const PresenceService = {
         state: 'online',
         displayName: profile.displayName || profile.username || 'Member',
         avatar: profile.avatar || '',
+        role: profile.role || 'user',
+        membershipStatus: profile.membershipStatus || 'pending',
+        suspended: profile.suspended || false,
+        accountStatus: profile.accountStatus || 'active',
         last_changed: serverTimestamp(),
       };
 
@@ -117,6 +122,10 @@ export const PresenceService = {
           state: 'online',
           displayName: basePayload.displayName,
           avatar: basePayload.avatar,
+          role: basePayload.role,
+          membershipStatus: basePayload.membershipStatus,
+          suspended: basePayload.suspended,
+          accountStatus: basePayload.accountStatus,
           activity: '',
           activeWorkspace: null,
           activeProject: null,
@@ -239,6 +248,7 @@ export const PresenceService = {
   subscribeToAllPresence(callback) {
     const firestoreMap = {};
     const rtdbMap = {};
+    const usersMap = {};
     const STALE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
 
     const publishCleanMap = () => {
@@ -251,6 +261,19 @@ export const PresenceService = {
       allUids.forEach(uid => {
         const fsDoc = firestoreMap[uid] || {};
         const rtDoc = rtdbMap[uid] || {};
+        const userDoc = usersMap[uid] || {};
+
+        // Evaluate whether this user account is an approved member
+        const userRoleMeta = {
+          role: userDoc.role || rtDoc.role || fsDoc.role,
+          membershipStatus: userDoc.membershipStatus || rtDoc.membershipStatus || fsDoc.membershipStatus,
+          suspended: userDoc.suspended ?? rtDoc.suspended ?? fsDoc.suspended,
+          accountStatus: userDoc.accountStatus || rtDoc.accountStatus || fsDoc.accountStatus,
+        };
+
+        if (!PERMISSIONS.isApprovedMember(userRoleMeta)) {
+          return; // Exclude non-members from live presence!
+        }
 
         // Parse timestamps
         const fsTime = fsDoc.updatedAt?.toDate ? fsDoc.updatedAt.toDate().getTime() : (fsDoc.lastSeen?.toDate ? fsDoc.lastSeen.toDate().getTime() : 0);
@@ -269,8 +292,8 @@ export const PresenceService = {
         finalMap[uid] = {
           uid,
           state: resolvedState,
-          displayName: rtDoc.displayName || fsDoc.displayName || 'Member',
-          avatar: rtDoc.avatar || fsDoc.avatar || '',
+          displayName: userDoc.displayName || rtDoc.displayName || fsDoc.displayName || 'Member',
+          avatar: userDoc.avatar || userDoc.photoURL || rtDoc.avatar || fsDoc.avatar || '',
           activity: rtDoc.activity !== undefined ? rtDoc.activity : (fsDoc.activity || (resolvedState !== 'offline' ? 'Active' : 'Offline')),
           activeWorkspace: rtDoc.activeWorkspace !== undefined ? rtDoc.activeWorkspace : fsDoc.activeWorkspace,
           lastSeen: maxTime || Date.now(),
@@ -280,7 +303,23 @@ export const PresenceService = {
       callback(finalMap);
     };
 
-    // 1. Listen to Firestore presence collection
+    // 1. Listen to users collection for role validation
+    const unsubUsers = onSnapshot(
+      collection(db, 'users'),
+      (snap) => {
+        snap.docs.forEach(docSnap => {
+          if (docSnap.exists()) {
+            usersMap[docSnap.id] = { id: docSnap.id, ...docSnap.data() };
+          }
+        });
+        publishCleanMap();
+      },
+      (err) => {
+        errorHandler.warn('Users collection listener for presence failed:', 'Presence Stream', { error: err.message });
+      }
+    );
+
+    // 2. Listen to Firestore presence collection
     const unsubFirestore = onSnapshot(
       collection(db, 'presence'),
       (snap) => {
@@ -297,7 +336,7 @@ export const PresenceService = {
       }
     );
 
-    // 2. Listen to Realtime Database /presence node
+    // 3. Listen to Realtime Database /presence node
     let unsubRTDB = () => {};
     try {
       const allPresenceRef = ref(rtdb, '/presence');
@@ -319,6 +358,7 @@ export const PresenceService = {
     }
 
     return () => {
+      unsubUsers();
       unsubFirestore();
       unsubRTDB();
     };

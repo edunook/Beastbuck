@@ -45,11 +45,36 @@ export const hasPermission = (userRole, permissionName) => {
   return exactMatch || caseInsensitiveMatch;
 };
 
+export function isAccountSuspended(roleData) {
+  if (!roleData || typeof roleData !== 'object') return false;
+  const isFlagged = Boolean(roleData.suspended || roleData.accountStatus === 'suspended');
+  if (!isFlagged) return false;
+
+  if (roleData.suspendedUntil) {
+    let untilMs = 0;
+    if (roleData.suspendedUntil?.toMillis) {
+      untilMs = roleData.suspendedUntil.toMillis();
+    } else if (typeof roleData.suspendedUntil === 'number') {
+      untilMs = roleData.suspendedUntil;
+    } else {
+      untilMs = new Date(roleData.suspendedUntil).getTime();
+    }
+    if (!isNaN(untilMs) && untilMs > Date.now()) {
+      return true;
+    }
+    return false;
+  }
+
+  return true;
+}
+
 export const PERMISSIONS = {
   canAccessCeoPanel: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO].includes(role),
   canManageUsers: (role) => [ROLES.MAIN_CEO, ROLES.CO_CEO].includes(role),
+  isSuspended: (roleData) => isAccountSuspended(roleData),
   isOfficialMember: (roleData) => {
     if (!roleData) return false;
+    if (isAccountSuspended(roleData)) return false;
     const role = typeof roleData === 'string' ? roleData : roleData?.role;
     const status = typeof roleData === 'object' ? roleData?.membershipStatus : null;
     if (status === 'approved') return true;
@@ -62,6 +87,7 @@ export const PERMISSIONS = {
   isAuthenticated: (role) => role !== ROLES.GUEST,
   isApprovedMember: (roleData) => {
     if (!roleData) return false;
+    if (isAccountSuspended(roleData)) return false;
     const role = typeof roleData === 'string' ? roleData : roleData?.role;
     const status = typeof roleData === 'object' ? roleData?.membershipStatus : null;
     if (status === 'approved') return true;

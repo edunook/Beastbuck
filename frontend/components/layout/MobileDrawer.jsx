@@ -3,48 +3,24 @@ import { useEffect } from 'react';
 import { useGlobalStore } from '@frontend/store/useGlobalStore';
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { hasPermission, PERMISSIONS } from '@shared/permissions/permissions';
-import { 
-  X,
-  LayoutDashboard, 
-  MessageSquare, 
-  Trophy, 
-  Bot,
-  User,
-  Settings,
-  Building2,
-  ShieldCheck,
-  Brain,
-  BriefcaseBusiness,
-  BookOpen,
-  Sparkles,
-  Film,
-  Palette,
-  Crown,
-  Bell,
-  Shield,
-  Gamepad2,
-  Calendar,
-  FlaskConical,
-  Orbit,
-  Network,
-  ClipboardList,
-} from 'lucide-react';
+import { ROLES } from '@shared/constants/roles';
+import { X, LayoutDashboard, MessageSquare, Trophy, Bot, User, Settings, Building2, ShieldCheck, ShieldAlert, UsersRound, Brain, BriefcaseBusiness, BookOpen, Sparkles, Film, Palette, Crown, Bell, Shield, Gamepad2, Calendar, FlaskConical, Orbit, Network, ClipboardList, Medal, CheckSquare } from 'lucide-react';
 import { cn } from '@shared/lib/utils';
 
 
 
 const DRAWER_NAV_ITEMS = [
-  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { name: 'Portfolios', path: '/portfolio', icon: User },
-  { name: 'Creativity', path: '/creativity', icon: Palette },
-  { name: 'Challenges', path: '/challenges', icon: Trophy },
-  { name: 'Chat', path: '/chat', icon: MessageSquare },
-  { name: 'FunFlix Home', path: '/funflix', icon: Film },
-  { name: 'My AIs', path: '/ai-studio', icon: Bot },
-  { name: 'AI Marketplace', path: '/ais', icon: Bot },
-  { name: 'AI Assistant', path: '/ai', icon: Bot },
-  { name: 'Leaderboards', path: '/leaderboards', icon: Trophy },
-  { name: 'Memobook', path: '/memobook', icon: BookOpen, memberOnly: true },
+  { name: 'Dashboard',     path: '/dashboard',    icon: LayoutDashboard },
+  { name: 'Portfolios',    path: '/portfolio',    icon: User },
+  { name: 'Creativity',    path: '/creativity',   icon: Palette },
+  { name: 'Challenges',    path: '/challenges',   icon: Trophy },
+  { name: 'Chat',          path: '/chat',         icon: MessageSquare },
+  { name: 'Tasks',         path: '/tasks',        icon: CheckSquare },
+  { name: 'Leaderboards',  path: '/leaderboards', icon: Medal },
+  { name: 'FunFlix Home',  path: '/funflix',      icon: Film },
+  { name: 'My AIs',        path: '/ai-studio',    icon: Bot },
+  { name: 'AI Marketplace',path: '/ais',          icon: Bot },
+  { name: 'Memobook',      path: '/memobook',     icon: BookOpen, memberOnly: true },
 ];
 
 export default function MobileDrawer() {
@@ -52,6 +28,7 @@ export default function MobileDrawer() {
   const { roleData, user } = useAuth();
   const role = roleData?.role;
   const normalizedRole = role?.toLowerCase().trim();
+  const isMainCeo = normalizedRole === 'main ceo' || role === ROLES.MAIN_CEO;
   const isAdmin = hasPermission(role, 'canAccessCeoPanel') || 
                   normalizedRole === 'main ceo' || 
                   normalizedRole === 'co-ceo' || 
@@ -140,11 +117,27 @@ export default function MobileDrawer() {
               {isAdmin && (
                 <>
                   <div className="my-2 mx-1 border-t border-border" />
-                  <p className="px-4 pb-1 text-badge font-bold uppercase tracking-widest text-text-muted/50">Admin & Exec</p>
+                  <p className="px-4 pb-1 text-badge font-bold uppercase tracking-widest text-text-muted/50">Executive</p>
+                  {isMainCeo && (
+                    <NavLink
+                      to="/command-center"
+                      onClick={toggleMobileDrawer}
+                      aria-label="Command Center"
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
+                        isActive 
+                          ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset_3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
+                          : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
+                      )}
+                    >
+                      <ShieldCheck className="w-5 h-5 shrink-0" aria-hidden="true" />
+                      <span className="truncate text-badge">Command Center</span>
+                    </NavLink>
+                  )}
                   <NavLink
-                    to="/mission-control"
+                    to="/member-moderation"
                     onClick={toggleMobileDrawer}
-                    aria-label="Mission Control"
+                    aria-label="Member Moderation"
                     className={({ isActive }) => cn(
                       "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
                       isActive 
@@ -152,67 +145,11 @@ export default function MobileDrawer() {
                         : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
                     )}
                   >
-                    <Brain className="w-5 h-5 shrink-0" aria-hidden="true" />
-                    <span className="truncate text-badge">Mission Control</span>
+                    <ShieldAlert className="w-5 h-5 shrink-0" aria-hidden="true" />
+                    <span className="truncate text-badge">Member Moderation</span>
                   </NavLink>
                   <NavLink
-                    to="/command-center"
-                    onClick={toggleMobileDrawer}
-                    aria-label="Executive Management"
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
-                      isActive 
-                        ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset_3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
-                        : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
-                    )}
-                  >
-                    <Crown className="w-5 h-5 shrink-0" aria-hidden="true" />
-                    <span className="truncate text-badge">Executive Mgmt</span>
-                  </NavLink>
-                  <NavLink
-                    to="/platform-controls"
-                    onClick={toggleMobileDrawer}
-                    aria-label="Platform Controls"
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
-                      isActive 
-                        ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset_3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
-                        : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
-                    )}
-                  >
-                    <ShieldCheck className="w-5 h-5 shrink-0" aria-hidden="true" />
-                    <span className="truncate text-badge">Platform Controls</span>
-                  </NavLink>
-                  <NavLink
-                    to="/critical-alerts"
-                    onClick={toggleMobileDrawer}
-                    aria-label="Critical Alerts"
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
-                      isActive 
-                        ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset_3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
-                        : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
-                    )}
-                  >
-                    <Bell className="w-5 h-5 shrink-0" aria-hidden="true" />
-                    <span className="truncate text-badge">Critical Alerts</span>
-                  </NavLink>
-                  <NavLink
-                    to="/admin/dashboard"
-                    onClick={toggleMobileDrawer}
-                    aria-label="Admin Dashboard"
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-base min-h-[44px]",
-                      isActive 
-                        ? "bg-accent-alt/10 text-accent-alt font-medium shadow-[inset-3px_0_0_0_var(--color-accent-alt-0)] border-l-2 border-accent-alt" 
-                        : "text-accent-alt/70 hover:bg-accent-alt/5 hover:text-accent-alt hover:border-l-2 hover:border-accent-alt/30"
-                    )}
-                  >
-                    <Building2 className="w-5 h-5 shrink-0" aria-hidden="true" />
-                    <span className="truncate text-badge">Admin Dashboard</span>
-                  </NavLink>
-                  <NavLink
-                    to="/admin/membership-applications"
+                    to="/membership-applications"
                     onClick={toggleMobileDrawer}
                     aria-label="Membership Applications"
                     className={({ isActive }) => cn(

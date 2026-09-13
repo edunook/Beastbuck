@@ -6,13 +6,19 @@ import MobileDrawer from './MobileDrawer';
 import MobileBottomNav from './MobileBottomNav';
 import GlobalPresencePanel from './GlobalPresencePanel';
 import { useGlobalStore } from '@frontend/store/useGlobalStore';
+import { useAuth } from '@frontend/features/auth/AuthContext';
+import { isAccountSuspended } from '@shared/permissions/permissions';
+import { AlertTriangle, Clock } from 'lucide-react';
 import { usePagePresenceTracker } from '@frontend/hooks/usePagePresenceTracker';
 import { cn } from '@shared/lib/utils';
 
 export default function AppShell({ secondaryNav = null }) {
   usePagePresenceTracker();
   const { isSidebarCollapsed, isPresencePanelOpen, togglePresencePanel } = useGlobalStore();
+  const { roleData } = useAuth();
   const location = useLocation();
+
+  const isSuspended = isAccountSuspended(roleData);
 
   // FunFlix pages have their own cinematic chrome — hide the default app shell chrome
   const isFunFlixRoute = location.pathname.startsWith('/funflix');
@@ -56,6 +62,28 @@ export default function AppShell({ secondaryNav = null }) {
             )}
             tabIndex={-1}
           >
+            {isSuspended && (
+              <div className="w-full bg-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 text-xs sm:text-sm text-amber-200 flex items-center justify-between gap-3 backdrop-blur-md animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+                  <span className="truncate">
+                    <strong>Membership Restricted: </strong>
+                    Your member privileges are suspended
+                    {roleData?.suspendedUntil
+                      ? ` until ${new Date(
+                          roleData.suspendedUntil?.toMillis
+                            ? roleData.suspendedUntil.toMillis()
+                            : roleData.suspendedUntil
+                        ).toLocaleString()}`
+                      : ''}.
+                    {roleData?.suspendedReason ? ` Reason: ${roleData.suspendedReason}` : ''}
+                  </span>
+                </div>
+                <span className="shrink-0 text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                  Suspended
+                </span>
+              </div>
+            )}
             <Outlet />
           </main>
         </div>

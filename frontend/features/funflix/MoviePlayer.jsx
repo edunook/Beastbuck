@@ -117,7 +117,7 @@ export default function MoviePlayer() {
         <div className="aspect-video bg-black rounded-xl overflow-hidden relative group border border-border shadow-2xl mb-6">
           {currentVideoUrl ? (
             <video 
-              key={currentGatewayIndex}
+              key={currentVideoUrl}
               className="w-full h-full"
               controls
               autoPlay

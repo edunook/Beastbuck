@@ -15,18 +15,17 @@ const configuredCdn = (
 
 const isPlaceholder = !configuredCdn ||
   configuredCdn.includes('media.beastbuck.com') ||
-  configuredCdn === 'https://beastbuck-media.workers.dev';
+  configuredCdn.includes('workers.dev');
 
 /**
  * Centralized Media Delivery Base URL.
- * In local dev (when the CDN domain is an unassigned placeholder), routes to /api/media/file
- * so media loads instantly without ERR_NAME_NOT_RESOLVED.
- * In production, routes directly to the Cloudflare Worker.
+ * In local dev, routes to /api/media/file so media loads instantly without ERR_NAME_NOT_RESOLVED.
+ * In production, routes to configured CDN or direct Backblaze S3 public endpoint.
  */
 export const MEDIA_CDN_BASE_URL = (
   import.meta.env.DEV && isPlaceholder
     ? '/api/media/file'
-    : (configuredCdn || 'https://beastbuck-media.learningaurstudywala.workers.dev')
+    : (configuredCdn || 'https://s3.us-east-005.backblazeb2.com/beastbuck-media')
 );
 
 const CDN_BASE = MEDIA_CDN_BASE_URL;
@@ -53,9 +52,9 @@ export function normalizeMediaUrl(url) {
     return `${CDN_BASE}/${objectKey}`;
   }
 
-  // Rewrite placeholder beastbuck-media.workers.dev URLs
-  if (url.includes('beastbuck-media.workers.dev') && !url.includes('beastbuck-media.learningaurstudywala.workers.dev')) {
-    const objectKey = url.replace(/^https?:\/\/beastbuck-media\.workers\.dev\/?/, '');
+  // Rewrite placeholder/unresolvable workers.dev URLs to active CDN base
+  if (url.includes('workers.dev')) {
+    const objectKey = url.replace(/^https?:\/\/[^/]+\/?/, '');
     return `${CDN_BASE}/${objectKey}`;
   }
 

@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import { SPECIALIZATIONS } from '@shared/constants/specializations';
 import { normalizeMediaUrl } from '@services/storage/b2Client';
+import { PERMISSIONS } from '@shared/permissions/permissions';
 
 function normalizeUserProfile(profile) {
   if (!profile) return profile;
@@ -218,7 +219,7 @@ export const UsersService = {
     const querySnapshot = await getDocs(usersRef);
     return querySnapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(user => user.username) // Only include users with usernames
+      .filter(user => user.username && PERMISSIONS.isApprovedMember(user)) // Only include approved members
       .sort((a, b) => (b.xp || 0) - (a.xp || 0)); // Sort by XP descending
   }
 };
