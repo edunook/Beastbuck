@@ -215,62 +215,108 @@ exports.cleanupOldChatMessages = onSchedule('every 24 hours', async () => {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - 7); // 7 days ago
 
-  try {
-    console.log('[Chat Cleanup] Starting cleanup of messages older than 7 days...');
+  const DEFAULT_ROOM_IDS = [
+    'general',
+    'announcements',
+    'questions',
+    'help',
+    'resources',
+    'ideas',
+    'feedback',
+    'projects',
+    'research',
+    'random',
+    'introductions',
+    'events',
+    'challenges',
+    'media-sharing',
+    'career-advice',
+    'experiments',
+    'products',
+    'coding',
+    'science'
+  ];
 
-    // Get all chat rooms
+  try {
+    console.log('[Chat Cleanup] Starting cleanup of messages older than 7 days (cutoff:', cutoffDate.toISOString(), ')...');
+
+    // Get all custom chat rooms in addition to default rooms
     const roomsSnapshot = await db.collection('chatRooms').get();
-    console.log(`[Chat Cleanup] Found ${roomsSnapshot.size} chat rooms to process`);
+    const allRoomIds = Array.from(new Set([
+      ...DEFAULT_ROOM_IDS,
+      ...roomsSnapshot.docs.map(doc => doc.id)
+    ]));
 
     let totalDeleted = 0;
 
-    for (const roomDoc of roomsSnapshot.docs) {
-      const roomId = roomDoc.id;
-
+    // 1. Process room by room
+    for (const roomId of allRoomIds) {
       try {
-        // Query messages older than 7 days
-        const oldMessages = await db
-          .collection('chatRooms')
-          .doc(roomId)
-          .collection('messages')
-          .where('createdAt', '<', cutoffDate)
-          .limit(500) // Limit per batch to avoid timeouts
-          .get();
+        let hasMore = true;
+        while (hasMore) {
+          const oldMessages = await db
+            .collection('chatRooms')
+            .doc(roomId)
+            .collection('messages')
+            .where('createdAt', '<', cutoffDate)
+            .limit(500)
+            .get();
 
-        if (oldMessages.empty) {
-          continue;
-        }
+          if (oldMessages.empty) {
+            hasMore = false;
+            break;
+          }
 
-        // Delete old messages in batches (max 500 operations per batch)
-        const batch = db.batch();
-        let batchCount = 0;
+          const batch = db.batch();
+          for (const doc of oldMessages.docs) {
+            batch.delete(doc.ref);
+          }
 
-        for (const doc of oldMessages.docs) {
-          batch.delete(doc.ref);
-          batchCount++;
+          await batch.commit();
+          totalDeleted += oldMessages.size;
+          console.log(`[Chat Cleanup] Deleted batch of ${oldMessages.size} messages from room #${roomId}`);
 
-          if (batchCount >= 500) {
-            await batch.commit();
-            console.log(`[Chat Cleanup] Deleted batch of ${batchCount} messages from room ${roomId}`);
-            totalDeleted += batchCount;
-            batchCount = 0;
+          if (oldMessages.size < 500) {
+            hasMore = false;
           }
         }
-
-        // Commit remaining operations
-        if (batchCount > 0) {
-          await batch.commit();
-          console.log(`[Chat Cleanup] Deleted final batch of ${batchCount} messages from room ${roomId}`);
-          totalDeleted += batchCount;
-        }
-
       } catch (roomError) {
-        console.error(`[Chat Cleanup] Error processing room ${roomId}:`, roomError.message);
-        // Continue with other rooms even if one fails
+        console.warn(`[Chat Cleanup] Note for room ${roomId}:`, roomError.message);
       }
     }
 
-    console.log(`[Chat Cleanup] Completed. Total messages deleted: ${totalDeleted}`);
+    // 2. Global collectionGroup fallback to catch any orphaned/nested message subcollections
+    try {
+      let groupHasMore = true;
+      while (groupHasMore) {
+        const groupMessages = await db
+          .collectionGroup('messages')
+          .where('createdAt', '<', cutoffDate)
+          .limit(500)
+          .get();
+
+        if (groupMessages.empty) {
+          groupHasMore = false;
+          break;
+        }
+
+        const batch = db.batch();
+        for (const doc of groupMessages.docs) {
+          batch.delete(doc.ref);
+        }
+        await batch.commit();
+        totalDeleted += groupMessages.size;
+        console.log(`[Chat Cleanup] Deleted global batch of ${groupMessages.size} old messages`);
+
+        if (groupMessages.size < 500) {
+          groupHasMore = false;
+        }
+      }
+    } catch (groupError) {
+      console.warn('[Chat Cleanup] CollectionGroup check:', groupError.message);
+    }
+
+    console.log(`[Chat Cleanup] Completed successfully. Total messages deleted: ${totalDeleted}`);
     return null;
 
   } catch (error) {

@@ -67,7 +67,28 @@ const ChatPage = React.memo(function ChatPage() {
     
     const unsubscribe = ChatService.subscribeToRoomMessages(CHAT_ROOM_ID, {
       onMessages: (nextMessages) => {
-        setMessages(nextMessages.filter(m => !m.archived && !m.deleted));
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+        const cutoffTime = Date.now() - SEVEN_DAYS_MS;
+
+        setMessages(
+          nextMessages.filter(m => {
+            if (m.archived || m.deleted) return false;
+            if (m.pinned) return true;
+            if (!m.createdAt) return true;
+            let msgTime = 0;
+            if (m.createdAt?.toMillis) {
+              msgTime = m.createdAt.toMillis();
+            } else if (m.createdAt?.toDate) {
+              msgTime = m.createdAt.toDate().getTime();
+            } else if (typeof m.createdAt === 'number') {
+              msgTime = m.createdAt;
+            } else {
+              msgTime = new Date(m.createdAt).getTime();
+            }
+            if (isNaN(msgTime) || msgTime <= 0) return true;
+            return msgTime >= cutoffTime;
+          })
+        );
         setLoading(false);
       },
       onError: (err) => {
