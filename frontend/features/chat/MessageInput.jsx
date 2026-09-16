@@ -1,24 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  SendHorizonal, X, Smile, Paperclip, Mic, Image, FileText, Film, Music, 
-  Archive, Forward, Bookmark, Search, Phone, Video, Wand2, Loader2, 
-  MessageSquareReply, Square, Radio, Trash2, Check
+  SendHorizonal, X, Smile, Paperclip, Mic, Image as ImageIcon, 
+  FileText, Film, Radio, Trash2, Loader2, MessageSquareReply
 } from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 
 const QUICK_EMOJIS = [
   '😀', '😂', '🥳', '🔥', '⭐', '💡', '🚀', '🎨',
-  '🎵', '🏆', '👏', '💪', '🤔', '👍', '❤️', '🎉',
-  '✨', '💯', '🤝', '👀', '🧪', '💻', '📚', '🌟',
-];
-
-const SMART_REPLIES = [
-  "Sounds great! 👍",
-  "Let me look into that.",
-  "Thanks for sharing!",
-  "I'll get back to you soon.",
-  "Awesome work! 🎉",
-  "Let's discuss this further.",
+  '💻', '🏆', '👏', '💪', '🤔', '👍', '❤️', '🎉',
+  '✨', '💯', '🤝', '👀', '🧪', '⚡', '📚', '🌟',
+  '🙌', '😎', '💎', '🎯', '🔥', '🙏', '🍕', '☕'
 ];
 
 function getUsername(member) {
@@ -42,58 +33,70 @@ function getMentionsFromText(text, members) {
     }));
 }
 
-async function compressFile(file) {
-  if (!file.type.startsWith('image/')) return file;
-  const maxDim = 1280;
-  const quality = 0.82;
-  try {
-    const bitmap = await createImageBitmap(file);
-    let { width, height } = bitmap;
-    if (width > maxDim || height > maxDim) {
-      const scale = maxDim / Math.max(width, height);
-      width = Math.round(width * scale);
-      height = Math.round(height * scale);
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(await createImageBitmap(file), 0, 0, width, height);
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
-    return new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() });
-  } catch {
-    return file;
+// Client-side image compression to Base64 data URL for instant realtime distribution
+async function fileToDataUrl(file) {
+  if (file.type.startsWith('image/')) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1200;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            const ratio = Math.min(maxDim / width, maxDim / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = () => resolve(e.target.result);
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  } else {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
   }
 }
 
 export function MessageInput({
-  disabled,
-  readOnlyReason,
-  placeholder = 'Message chat...',
+  disabled = false,
+  readOnlyReason = '',
+  placeholder = 'Message channel...',
   onSend,
   onTyping,
   replyTo,
   onCancelReply,
   members = [],
-  onFileSelect,
-  onVoiceRecord,
-  smartReplies = SMART_REPLIES,
-  showSmartReplies = true,
 }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showFileMenu, setShowFileMenu] = useState(false);
-  const [showSmartRepliesPanel, setShowSmartRepliesPanel] = useState(false);
   const [attachments, setAttachments] = useState([]);
+  const [isCompressing, setIsCompressing] = useState(false);
   
-  // Audio Recording State
+  // Voice Recording State
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const recordingTimerRef = useRef(null);
   const audioStreamRef = useRef(null);
+
+  const textareaRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const mentionQuery = getMentionQuery(text);
   const mentionOptions = mentionQuery === null
@@ -102,23 +105,17 @@ export function MessageInput({
         .filter(member => getUsername(member).toLowerCase().includes(mentionQuery))
         .slice(0, 6);
 
-  const textareaRef = useRef(null);
-  const emojiPickerRef = useRef(null);
-  const fileInputRef = useRef(null);
-
   useEffect(() => {
     function handleClickOutside(e) {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
         setShowEmojiPicker(false);
-      }
-      if (!e.target.closest('.file-menu')) {
-        setShowFileMenu(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Typing indicator trigger
   useEffect(() => {
     if (!onTyping) return;
     if (text.length > 0 || attachments.length > 0) {
@@ -141,33 +138,38 @@ export function MessageInput({
   const handleEmojiClick = useCallback((emoji) => {
     setText(current => current + emoji);
     textareaRef.current?.focus();
-  }, [setText]);
+  }, []);
 
   const handleFileSelect = useCallback(async (e) => {
     const files = Array.from(e.target.files || []);
-    const processed = await Promise.all(files.map(compressFile));
-    const newAttachments = processed.map((file, i) => ({
-      id: Date.now() + Math.random() + i,
-      file,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      url: URL.createObjectURL(file),
-    }));
-    setAttachments(prev => [...prev, ...newAttachments]);
-    setShowFileMenu(false);
-    onFileSelect?.(processed);
-  }, [onFileSelect, setAttachments, setShowFileMenu]);
+    if (files.length === 0) return;
+
+    setIsCompressing(true);
+    try {
+      const processed = await Promise.all(
+        files.map(async (file) => {
+          const dataUrl = await fileToDataUrl(file);
+          return {
+            id: Date.now() + Math.random(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: dataUrl,
+          };
+        })
+      );
+      setAttachments(prev => [...prev, ...processed]);
+    } catch (err) {
+      console.error('File processing error:', err);
+    } finally {
+      setIsCompressing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, []);
 
   const removeAttachment = useCallback((id) => {
     setAttachments(prev => prev.filter(a => a.id !== id));
   }, []);
-
-  const handleSmartReply = useCallback((reply) => {
-    setText(reply);
-    setShowSmartRepliesPanel(false);
-    textareaRef.current?.focus();
-  }, [setShowSmartRepliesPanel, setText]);
 
   // Start Voice Recording
   const startVoiceRecording = async () => {
@@ -193,12 +195,12 @@ export function MessageInput({
       }, 1000);
     } catch (err) {
       console.error('Microphone access denied or error:', err);
-      alert('Could not access microphone. Please allow microphone permissions in your browser.');
+      alert('Microphone access is needed to record voice notes. Please grant microphone permissions in your browser.');
     }
   };
 
-  // Stop & Save Voice Recording
-  const stopVoiceRecording = (sendImmediately = true) => {
+  // Stop & Send Voice Recording
+  const stopVoiceRecording = () => {
     if (!mediaRecorderRef.current || !isRecording) return;
     
     clearInterval(recordingTimerRef.current);
@@ -206,35 +208,36 @@ export function MessageInput({
     
     recorder.onstop = async () => {
       const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      const audioFile = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
-      const voiceAttachment = {
-        id: Date.now() + Math.random(),
-        file: audioFile,
-        name: `Voice Note (${Math.floor(recordingDuration / 60)}:${(recordingDuration % 60).toString().padStart(2, '0')})`,
-        size: audioBlob.size,
-        type: 'audio/webm',
-        url: URL.createObjectURL(audioBlob),
-        isVoiceNote: true,
-      };
+      const reader = new FileReader();
+      
+      reader.onloadend = async () => {
+        const audioDataUrl = reader.result;
+        const voiceAttachment = {
+          id: Date.now(),
+          name: `Voice Note (${formatSeconds(recordingDuration)})`,
+          size: audioBlob.size,
+          type: 'audio/webm',
+          url: audioDataUrl,
+          isVoiceNote: true,
+        };
 
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop());
-        audioStreamRef.current = null;
-      }
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(track => track.stop());
+          audioStreamRef.current = null;
+        }
 
-      setIsRecording(false);
-      setRecordingDuration(0);
+        setIsRecording(false);
+        setRecordingDuration(0);
 
-      if (sendImmediately) {
         setSending(true);
         try {
           await onSend('', [], [voiceAttachment]);
         } finally {
           setSending(false);
         }
-      } else {
-        setAttachments(prev => [...prev, voiceAttachment]);
-      }
+      };
+
+      reader.readAsDataURL(audioBlob);
     };
 
     recorder.stop();
@@ -258,16 +261,15 @@ export function MessageInput({
   const submit = async (event) => {
     event.preventDefault();
     if (isRecording) {
-      stopVoiceRecording(true);
+      stopVoiceRecording();
       return;
     }
     const cleanText = text.trim();
     if (!cleanText && attachments.length === 0) return;
-    if (disabled || readOnlyReason || sending) return;
+    if (disabled || readOnlyReason || sending || isCompressing) return;
 
     setSending(true);
     setShowEmojiPicker(false);
-    setShowFileMenu(false);
     try {
       await onSend(cleanText, getMentionsFromText(cleanText, members), attachments);
       setText('');
@@ -280,6 +282,7 @@ export function MessageInput({
   const insertMention = (member) => {
     const username = getUsername(member).toLowerCase();
     setText(current => current.replace(/(^|\s)@([a-z0-9_]*)$/i, `@${username} `));
+    textareaRef.current?.focus();
   };
 
   const formatSeconds = (sec) => {
@@ -289,88 +292,93 @@ export function MessageInput({
   };
 
   return (
-    <form onSubmit={submit} className="shrink-0 w-full border-t border-white/10 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl shadow-2xl z-10">
-      {/* Reply Preview */}
+    <form onSubmit={submit} className="shrink-0 w-full border-t border-white/10 bg-slate-950/95 backdrop-blur-2xl px-3 sm:px-4 py-2.5 sm:py-3 z-20">
+      
+      {/* Reply Preview Banner */}
       {replyTo && (
-        <div className="mx-3 mt-2.5 sm:mx-4 sm:mt-3 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/20 via-accent/15 to-accent/5 px-3 py-2 animate-fade-in-up shadow-xl shadow-accent/30 backdrop-blur-xl">
-          <div className="min-w-0 flex-1">
-            <div className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-accent flex items-center gap-1.5">
-              <MessageSquareReply className="h-3 w-3" />
-              Replying to {replyTo.senderName || 'Member'}
-            </div>
-            <p className="line-clamp-2 break-words text-xs leading-5 text-white/90">{replyTo.text}</p>
+        <div className="mb-2 flex items-center justify-between gap-2.5 rounded-xl border border-indigo-500/30 bg-indigo-950/40 px-3 py-1.5 animate-fade-in">
+          <div className="min-w-0 flex-1 flex items-center gap-2">
+            <MessageSquareReply className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+            <span className="text-xs text-indigo-300 font-semibold truncate">
+              Replying to <span className="text-white">{replyTo.senderName || 'Member'}</span>:
+            </span>
+            <span className="text-xs text-white/60 truncate">{replyTo.text}</span>
           </div>
-          <button type="button" onClick={onCancelReply} className="rounded-lg p-1 text-white/50 transition-all duration-200 hover:bg-white/10 hover:text-white hover:scale-110 active:scale-95" aria-label="Cancel reply">
+          <button 
+            type="button" 
+            onClick={onCancelReply} 
+            className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition"
+            aria-label="Cancel reply"
+          >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
 
-      {/* Attachments Preview */}
+      {/* Attachments Preview Grid */}
       {attachments.length > 0 && (
-        <div className="mx-3 mt-2 sm:mx-4 sm:mt-3 flex flex-wrap gap-2 animate-fade-in-up">
+        <div className="mb-2 flex flex-wrap gap-2 animate-fade-in">
           {attachments.map(att => (
-            <div key={att.id} className="flex items-center gap-2 rounded-xl border border-white/15 bg-gradient-to-br from-white/15 via-white/10 to-white/5 px-3 py-1.5 shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-105 backdrop-blur-xl">
-              {att.type?.startsWith('image/') ? <Image className="h-4 w-4 text-accent" /> : 
-               att.type?.startsWith('video/') ? <Film className="h-4 w-4 text-pink-400" /> :
-               att.type?.startsWith('audio/') ? <Music className="h-4 w-4 text-purple-400" /> :
-               <FileText className="h-4 w-4 text-blue-400" />}
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] sm:text-xs font-bold text-white truncate max-w-[120px] sm:max-w-[180px]">{att.name}</p>
-                <p className="text-[9px] text-white/50">{(att.size / 1024).toFixed(0)} KB</p>
+            <div key={att.id} className="relative group flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 p-1.5 pr-3 shadow-md backdrop-blur-md">
+              {att.type?.startsWith('image/') ? (
+                <img src={att.url} alt={att.name} className="h-10 w-10 rounded-lg object-cover" />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                  <FileText className="h-5 w-5" />
+                </div>
+              )}
+              <div className="min-w-0 max-w-[120px] sm:max-w-[180px]">
+                <p className="text-xs font-semibold text-white truncate">{att.name}</p>
+                <p className="text-[10px] text-white/50">{(att.size / 1024).toFixed(0)} KB</p>
               </div>
-              <button type="button" onClick={() => removeAttachment(att.id)} className="text-white/50 transition-all duration-200 hover:text-white hover:scale-110 active:scale-95" aria-label="Remove attachment">
-                <X className="h-3.5 w-3.5" />
+              <button
+                type="button"
+                onClick={() => removeAttachment(att.id)}
+                className="p-1 rounded-full bg-black/60 text-white/70 hover:text-white hover:bg-red-600 transition"
+                aria-label="Remove attachment"
+              >
+                <X className="h-3 w-3" />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Mentions Dropdown */}
+      {/* Mentions Auto-Suggest Dropdown */}
       {mentionOptions.length > 0 && (
-        <div className="mx-3 mb-2 sm:mx-4 sm:mb-2.5 max-h-48 overflow-y-auto rounded-xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl p-2 shadow-2xl custom-scrollbar animate-fade-in-up">
+        <div className="mb-2 max-h-40 overflow-y-auto rounded-xl border border-white/15 bg-slate-900 shadow-2xl p-1.5 custom-scrollbar animate-fade-in">
           {mentionOptions.map(member => (
-            <button key={member.id} type="button" onClick={() => insertMention(member)} className="flex w-full items-center justify-between gap-2 sm:gap-3 rounded-lg px-2.5 py-2 sm:px-3 sm:py-2.5 text-left transition-all duration-200 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-white/10">
-              <span className="min-w-0">
-                <span className="block truncate text-xs sm:text-sm font-bold text-white">@{getUsername(member).toLowerCase()}</span>
-                <span className="block truncate text-[9px] sm:text-[10px] uppercase tracking-widest text-white/50">{member.role}</span>
-              </span>
-              <span className="text-[10px] sm:text-xs text-accent font-bold">Mention</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Smart Replies */}
-      {showSmartRepliesPanel && smartReplies.length > 0 && (
-        <div className="mx-3 mb-2 sm:mx-4 sm:mb-2.5 flex flex-wrap gap-2 animate-fade-in-up">
-          {smartReplies.map((reply, i) => (
             <button
-              key={i}
+              key={member.id}
               type="button"
-              onClick={() => handleSmartReply(reply)}
-              className="rounded-full border border-white/15 bg-gradient-to-r from-white/15 via-white/10 to-white/5 px-3 py-1.5 text-[10px] sm:text-xs font-bold text-white/80 transition-all duration-200 hover:border-accent/50 hover:from-accent/25 hover:to-accent/15 hover:text-white hover:scale-105 hover:shadow-xl hover:shadow-accent/30 active:scale-95 backdrop-blur-xl"
+              onClick={() => insertMention(member)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-white hover:bg-white/10 transition"
             >
-              {reply}
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="h-6 w-6 rounded-full bg-indigo-600/30 text-indigo-300 flex items-center justify-center font-bold text-[10px]">
+                  {(member.displayName || member.username || 'M')[0]?.toUpperCase()}
+                </div>
+                <span className="font-semibold truncate">@{getUsername(member).toLowerCase()}</span>
+              </div>
+              <span className="text-[10px] text-white/40 uppercase">{member.role || 'Member'}</span>
             </button>
           ))}
         </div>
       )}
 
-      {/* Live Voice Recording UI Banner */}
+      {/* Live Voice Recording UI Bar */}
       {isRecording ? (
-        <div className="flex items-center justify-between gap-3 p-2 sm:p-3 bg-red-950/40 border-t border-red-500/30 animate-fade-in">
+        <div className="flex items-center justify-between gap-3 p-2 rounded-xl bg-red-950/50 border border-red-500/40 animate-fade-in">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50">
-              <Radio className="h-5 w-5 animate-spin" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white animate-pulse">
+              <Radio className="h-4 w-4 animate-spin" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-ping" />
-                <span className="text-xs font-bold text-red-400 uppercase tracking-widest">Recording Voice Note</span>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                <span className="text-xs font-bold text-red-400">Recording Voice Note</span>
               </div>
-              <span className="font-mono text-sm font-bold text-white">{formatSeconds(recordingDuration)}</span>
+              <span className="font-mono text-xs font-bold text-white">{formatSeconds(recordingDuration)}</span>
             </div>
           </div>
 
@@ -378,35 +386,58 @@ export function MessageInput({
             <button
               type="button"
               onClick={cancelVoiceRecording}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition text-xs font-semibold"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition text-xs font-semibold"
             >
-              <Trash2 className="h-4 w-4 text-red-400" />
-              <span className="hidden sm:inline">Cancel</span>
+              <Trash2 className="h-3.5 w-3.5 text-red-400" />
+              <span>Cancel</span>
             </button>
             <button
               type="button"
-              onClick={() => stopVoiceRecording(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-red-500 to-pink-600 text-white font-bold text-xs shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"
+              onClick={stopVoiceRecording}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold text-xs shadow-md shadow-red-600/30 hover:scale-105 transition"
             >
-              <SendHorizonal className="h-4 w-4" />
-              <span>Send Note</span>
+              <SendHorizonal className="h-3.5 w-3.5" />
+              <span>Send</span>
             </button>
           </div>
         </div>
       ) : (
-        /* Main Text Input Area */
-        <div className="relative flex items-end gap-1 sm:gap-2 p-1.5 sm:p-2.5 md:p-3">
-          <div className="flex items-center gap-0.5">
-            {/* Emoji Picker */}
+        /* Standard Message Input Container */
+        <div className="relative flex items-end gap-1.5 sm:gap-2">
+          
+          {/* Action Buttons: Emoji & Attachment */}
+          <div className="flex items-center gap-0.5 pb-1">
+            {/* Emoji Trigger */}
             <div className="relative">
-              <button type="button" onClick={() => setShowEmojiPicker(s => !s)} className="rounded-xl p-1.5 sm:p-2 text-white/60 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 border border-transparent" aria-label="Open emoji picker">
-                <Smile className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(s => !s)}
+                className={`p-2 rounded-xl border transition ${
+                  showEmojiPicker
+                    ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+                    : 'border-transparent text-white/60 hover:text-white hover:bg-white/10'
+                }`}
+                aria-label="Insert emoji"
+                title="Emojis"
+              >
+                <Smile className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
+
+              {/* Emoji Picker Popover */}
               {showEmojiPicker && (
-                <div ref={emojiPickerRef} className="absolute bottom-full left-0 mb-2 w-[300px] max-w-[90vw] rounded-2xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl p-3 z-50 animate-fade-in-up shadow-2xl">
-                  <div className="grid grid-cols-8 gap-1.5">
+                <div
+                  ref={emojiPickerRef}
+                  className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl border border-white/15 bg-slate-950 shadow-2xl p-3 z-50 animate-fade-in"
+                >
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-2">Quick Emojis</div>
+                  <div className="grid grid-cols-8 gap-1">
                     {QUICK_EMOJIS.map(emoji => (
-                      <button key={emoji} type="button" onClick={() => handleEmojiClick(emoji)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-all duration-200 hover:scale-125 hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 active:scale-95 border border-transparent hover:border-white/10">
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => handleEmojiClick(emoji)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-base hover:bg-white/15 hover:scale-125 transition active:scale-95"
+                      >
                         {emoji}
                       </button>
                     ))}
@@ -415,89 +446,77 @@ export function MessageInput({
               )}
             </div>
 
-            {/* File Menu */}
-            <div className="relative file-menu">
-              <button type="button" onClick={() => setShowFileMenu(s => !s)} className="rounded-xl p-1.5 sm:p-2 text-white/60 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 border border-transparent" aria-label="Attach file">
-                <Paperclip className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
-              </button>
-              {showFileMenu && (
-                <div className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl shadow-2xl overflow-hidden z-50 animate-fade-in-up p-1">
-                  <button type="button" onClick={() => { fileInputRef.current?.click(); setShowFileMenu(false); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 rounded-lg">
-                    <FileText className="h-3.5 w-3.5 text-blue-400" />
-                    <span>Document / File</span>
-                  </button>
-                  <button type="button" onClick={() => { fileInputRef.current?.click(); setShowFileMenu(false); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 rounded-lg">
-                    <Image className="h-3.5 w-3.5 text-pink-400" />
-                    <span>Image / Video</span>
-                  </button>
-                  <button type="button" onClick={() => { setShowFileMenu(false); startVoiceRecording(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 rounded-lg">
-                    <Mic className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Record Voice Note</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.csv,.json,.md,.txt,.js,.py,.java,.cpp,.c,.h" />
-            
-            {/* Smart Replies Toggle */}
-            <button type="button" onClick={() => setShowSmartRepliesPanel(s => !s)} className={`rounded-xl p-1.5 sm:p-2 transition-all duration-200 hover:scale-110 active:scale-95 border ${showSmartRepliesPanel ? 'bg-gradient-to-br from-accent/25 to-accent/15 text-accent shadow-xl shadow-accent/30 border-accent/40' : 'text-white/60 hover:bg-white/10 hover:text-white border-transparent'}`} aria-label="Smart replies">
-              <Wand2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+            {/* File & Photo Attachment Trigger */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition border border-transparent"
+              aria-label="Attach photo or file"
+              title="Attach Image or File"
+            >
+              <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip"
+            />
           </div>
 
-          {/* Text Input */}
-          <label className="sr-only" htmlFor="global-chat-message">Message</label>
-          <textarea
-            id="global-chat-message"
-            ref={textareaRef}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                event.currentTarget.form?.requestSubmit();
-              }
-            }}
-            placeholder={readOnlyReason || placeholder}
-            rows={1}
-            maxLength={4000}
-            disabled={disabled || !!readOnlyReason || sending}
-            className="min-h-[38px] sm:min-h-[44px] max-h-28 flex-1 resize-none rounded-xl border border-white/15 bg-gradient-to-br from-white/15 via-white/10 to-white/5 px-3 py-2 text-xs sm:text-sm text-white placeholder:text-white/40 outline-none transition-all duration-200 focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 focus:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 backdrop-blur-xl hover:border-white/20"
-          />
-          
-          {/* Send / Voice Button */}
-          {(text.trim() || attachments.length > 0) ? (
-            <Button 
-              type="submit" 
-              size="md" 
-              disabled={disabled || !!readOnlyReason || sending} 
-              className="h-8 sm:h-10 shrink-0 px-2.5 sm:px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-xl shadow-indigo-600/30 active:scale-95 transition-all duration-200 disabled:opacity-50 border border-indigo-400/40"
-              aria-label="Send message"
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <SendHorizonal className="h-4 w-4 text-white" />}
-            </Button>
-          ) : (
-            <button 
-              type="button" 
-              onClick={startVoiceRecording} 
-              className="h-8 sm:h-10 w-8 sm:w-10 flex items-center justify-center shrink-0 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 transition active:scale-95" 
-              aria-label="Record voice note"
-              title="Record Voice Note"
-            >
-              <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-          )}
+          {/* Text Area */}
+          <div className="flex-1 relative">
+            <textarea
+              id="global-chat-message"
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  submit(e);
+                }
+              }}
+              placeholder={readOnlyReason || placeholder}
+              rows={1}
+              maxLength={4000}
+              disabled={disabled || !!readOnlyReason || sending || isCompressing}
+              className="w-full min-h-[42px] max-h-32 resize-none rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder:text-white/40 outline-none transition focus:border-indigo-500/70 focus:bg-white/10 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
+            />
+          </div>
+
+          {/* Send or Voice Note Button */}
+          <div className="pb-1">
+            {text.trim() || attachments.length > 0 ? (
+              <Button
+                type="submit"
+                disabled={disabled || !!readOnlyReason || sending || isCompressing}
+                className="h-[42px] px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition active:scale-95 border border-indigo-400/30"
+                aria-label="Send message"
+              >
+                {sending || isCompressing ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                ) : (
+                  <SendHorizonal className="h-4 w-4 text-white" />
+                )}
+              </Button>
+            ) : (
+              <button
+                type="button"
+                onClick={startVoiceRecording}
+                className="h-[42px] w-[42px] flex items-center justify-center rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 transition active:scale-95"
+                aria-label="Record voice note"
+                title="Hold or Click to Record Voice Note"
+              >
+                <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            )}
+          </div>
         </div>
       )}
-      
-      {/* Footer (hidden on small screens unless attachments exist) */}
-      {attachments.length > 0 && (
-        <div className="mx-3 mb-1.5 flex items-center justify-between text-[9px] sm:text-[10px] text-white/40">
-          <span className="font-medium">{text.length}/4000</span>
-          <span className="font-medium">{attachments.length} file{attachments.length !== 1 ? 's' : ''} attached</span>
-        </div>
-      )}
+
     </form>
   );
 }

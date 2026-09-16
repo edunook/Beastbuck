@@ -1,61 +1,105 @@
 import { useState, useMemo } from 'react';
-import { Archive, Hash, Megaphone, Plus, X, Search, Pin, Users, ChevronRight, Circle } from 'lucide-react';
+import { 
+  Hash, Megaphone, Plus, X, Search, Pin, Users, ChevronRight, 
+  Sparkles, Trophy, Calendar, Lightbulb, HelpCircle, FolderGit2,
+  FolderOpen, MessageCircle, Flame, Shield, Compass
+} from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 
-const PRESENCE_COLORS = {
-  online: '#10b981',
-  busy: '#f59e0b',
-  away: '#eab308',
-  offline: '#6b7280',
-  'in-meeting': '#a855f7',
-  coding: '#3b82f6',
-  researching: '#06b6d4',
-  recording: '#ef4444',
-  dnd: '#dc2626',
+const CATEGORY_MAP = {
+  announcements: 'Announcements',
+  events: 'Community Hub',
+  challenges: 'Community Hub',
+  introductions: 'Community Hub',
+  general: 'General',
+  questions: 'Discussions',
+  help: 'Discussions',
+  resources: 'Resources',
+  ideas: 'Innovation & Lab',
+  feedback: 'Innovation & Lab',
+  projects: 'Innovation & Lab',
+  research: 'Innovation & Lab',
+  'media-sharing': 'Creative & Media',
+  'career-advice': 'Discussions',
+  random: 'General',
+};
+
+const CHANNEL_ICONS = {
+  general: MessageCircle,
+  announcements: Megaphone,
+  questions: HelpCircle,
+  help: Shield,
+  resources: FolderOpen,
+  ideas: Lightbulb,
+  feedback: Sparkles,
+  projects: FolderGit2,
+  research: Compass,
+  random: Flame,
+  challenges: Trophy,
+  events: Calendar,
+  introductions: Users,
+  'media-sharing': Sparkles,
+  'career-advice': Compass,
 };
 
 export function ChannelSidebar({
-  rooms,
-  activeRoomId,
-  canManageChannels,
+  rooms = [],
+  activeRoomId = 'general',
+  canManageChannels = false,
   onSelectRoom,
   onCreateChannel,
   onArchiveChannel,
   unreadCounts = {},
   memberPresence = {},
+  onCloseMobile,
 }) {
   const [creating, setCreating] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('public');
   const [submitting, setSubmitting] = useState(false);
-  const [filter, setFilter] = useState('all');
 
   const filteredRooms = useMemo(() => {
-    let result = rooms;
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(room => 
-        room.name?.toLowerCase().includes(query) ||
-        room.description?.toLowerCase().includes(query)
-      );
-    }
-    if (filter === 'pinned') {
-      result = result.filter(r => r.pinned);
-    } else if (filter === 'starred') {
-      result = result.filter(r => r.starred);
-    }
-    return result;
-  }, [rooms, searchQuery, filter]);
+    if (!searchQuery.trim()) return rooms;
+    const q = searchQuery.toLowerCase();
+    return rooms.filter(room => 
+      (room.name || '').toLowerCase().includes(q) ||
+      (room.description || '').toLowerCase().includes(q)
+    );
+  }, [rooms, searchQuery]);
+
+  // Group rooms by category
+  const groupedRooms = useMemo(() => {
+    const groups = {
+      'Announcements': [],
+      'General': [],
+      'Innovation & Lab': [],
+      'Discussions': [],
+      'Community Hub': [],
+      'Resources': [],
+      'Other': [],
+    };
+
+    filteredRooms.forEach(room => {
+      const cat = room.category || CATEGORY_MAP[room.id] || (room.type === 'announcement' ? 'Announcements' : 'General');
+      if (groups[cat]) {
+        groups[cat].push(room);
+      } else {
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push(room);
+      }
+    });
+
+    return Object.entries(groups).filter(([_, items]) => items.length > 0);
+  }, [filteredRooms]);
 
   const submit = async (event) => {
     event.preventDefault();
     if (!name.trim() || submitting) return;
     setSubmitting(true);
     try {
-      await onCreateChannel({ name, description, type });
+      await onCreateChannel?.({ name, description, type });
       setName('');
       setDescription('');
       setType('public');
@@ -65,216 +109,189 @@ export function ChannelSidebar({
     }
   };
 
-  const getPresenceColor = (roomId) => {
-    const members = memberPresence[roomId] || [];
-    if (members.some(m => m.presence === 'online')) return PRESENCE_COLORS.online;
-    if (members.some(m => m.presence === 'busy')) return PRESENCE_COLORS.busy;
-    if (members.some(m => m.presence === 'away')) return PRESENCE_COLORS.away;
-    return null;
-  };
-
   return (
-    <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-white/10 bg-gradient-to-b from-slate-900/80 to-slate-950/90 backdrop-blur-xl md:w-72 md:border-b-0 md:border-r md:border-white/5">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4 bg-gradient-to-r from-white/5 to-transparent">
-        <div>
-          <h2 className="text-sm font-bold uppercase tracking-widest text-white/90">Channels</h2>
-          <p className="text-xs text-white/50">{rooms.length} active rooms</p>
+    <aside className="flex h-full w-full flex-col bg-slate-950/80 md:bg-slate-900/60 border-r border-white/10 backdrop-blur-2xl select-none">
+      
+      {/* Sidebar Header */}
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-400">
+            <Compass className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-white truncate">Channels</h2>
+            <p className="text-[10px] text-white/40">{rooms.length} channels available</p>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button 
-            type="button" 
-            onClick={() => setShowSearch(s => !s)} 
-            className="rounded-xl border border-white/10 bg-white/5 p-2 text-white/70 transition-all duration-200 hover:border-blue-400/40 hover:bg-blue-500/10 hover:text-blue-400 hover:scale-110 active:scale-95" 
-            aria-label="Search channels"
-          >
-            {showSearch ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-          </button>
+
+        <div className="flex items-center gap-1">
           {canManageChannels && (
             <button 
               type="button" 
               onClick={() => setCreating(c => !c)} 
-              className="rounded-xl border border-accent/30 bg-gradient-to-r from-accent/20 to-accent/10 p-2 text-accent transition-all duration-200 hover:border-accent/60 hover:from-accent/30 hover:to-accent/20 hover:scale-110 hover:shadow-lg hover:shadow-accent/30 active:scale-95" 
-              aria-label={creating ? 'Close channel form' : 'Create channel'}
+              className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition active:scale-95" 
+              aria-label={creating ? 'Close create channel form' : 'Create new channel'}
+              title="Create Channel"
             >
               {creating ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            </button>
+          )}
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="md:hidden p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition"
+              aria-label="Close menu"
+            >
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Search */}
-      {showSearch && (
-        <div className="border-b border-white/10 px-3 py-3 animate-fade-in-up bg-gradient-to-r from-blue-500/5 to-transparent">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-blue-400/70" />
-            <input
-              type="text"
-              placeholder="Search channels..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-black/20 pl-9 pr-3 py-2.5 text-xs text-white outline-none transition-all duration-200 placeholder:text-white/40 focus:border-blue-400/60 focus:ring-2 focus:ring-blue-400/20 focus:shadow-lg focus:shadow-blue-400/10"
-            />
-          </div>
+      {/* Quick Search */}
+      <div className="px-3 pt-3 pb-2 shrink-0">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
+          <input
+            type="text"
+            placeholder="Search channels..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-white/5 pl-8 pr-7 py-1.5 text-xs text-white outline-none transition placeholder:text-white/40 focus:border-indigo-500/60 focus:bg-white/10"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
         </div>
-      )}
-
-      {/* Filter Tabs */}
-      <div className="flex gap-1.5 px-3 py-2.5 border-b border-white/10 bg-gradient-to-b from-white/5 to-transparent">
-        {['all', 'pinned', 'starred'].map(f => (
-          <button
-            key={f}
-            type="button"
-            onClick={() => setFilter(f)}
-            className={`flex-1 rounded-lg px-2 py-2 text-[10px] sm:text-xs font-bold capitalize transition-all duration-200 hover:scale-105 active:scale-95 ${
-              filter === f 
-                ? 'bg-gradient-to-r from-accent/30 to-accent/20 text-accent border border-accent/40 shadow-lg shadow-accent/30' 
-                : 'bg-white/5 text-white/60 border border-transparent hover:text-white hover:bg-white/10'
-            }`}
-          >
-            {f}
-          </button>
-        ))}
       </div>
 
-      {/* Create Channel Form */}
+      {/* Create Channel Modal / Inline Form */}
       {creating && (
-        <form onSubmit={submit} className="space-y-3 border-b border-white/10 p-3 md:p-4 animate-fade-in-up bg-gradient-to-r from-accent/5 to-transparent">
+        <form onSubmit={submit} className="m-3 p-3 rounded-xl border border-indigo-500/30 bg-indigo-950/40 space-y-2.5 animate-fade-in shrink-0">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-300">New Channel</span>
+            <button type="button" onClick={() => setCreating(false)} className="text-white/40 hover:text-white">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="channel-name"
+            placeholder="channel-name (e.g. dev-updates)"
             maxLength={40}
-            className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/40 focus:border-accent/60 focus:ring-2 focus:ring-accent/20 focus:shadow-lg focus:shadow-accent/10"
+            required
+            className="w-full rounded-lg border border-white/15 bg-black/40 px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-400 placeholder:text-white/30"
           />
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description"
+            placeholder="Channel topic or description"
             maxLength={120}
-            className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none transition-all duration-200 placeholder:text-white/40 focus:border-accent/60 focus:ring-2 focus:ring-accent/20 focus:shadow-lg focus:shadow-accent/10"
+            className="w-full rounded-lg border border-white/15 bg-black/40 px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-400 placeholder:text-white/30"
           />
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none transition-all duration-200 focus:border-accent/60 focus:ring-2 focus:ring-accent/20 focus:shadow-lg focus:shadow-accent/10"
-          >
-            <option value="public">Public</option>
-            <option value="announcement">Announcement</option>
-          </select>
-          <Button 
-            type="submit" 
-            size="sm" 
-            className="w-full bg-gradient-to-r from-accent to-accent/80 hover:from-accent/90 hover:to-accent/70 shadow-lg shadow-accent/30 transition-all duration-200 hover:scale-105 active:scale-95" 
-            disabled={submitting || !name.trim()}
-          >
-            {submitting ? 'Creating...' : 'Create Channel'}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              type="submit" 
+              size="sm" 
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-1" 
+              disabled={submitting || !name.trim()}
+            >
+              {submitting ? 'Creating...' : 'Create'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="px-2.5 py-1 rounded-lg border border-white/15 text-xs text-white/70 hover:bg-white/10"
+            >
+              Cancel
+            </button>
+          </div>
         </form>
       )}
 
-      {/* Channel List */}
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 md:p-3 custom-scrollbar" aria-label="Chat channels">
-        {filteredRooms.length === 0 ? (
-          <div className="py-8 text-center animate-fade-in">
-            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5">
-              <Hash className="h-5 w-5 text-white/40" />
-            </div>
-            <p className="text-xs text-white/50">
-              {searchQuery ? 'No channels match your search' : 'No channels yet'}
-            </p>
+      {/* Channel Categories & List */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-2 py-1 space-y-4 custom-scrollbar">
+        {groupedRooms.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-xs text-white/40">No channels found</p>
           </div>
         ) : (
-          filteredRooms.map(room => {
-            const active = room.id === activeRoomId;
-            const announcement = room.type === 'announcement';
-            const unreadCount = unreadCounts[room.id] || 0;
-            const presenceColor = getPresenceColor(room.id);
+          groupedRooms.map(([category, items]) => (
+            <div key={category} className="space-y-0.5">
+              {/* Category Label */}
+              <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white/40 flex items-center justify-between">
+                <span>{category}</span>
+                <span className="text-[9px] text-white/25 font-mono">{items.length}</span>
+              </div>
 
-            return (
-              <div key={room.id} className="group relative">
-                <button
-                  type="button"
-                  onClick={() => onSelectRoom(room.id)}
-                  className={`relative flex w-full items-center gap-2.5 sm:gap-3 rounded-xl px-2.5 py-2.5 sm:px-3 text-left transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
-                    active
-                      ? 'border border-accent/40 bg-gradient-to-r from-accent/20 to-accent/10 text-white shadow-lg shadow-accent/30'
-                      : 'border border-transparent text-white/70 hover:border-white/10 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  {/* Active Indicator */}
-                  {active && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-gradient-to-b from-accent to-accent/60 animate-pulse" />
-                  )}
-                  
-                  {/* Presence Indicator */}
-                  {presenceColor && (
-                    <div className="absolute left-1 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full animate-pulse shadow-lg" style={{ backgroundColor: presenceColor, boxShadow: `0 0 8px ${presenceColor}` }} />
-                  )}
+              {/* Items in Category */}
+              {items.map(room => {
+                const active = room.id === activeRoomId;
+                const isAnnouncement = room.type === 'announcement' || room.id === 'announcements';
+                const unreadCount = unreadCounts[room.id] || 0;
+                const IconComponent = CHANNEL_ICONS[room.id] || (isAnnouncement ? Megaphone : Hash);
 
-                  <span className={`rounded-lg p-2 transition-all duration-200 ${
-                    announcement 
-                      ? 'bg-gradient-to-br from-status-warning/20 to-status-warning/10 text-status-warning' 
-                      : active 
-                        ? 'bg-gradient-to-br from-accent/30 to-accent/20 text-accent' 
-                        : 'bg-gradient-to-br from-white/10 to-white/5 text-white/70'
-                  }`}>
-                    {announcement ? <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Hash className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs sm:text-sm font-bold">
-                      {room.name}
+                return (
+                  <button
+                    key={room.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectRoom(room.id);
+                      onCloseMobile?.();
+                    }}
+                    className={`group relative flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-all duration-150 ${
+                      active
+                        ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/20 text-white border border-indigo-500/40 shadow-sm shadow-indigo-500/10 font-semibold'
+                        : 'text-white/65 hover:text-white hover:bg-white/5 border border-transparent'
+                    }`}
+                  >
+                    {/* Active Indicator Bar */}
+                    {active && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-indigo-400" />
+                    )}
+
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition ${
+                      active
+                        ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30'
+                        : isAnnouncement
+                          ? 'text-amber-400 group-hover:text-amber-300'
+                          : 'text-white/40 group-hover:text-white/70'
+                    }`}>
+                      <IconComponent className="h-3.5 w-3.5" />
                     </span>
-                    {room.description && (
-                      <span className="hidden sm:block truncate text-[10px] text-white/40 mt-0.5">
-                        {room.description}
+
+                    <span className="flex-1 min-w-0 truncate text-xs">
+                      {room.name || room.id}
+                    </span>
+
+                    {/* Unread badge */}
+                    {unreadCount > 0 && !active && (
+                      <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-indigo-500 text-[9px] font-bold text-white shadow-sm">
+                        {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
-                  </span>
-                  
-                  {/* Unread Badge */}
-                  {unreadCount > 0 && !active && (
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-black shadow-sm">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                  
-                  {/* Chevron for hover */}
-                  <ChevronRight className={`h-3.5 w-3.5 transition-all duration-200 ${
-                    active ? 'text-accent opacity-100' : 'opacity-0 group-hover:opacity-100 text-white/40'
-                  }`} />
-                </button>
-                
-                {/* Archive Button */}
-                {canManageChannels && !room.isDefault && (
-                  <button
-                    type="button"
-                    onClick={() => onArchiveChannel(room.id)}
-                    className="absolute right-8 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-white/0 transition-all duration-200 hover:bg-status-danger/10 hover:text-status-danger group-hover:text-white/60"
-                    aria-label={`Archive ${room.name}`}
-                  >
-                    <Archive className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   </button>
-                )}
-              </div>
-            );
-          })
+                );
+              })}
+            </div>
+          ))
         )}
-      </nav>
+      </div>
 
-      {/* Footer */}
-      <div className="border-t border-white/10 p-3 md:p-4">
-        <div className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 p-2.5">
-          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-accent/20 to-purple-500/20 border border-white/10">
-            <Users className="h-4 w-4 text-white/70" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold text-white truncate">BeastBuck Team</p>
-            <p className="text-[10px] text-white/50">Online community</p>
-          </div>
-          <div className="h-2 w-2 rounded-full bg-status-success animate-pulse" />
+      {/* Footer Info */}
+      <div className="p-3 border-t border-white/10 shrink-0 bg-black/20">
+        <div className="flex items-center gap-2 text-[11px] text-white/50">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="truncate">Connected to BeastBuck Network</span>
         </div>
       </div>
+
     </aside>
   );
 }

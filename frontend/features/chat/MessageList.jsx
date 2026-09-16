@@ -1,20 +1,17 @@
-import { useMemo, useEffect, useRef, forwardRef, useImperativeHandle, memo } from 'react';
-import { MessageCircle, Megaphone, ChevronDown, RefreshCw, AlertCircle, Inbox } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle, memo } from 'react';
+import { MessageCircle, Megaphone, ChevronDown, Inbox, Search } from 'lucide-react';
 import { SkeletonChat } from '@frontend/components/ui/UIElements';
 import { MessageItem, DateSeparator } from './MessageItem';
-import Button from '@frontend/components/ui/Button';
 
 export const MessageList = memo(forwardRef(function MessageList({
-  messages,
-  loading,
+  messages = [],
+  loading = false,
   currentUserId,
-  roomName = 'chat',
-  isAnnouncementRoom = false,
+  currentRoom,
   canManageAnnouncements = false,
   onReply,
   onToggleReaction,
   onTogglePin,
-  onArchiveAnnouncement,
   onEdit,
   onDelete,
   onBookmark,
@@ -23,210 +20,187 @@ export const MessageList = memo(forwardRef(function MessageList({
   onMediaOpen,
   onReport,
   onOpenSharedContent,
-  compact = false,
-  fontSize = 'medium',
-  reducedMotion = false,
-  isRefreshing = false,
-  onPullToRefresh,
-  showScrollBottom = false,
-  onScrollToBottom,
-  onScroll,
-  error,
-  onRetry,
+  searchQuery = '',
+  typingUsers = [],
 }, ref) {
   const bottomRef = useRef(null);
   const scrollRef = useRef(null);
-  const pullStartY = useRef(0);
-  const isPulling = useRef(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      bottomRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
-    }
-  }, [messages.length]);
-
+  // Expose scrollRef methods
   useImperativeHandle(ref, () => ({
+    scrollToBottom: () => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    },
     scrollTo: (opts) => scrollRef.current?.scrollTo(opts),
   }));
 
+  // Auto-scroll when new messages arrive if user is already at bottom
+  useEffect(() => {
+    if (!showScrollBottom && messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+  }, [messages.length, showScrollBottom]);
+
+  const handleScroll = (e) => {
+    const el = e.target;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollBottom(distanceFromBottom > 250);
+  };
+
+  const scrollToBottom = () => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollBottom(false);
+  };
+
+  // Filter messages by search query if active
+  const displayedMessages = useMemo(() => {
+    if (!searchQuery.trim()) return messages;
+    const q = searchQuery.toLowerCase();
+    return messages.filter(m => 
+      (m.text || '').toLowerCase().includes(q) ||
+      (m.senderName || '').toLowerCase().includes(q)
+    );
+  }, [messages, searchQuery]);
+
+  // Group messages with date separators
   const groupedMessages = useMemo(() => {
     const groups = [];
     let lastDate = null;
-    messages.forEach((message) => {
-      const date = message.createdAt?.toDate?.();
+
+    displayedMessages.forEach((message) => {
+      const date = message.createdAt?.toDate ? message.createdAt.toDate() : (message.createdAt ? new Date(message.createdAt) : null);
       const dateKey = date ? date.toDateString() : 'unknown';
-      if (dateKey !== lastDate) {
-        groups.push({ type: 'separator', date });
+      
+      if (dateKey !== lastDate && date) {
+        groups.push({ type: 'separator', date, id: `sep-${dateKey}` });
         lastDate = dateKey;
       }
-      groups.push({ type: 'message', message });
+      groups.push({ type: 'message', message, id: message.id });
     });
+
     return groups;
-  }, [messages]);
+  }, [displayedMessages]);
 
-  const handleTouchStart = (e) => {
-    if (!onPullToRefresh) return;
-    const el = scrollRef.current;
-    if (!el || el.scrollTop > 0) return;
-    pullStartY.current = e.touches[0].clientY;
-    isPulling.current = true;
-  };
-
-  const handleTouchMove = (e) => {
-    if (!onPullToRefresh || !isPulling.current) return;
-    const deltaY = e.touches[0].clientY - pullStartY.current;
-    if (deltaY > 80 && scrollRef.current?.scrollTop === 0) {
-      // visual pull hint could be added here
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (!onPullToRefresh || !isPulling.current) return;
-    isPulling.current = false;
-    const el = scrollRef.current;
-    if (el && el.scrollTop === 0) {
-      onPullToRefresh?.();
-    }
-  };
-
-  const renderMediaPreview = (message) => {
-    if (!message.attachments?.length) return null;
-    return message.attachments.map((att, idx) => {
-      if (att.type?.startsWith('image/') && att.url) {
-        return (
-          <button key={idx} onClick={() => onMediaOpen?.(att.url)} className="mt-2 rounded-xl overflow-hidden border border-border hover:border-accent/40 transition">
-            <img src={att.url} alt={att.name} className="max-h-64 w-full object-cover" loading="lazy" />
-          </button>
-        );
-      }
-      if (att.type?.startsWith('video/') && att.url) {
-        return (
-          <button key={idx} onClick={() => onMediaOpen?.(att.url)} className="mt-2 rounded-xl overflow-hidden border border-border hover:border-accent/40 transition">
-            <video src={att.url} className="max-h-64 w-full object-cover" />
-          </button>
-        );
-      }
-      return null;
-    });
-  };
+  const roomName = currentRoom?.name || currentRoom?.id || 'general';
+  const isAnnouncement = currentRoom?.type === 'announcement' || currentRoom?.id === 'announcements';
 
   if (loading) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center">
+      <div className="flex min-h-0 flex-1 items-center justify-center p-6">
         <div className="flex flex-col items-center gap-3">
           <SkeletonChat />
-          <p className="text-xs text-text-muted animate-pulse">Loading messages...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (messages.length === 0 && !error) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center p-4 sm:p-6 text-center">
-        <div className="max-w-sm animate-fade-in-up">
-          <div className="mx-auto mb-4 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110">
-            {isAnnouncementRoom ? (
-              <Megaphone className="h-7 w-7 sm:h-8 sm:w-8 text-accent animate-pulse" />
-            ) : (
-              <Inbox className="h-7 w-7 sm:h-8 sm:w-8 text-accent animate-pulse" />
-            )}
-          </div>
-          <h2 className="mb-2 text-base sm:text-lg font-bold text-white">
-            {isAnnouncementRoom ? 'No announcements yet' : 'No messages yet'}
-          </h2>
-          <p className="text-xs sm:text-sm leading-6 text-white/60">
-            {isAnnouncementRoom
-              ? 'Leadership announcements for BeastBuck will appear here.'
-              : `Send the first message in #${roomName}.`}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error && messages.length === 0) {
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center p-4 sm:p-6 text-center">
-        <div className="max-w-sm animate-fade-in-up">
-          <div className="mx-auto mb-4 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border border-status-danger/30 bg-status-danger/10">
-            <AlertCircle className="h-7 w-7 sm:h-8 sm:w-8 text-status-danger" />
-          </div>
-          <h2 className="mb-2 text-base sm:text-lg font-bold text-white">Could not load messages</h2>
-          <p className="text-xs sm:text-sm leading-6 text-white/60 mb-4">{error}</p>
-          {onRetry && (
-            <Button onClick={onRetry} size="sm" className="bg-accent hover:bg-accent/90">
-              Try Again
-            </Button>
-          )}
+          <p className="text-xs text-white/40 animate-pulse">Loading channel messages...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-0 flex-1 overflow-y-auto px-2 py-2 sm:px-3 sm:py-3 md:px-4 md:py-4 custom-scrollbar"
-      ref={scrollRef}
-      onScroll={onScroll}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-    >
-      <div className="space-y-1.5 sm:space-y-2 md:space-y-3">
-        {groupedMessages.map((item, index) => {
-          if (item.type === 'separator') {
-            return <DateSeparator key={`sep-${item.date?.toDateString() || index}`} date={item.date} />;
-          }
-          const message = item.message;
-          const isOwnMessage = message.senderId === currentUserId;
-          const prevMessage = messages[index - 1];
-          const showAvatar = !isOwnMessage && (!prevMessage || prevMessage.senderId !== message.senderId);
-          const isCompact = !isOwnMessage && prevMessage && prevMessage.senderId === message.senderId;
-          return (
-            <MessageItem
-              key={message.id}
-              message={message}
-              isOwnMessage={isOwnMessage}
-              currentUserId={currentUserId}
-              canManageAnnouncements={canManageAnnouncements}
-              onReply={onReply}
-              onToggleReaction={onToggleReaction}
-              onTogglePin={onTogglePin}
-              onArchiveAnnouncement={onArchiveAnnouncement}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onBookmark={onBookmark}
-              onShare={onShare}
-              onShowProfile={onShowProfile}
-              onMediaOpen={onMediaOpen}
-              onReport={onReport}
-              onOpenSharedContent={onOpenSharedContent}
-              showAvatar={showAvatar}
-              compact={isCompact}
-              reducedMotion={reducedMotion}
-            />
-          );
-        })}
-        <div ref={bottomRef} />
-      </div>
-      {isRefreshing && (
-        <div className="flex justify-center py-2 animate-fade-in">
-          <div className="relative">
-            <RefreshCw className="h-5 w-5 animate-spin text-accent" />
-            <div className="absolute inset-0 h-5 w-5 rounded-full bg-accent/20 animate-ping" />
+    <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col">
+      
+      {/* Scrollable Message Container */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-1 sm:px-3 py-4 space-y-1 custom-scrollbar"
+      >
+        {/* Channel Welcome Banner when few or no messages */}
+        {displayedMessages.length === 0 ? (
+          <div className="flex h-full min-h-[300px] flex-col items-center justify-center p-6 text-center animate-fade-in">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/20 to-purple-500/10 shadow-xl shadow-indigo-500/10 text-indigo-400">
+              {isAnnouncement ? <Megaphone className="h-8 w-8" /> : <MessageCircle className="h-8 w-8" />}
+            </div>
+            
+            <h2 className="text-lg font-bold text-white mb-1">
+              {searchQuery ? 'No matching messages' : `Welcome to #${roomName}!`}
+            </h2>
+            
+            <p className="max-w-md text-xs sm:text-sm text-white/50 leading-relaxed">
+              {searchQuery 
+                ? `No messages matched "${searchQuery}". Try a different keyword.`
+                : currentRoom?.description || `This is the start of the #${roomName} channel.`}
+            </p>
+
+            {!searchQuery && (
+              <p className="text-[11px] text-indigo-400/80 mt-3 font-semibold">
+                👋 Send a message below to start the conversation!
+              </p>
+            )}
           </div>
-        </div>
-      )}
-      {showScrollBottom && onScrollToBottom && (
+        ) : (
+          <>
+            {/* Channel Top Header Marker */}
+            <div className="px-4 pt-4 pb-6 text-left border-b border-white/5 mb-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 mb-2">
+                {isAnnouncement ? <Megaphone className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+              </div>
+              <h2 className="text-base sm:text-lg font-bold text-white">Welcome to #{roomName}!</h2>
+              <p className="text-xs text-white/50">{currentRoom?.description || 'Start of conversation.'}</p>
+            </div>
+
+            {/* Message Stream */}
+            {groupedMessages.map((item) => {
+              if (item.type === 'separator') {
+                return <DateSeparator key={item.id} date={item.date} />;
+              }
+
+              const msg = item.message;
+              const isOwn = msg.senderId === currentUserId;
+
+              return (
+                <MessageItem
+                  key={msg.id}
+                  message={msg}
+                  isOwnMessage={isOwn}
+                  currentUserId={currentUserId}
+                  canManageAnnouncements={canManageAnnouncements}
+                  onReply={onReply}
+                  onToggleReaction={onToggleReaction}
+                  onTogglePin={onTogglePin}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onBookmark={onBookmark}
+                  onShare={onShare}
+                  onShowProfile={onShowProfile}
+                  onMediaOpen={onMediaOpen}
+                  onReport={onReport}
+                  onOpenSharedContent={onOpenSharedContent}
+                />
+              );
+            })}
+          </>
+        )}
+
+        {/* Typing Indicators */}
+        {typingUsers.length > 0 && (
+          <div className="px-4 py-2 flex items-center gap-2 text-xs text-indigo-300 animate-fade-in">
+            <span className="flex gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </span>
+            <span className="truncate">
+              {typingUsers.map(u => u.userName).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
+            </span>
+          </div>
+        )}
+
+        <div ref={bottomRef} className="h-2" />
+      </div>
+
+      {/* Floating Jump to Bottom Button */}
+      {showScrollBottom && (
         <button
           type="button"
-          onClick={onScrollToBottom}
-          className="absolute bottom-4 right-4 z-20 p-3 rounded-full bg-gradient-to-r from-accent to-accent/80 text-black shadow-lg shadow-accent/30 active:scale-95 transition-all duration-200 hover:scale-110 hover:from-accent/90 hover:to-accent/70 hover:shadow-xl hover:shadow-accent/40"
-          aria-label="Scroll to bottom"
+          onClick={scrollToBottom}
+          className="absolute bottom-4 right-6 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 hover:bg-indigo-500 transition active:scale-95 text-xs font-semibold animate-fade-in border border-indigo-400/40"
         >
-          <ChevronDown className="h-5 w-5" />
+          <span>Scroll to latest</span>
+          <ChevronDown className="h-3.5 w-3.5" />
         </button>
       )}
+
     </div>
   );
 }));

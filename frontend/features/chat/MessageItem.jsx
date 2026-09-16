@@ -2,13 +2,13 @@ import { useState, useRef, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MoreVertical, MessageSquareReply, Pin, Trash2, Bookmark, BookmarkCheck,
-  Edit3, Check, X, Paperclip, Flag, Play, Pause, Info, Volume2
+  Edit3, Check, X, Paperclip, Flag, Play, Pause, Volume2, Smile
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SUPPORTED_REACTIONS } from '@services/firestore/chat';
 import { RichCardRenderer } from './RichCardRenderer';
 
-const AVATAR_EMOJIS = ['👩‍🔬', '👨‍💼', '👩‍💻', '👨‍🚀', '👩‍🏫', '🧪', '💡', '🎨', '🚀', '🔥', '⭐', '🌟', '💎', '🎯', '🏆', '🎪'];
+const AVATAR_EMOJIS = ['👩‍🔬', '👨‍💼', '👩‍💻', '👨‍🚀', '👩‍🏫', '🧪', '💡', '🎨', '🚀', '🔥', '⭐', '🌟', '💎', '🎯', '🏆', '⚡'];
 
 function getAvatarEmoji(name = 'Member') {
   let hash = 0;
@@ -19,36 +19,24 @@ function getAvatarEmoji(name = 'Member') {
 }
 
 function formatTime(createdAt) {
-  const date = createdAt?.toDate?.();
-  if (!date) return 'Just now';
+  const date = createdAt?.toDate ? createdAt.toDate() : (createdAt ? new Date(createdAt) : null);
+  if (!date || isNaN(date.getTime())) return 'Just now';
   return new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date);
-}
-
-function formatExactDate(createdAt) {
-  const date = createdAt?.toDate?.();
-  if (!date) return 'Just now';
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   }).format(date);
 }
 
 function formatDateSeparator(createdAt) {
-  const date = createdAt?.toDate?.();
-  if (!date) return null;
+  const date = createdAt?.toDate ? createdAt.toDate() : (createdAt ? new Date(createdAt) : null);
+  if (!date || isNaN(date.getTime())) return null;
   const now = new Date();
   const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
   return new Intl.DateTimeFormat(undefined, {
-    weekday: 'long',
-    month: 'long',
+    weekday: 'short',
+    month: 'short',
     day: 'numeric',
   }).format(date);
 }
@@ -66,14 +54,14 @@ function renderTextWithMentions(text, mentions) {
     const mention = mentions?.find(m => m.username?.toLowerCase() === username);
     const target = mention?.uid ? `/profile/${mention.uid}` : `/profile?username=${encodeURIComponent(username)}`;
     return (
-      <Link key={`${part}-${index}`} to={target} className="font-semibold text-cyan-400 hover:underline">
+      <Link key={`${part}-${index}`} to={target} className="font-semibold text-cyan-300 hover:underline">
         {part}
       </Link>
     );
   });
 }
 
-function AudioVoicePlayer({ src, name, size, isOwnMessage }) {
+function AudioVoicePlayer({ src, name, isOwnMessage }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -112,11 +100,13 @@ function AudioVoicePlayer({ src, name, size, isOwnMessage }) {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const waveformBars = [40, 75, 55, 90, 65, 80, 45, 100, 70, 50, 85, 60, 75, 55, 70, 40];
+
   return (
-    <div className={`mt-2 flex items-center gap-3 rounded-2xl p-2.5 sm:p-3 border backdrop-blur-xl max-w-xs transition-all ${
+    <div className={`mt-2 flex items-center gap-2.5 rounded-2xl p-2.5 sm:p-3 border backdrop-blur-xl max-w-xs transition ${
       isOwnMessage 
-        ? 'bg-white/15 border-white/20 text-white shadow-lg' 
-        : 'bg-black/50 border-white/15 text-white shadow-md'
+        ? 'bg-white/15 border-white/20 text-white shadow-md' 
+        : 'bg-black/40 border-white/10 text-white shadow-sm'
     }`}>
       <audio 
         ref={audioRef} 
@@ -129,16 +119,16 @@ function AudioVoicePlayer({ src, name, size, isOwnMessage }) {
       <button
         type="button"
         onClick={togglePlay}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg transition-transform hover:scale-110 active:scale-95 border border-white/20"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-md transition hover:scale-105 active:scale-95"
         aria-label={isPlaying ? 'Pause voice note' : 'Play voice note'}
       >
-        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+        {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
       </button>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1 h-5 mb-1">
-          {[35, 70, 50, 95, 60, 85, 40, 100, 75, 45, 90, 65, 80, 50, 70, 35].map((h, i) => {
-            const progress = duration > 0 ? (currentTime / duration) * 16 : 0;
+        <div className="flex items-center gap-1 h-4 mb-1">
+          {waveformBars.map((h, i) => {
+            const progress = duration > 0 ? (currentTime / duration) * waveformBars.length : 0;
             const isActive = i <= progress;
             return (
               <div
@@ -153,7 +143,10 @@ function AudioVoicePlayer({ src, name, size, isOwnMessage }) {
         </div>
         <div className="flex items-center justify-between text-[10px] text-white/60">
           <span>{isPlaying ? formatSeconds(currentTime) : (formatSeconds(duration) || name || 'Voice Note')}</span>
-          <span>{size ? `${(size / 1024).toFixed(0)} KB` : ''}</span>
+          <span className="flex items-center gap-1">
+            <Volume2 className="h-2.5 w-2.5 opacity-60" />
+            Voice Note
+          </span>
         </div>
       </div>
     </div>
@@ -181,8 +174,8 @@ export const MessageItem = memo(function MessageItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text || '');
   const [showMenu, setShowMenu] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  
   const menuRef = useRef(null);
   const menuButtonRef = useRef(null);
   const editRef = useRef(null);
@@ -195,25 +188,19 @@ export const MessageItem = memo(function MessageItem({
       if (editRef.current && !editRef.current.contains(e.target)) {
         setIsEditing(false);
       }
-      if (showInfo) {
-        const infoModal = document.querySelector('[data-info-modal="true"]');
-        if (infoModal && !infoModal.contains(e.target)) {
-          setShowInfo(false);
-        }
-      }
     }
-    if (showMenu || isEditing || showInfo) {
+    if (showMenu || isEditing) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showMenu, isEditing, showInfo]);
+  }, [showMenu, isEditing]);
 
   const handleMenuToggle = () => {
     if (!showMenu && menuButtonRef.current) {
       const rect = menuButtonRef.current.getBoundingClientRect();
       setMenuPosition({
-        top: Math.min(rect.bottom + 4, window.innerHeight - 320),
-        left: isOwnMessage ? Math.max(10, rect.right - 220) : Math.min(window.innerWidth - 230, rect.left)
+        top: Math.min(rect.bottom + 4, window.innerHeight - 280),
+        left: isOwnMessage ? Math.max(10, rect.right - 200) : Math.min(window.innerWidth - 210, rect.left)
       });
     }
     setShowMenu(prev => !prev);
@@ -223,7 +210,7 @@ export const MessageItem = memo(function MessageItem({
 
   const avatar = getAvatarEmoji(message.senderName || message.senderId);
   const timeStr = formatTime(message.createdAt);
-  const canEdit = isOwnMessage && !message.deleted && !message.forwarded;
+  const canEdit = isOwnMessage && !message.deleted;
   const canDelete = isOwnMessage || canManageAnnouncements;
 
   const handleEditSubmit = () => {
@@ -238,41 +225,59 @@ export const MessageItem = memo(function MessageItem({
     users: getReactionUsers(message, r.key)
   })).filter(r => r.users.length > 0);
 
-  const renderFilePreview = () => {
-    if (!message.file && !message.attachments?.length) return null;
-    const files = message.file ? [message.file] : message.attachments;
+  const renderAttachments = () => {
+    const files = message.attachments || (message.file ? [message.file] : []);
+    if (!files.length) return null;
+
     return files.map((file, idx) => {
       const isImage = file.type?.startsWith('image/');
+      const isVoice = file.isVoiceNote || file.type?.startsWith('audio/');
       const isVideo = file.type?.startsWith('video/');
-      const isAudio = file.type?.startsWith('audio/') || file.isVoiceNote;
 
       if (isImage && file.url) {
         return (
-          <button key={idx} onClick={() => onMediaOpen?.(file.url)} className="mt-2 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition block max-w-xs">
-            <img src={file.url} alt={file.name || 'Attachment'} className="max-h-56 w-full object-cover rounded-xl" loading="lazy" />
+          <button
+            key={idx}
+            type="button"
+            onClick={() => onMediaOpen?.(file.url)}
+            className="mt-2 rounded-xl overflow-hidden border border-white/10 hover:border-indigo-400/50 transition block max-w-sm group shadow-md"
+          >
+            <img
+              src={file.url}
+              alt={file.name || 'Image'}
+              className="max-h-64 w-full object-cover rounded-xl group-hover:scale-[1.01] transition duration-200"
+              loading="lazy"
+            />
           </button>
         );
       }
+
       if (isVideo && file.url) {
         return (
-          <button key={idx} onClick={() => onMediaOpen?.(file.url)} className="mt-2 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition block max-w-xs">
-            <video src={file.url} className="max-h-56 w-full object-cover rounded-xl" />
+          <button
+            key={idx}
+            type="button"
+            onClick={() => onMediaOpen?.(file.url)}
+            className="mt-2 rounded-xl overflow-hidden border border-white/10 hover:border-indigo-400/50 transition block max-w-sm shadow-md"
+          >
+            <video src={file.url} className="max-h-60 w-full object-cover rounded-xl" />
           </button>
         );
       }
-      if (isAudio && file.url) {
+
+      if (isVoice && file.url) {
         return (
           <AudioVoicePlayer
             key={idx}
             src={file.url}
             name={file.name}
-            size={file.size}
             isOwnMessage={isOwnMessage}
           />
         );
       }
+
       return (
-        <div key={idx} className="mt-2 rounded-xl border border-white/10 bg-black/30 p-2.5 flex items-center gap-2 max-w-xs">
+        <div key={idx} className="mt-2 rounded-xl border border-white/10 bg-black/40 p-2.5 flex items-center gap-2 max-w-xs shadow-sm">
           <Paperclip className="h-4 w-4 text-white/60 shrink-0" />
           <span className="text-xs text-white truncate flex-1">{file.name}</span>
           <span className="text-[10px] text-white/40">{(file.size / 1024).toFixed(0)}KB</span>
@@ -282,251 +287,125 @@ export const MessageItem = memo(function MessageItem({
   };
 
   return (
-    <article className={`relative flex items-end gap-2 my-2 px-1 sm:px-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+    <article className={`relative group/msg flex items-end gap-2 my-1.5 px-2 sm:px-4 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
       
-      {/* Avatar (for other members) */}
+      {/* Avatar */}
       {!isOwnMessage && showAvatar && (
         <button
           type="button"
           onClick={() => onShowProfile?.(message.senderId, message.senderName)}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 border border-white/15 text-sm transition hover:scale-105 shadow-md"
           aria-label={`Open ${message.senderName || 'Member'}'s profile`}
+          title={message.senderName || 'Member'}
         >
           {avatar}
         </button>
       )}
 
       {/* Message Bubble Container */}
-      <div className={`relative max-w-[88%] sm:max-w-[78%] flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+      <div className={`relative max-w-[88%] sm:max-w-[75%] flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         
-        {/* Main Bubble */}
+        {/* Main Message Bubble */}
         <div 
-          className={`relative rounded-2xl px-3.5 py-2.5 text-sm shadow-lg transition-all ${
+          className={`relative rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm shadow-md transition-all ${
             isOwnMessage 
-              ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-indigo-700 text-white rounded-br-xs shadow-indigo-950/50' 
-              : 'bg-slate-900 border border-white/10 text-slate-100 rounded-bl-xs backdrop-blur-xl shadow-black/50'
+              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-br-xs shadow-indigo-950/40' 
+              : 'bg-slate-900/90 border border-white/10 text-slate-100 rounded-bl-xs backdrop-blur-xl hover:border-white/15'
           }`}
         >
-          {/* Header Row: Name, Time & 3-Dots Button */}
-          <div className="flex items-center justify-between gap-3 mb-1 text-[11px] font-medium leading-none">
+          {/* Header Row: Sender Name, Role Badge, Time & Menu Trigger */}
+          <div className="flex items-center justify-between gap-3 mb-1 text-[11px] leading-none">
             <div className="flex items-center gap-1.5 min-w-0">
               <span 
                 onClick={() => onShowProfile?.(message.senderId, message.senderName)}
-                className={`font-semibold truncate cursor-pointer hover:underline ${isOwnMessage ? 'text-violet-200' : 'text-indigo-400'}`}
+                className={`font-bold truncate cursor-pointer hover:underline ${
+                  isOwnMessage ? 'text-indigo-200' : 'text-indigo-400'
+                }`}
               >
                 {isOwnMessage ? 'You' : (message.senderName || 'Member')}
               </span>
-              <span className={isOwnMessage ? 'text-violet-300/70 text-[10px]' : 'text-slate-400 text-[10px]'}>
+              
+              {message.senderRole && (
+                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                  message.senderRole === 'Admin' || message.senderRole === 'Leader'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    : isOwnMessage
+                      ? 'bg-white/15 text-white/80'
+                      : 'bg-white/10 text-white/50'
+                }`}>
+                  {message.senderRole}
+                </span>
+              )}
+
+              <span className={isOwnMessage ? 'text-white/60 text-[10px]' : 'text-white/40 text-[10px]'}>
                 {timeStr}
               </span>
-              {message.pinned && <Pin className="h-2.5 w-2.5 text-amber-400 shrink-0" title="Pinned" />}
-              {message.bookmarked && <BookmarkCheck className="h-2.5 w-2.5 text-cyan-400 shrink-0" title="Bookmarked" />}
+
+              {message.pinned && <Pin className="h-3 w-3 text-amber-400 shrink-0" title="Pinned message" />}
+              {message.bookmarked && <BookmarkCheck className="h-3 w-3 text-cyan-400 shrink-0" title="Bookmarked" />}
             </div>
 
-            {/* ALWAYS VISIBLE 3-Dots Menu Button inside Bubble Header */}
-            <div className="relative shrink-0 ml-1">
-              <button
-                type="button"
-                ref={menuButtonRef}
-                onClick={handleMenuToggle}
-                className="p-1 rounded-md text-white/60 hover:text-white hover:bg-white/15 transition active:scale-95"
-                aria-label="Message actions"
-                title="Actions menu"
-              >
-                <MoreVertical className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            {/* 3-Dots Action Button */}
+            <button
+              type="button"
+              ref={menuButtonRef}
+              onClick={handleMenuToggle}
+              className="p-1 rounded-md text-white/50 hover:text-white hover:bg-white/15 transition active:scale-95 ml-1"
+              aria-label="Message options"
+              title="Actions"
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </button>
           </div>
 
-          {/* Portal for Menu - renders outside stacking context */}
-          {showMenu &&
-            createPortal(
-              <div
-                ref={menuRef}
-                className="fixed z-[9999] w-52 rounded-xl border border-white/15 bg-slate-950 shadow-2xl p-1.5 backdrop-blur-2xl animate-fade-in-up"
-                style={{
-                  top: `${menuPosition.top}px`,
-                  left: `${menuPosition.left}px`
-                }}
-              >
-                {/* Quick Emoji Reaction Row */}
-                <div className="flex items-center justify-between px-2 py-1.5 mb-1 border-b border-white/10">
-                  {SUPPORTED_REACTIONS.slice(0, 5).map(r => {
-                    const isUserActive = getReactionUsers(message, r.key).includes(currentUserId);
-                    return (
-                      <button
-                        key={r.key}
-                        type="button"
-                        onClick={() => {
-                          onToggleReaction?.(message, r.key, isUserActive);
-                          setShowMenu(false);
-                        }}
-                        className="text-base hover:scale-125 transition active:scale-95 p-1 rounded hover:bg-white/10"
-                        title={r.label}
-                      >
-                        {r.emoji}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Menu Items */}
-                <button
-                  type="button"
-                  onClick={() => { onReply?.(message); setShowMenu(false); }}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                >
-                  <MessageSquareReply className="h-3.5 w-3.5 text-blue-400" />
-                  <span>Reply in Thread</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setShowInfo(true); setShowMenu(false); }}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                >
-                  <Info className="h-3.5 w-3.5 text-slate-400" />
-                  <span>Message Info</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { onBookmark?.(message); setShowMenu(false); }}
-                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                >
-                  <Bookmark className="h-3.5 w-3.5 text-amber-400" />
-                  <span>{message.bookmarked ? 'Unbookmark' : 'Bookmark'}</span>
-                </button>
-
-                {canManageAnnouncements && (
-                  <button
-                    type="button"
-                    onClick={() => { onTogglePin?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                  >
-                    <Pin className="h-3.5 w-3.5 text-yellow-400" />
-                    <span>{message.pinned ? 'Unpin Message' : 'Pin Message'}</span>
-                  </button>
-                )}
-
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={() => { setIsEditing(true); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
-                  >
-                    <Edit3 className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>Edit</span>
-                  </button>
-                )}
-
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={() => { onDelete?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-rose-400" />
-                    <span>Delete</span>
-                  </button>
-                )}
-
-                {!isOwnMessage && onReport && (
-                  <button
-                    type="button"
-                    onClick={() => { onReport?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 rounded-lg transition"
-                  >
-                    <Flag className="h-3.5 w-3.5 text-red-400" />
-                    <span>Report</span>
-                  </button>
-                )}
-              </div>,
-              document.body
-            )
-          }
-
-          {/* Message Info Modal */}
-          {showInfo &&
-            createPortal(
-              <div
-                data-info-modal="true"
-                className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
-                onClick={() => setShowInfo(false)}
-              >
-                <div
-                  className="w-full max-w-sm rounded-2xl border border-white/15 bg-slate-950 shadow-2xl p-5"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-white">Message Information</h3>
-                    <button
-                      onClick={() => setShowInfo(false)}
-                      className="p-1 rounded-lg hover:bg-white/10 transition"
-                    >
-                      <X className="h-4 w-4 text-white/60" />
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Sent by</p>
-                      <p className="text-sm text-white">{message.senderName || 'Member'}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Exact Date</p>
-                      <p className="text-sm text-white">{formatExactDate(message.createdAt)}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Message ID</p>
-                      <p className="text-xs text-white/70 font-mono">{message.id}</p>
-                    </div>
-                    {message.edited && (
-                      <div>
-                        <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Status</p>
-                        <p className="text-sm text-white/70">Edited</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>,
-              document.body
-            )
-          }
-
-          {/* Reply Quote Block */}
+          {/* Reply Quote Preview */}
           {message.replyTo && (
-            <div className={`mb-2 rounded-lg border-l-2 px-2.5 py-1 text-xs ${isOwnMessage ? 'border-violet-300 bg-white/10 text-violet-100' : 'border-indigo-400 bg-black/40 text-slate-300'}`}>
+            <div className={`mb-2 rounded-lg border-l-2 px-2.5 py-1 text-xs ${
+              isOwnMessage 
+                ? 'border-indigo-300 bg-white/10 text-indigo-100' 
+                : 'border-indigo-400 bg-black/40 text-slate-300'
+            }`}>
               <div className="font-semibold text-[10px] text-white/70">
-                Reply to {message.replyTo.senderName || 'Member'}
+                Replying to {message.replyTo.senderName || 'Member'}
               </div>
               <p className="truncate text-white/80">{message.replyTo.text}</p>
             </div>
           )}
 
-          {/* Editing Mode */}
+          {/* Message Text Content or Inline Editor */}
           {isEditing ? (
-            <div ref={editRef} className="flex items-center gap-2 mt-1">
-              <textarea
+            <div ref={editRef} className="flex items-center gap-1.5 mt-1">
+              <input
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
-                className="flex-1 rounded-lg border border-white/30 bg-black/40 px-2.5 py-1 text-xs text-white outline-none"
-                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleEditSubmit();
+                  if (e.key === 'Escape') setIsEditing(false);
+                }}
+                className="flex-1 rounded-lg border border-white/30 bg-black/50 px-2 py-1 text-xs text-white outline-none focus:border-indigo-400"
                 autoFocus
               />
-              <button onClick={handleEditSubmit} className="p-1 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
+              <button 
+                onClick={handleEditSubmit} 
+                className="p-1 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition"
+                title="Save edit"
+              >
                 <Check className="h-3.5 w-3.5" />
               </button>
-              <button onClick={() => setIsEditing(false)} className="p-1 rounded bg-white/10 text-white/60 hover:text-white">
+              <button 
+                onClick={() => setIsEditing(false)} 
+                className="p-1 rounded bg-white/10 text-white/60 hover:text-white transition"
+                title="Cancel"
+              >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
           ) : (
             <>
-              {/* Message Text Content */}
               {message.text && (
-                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm">
+                <p className="whitespace-pre-wrap break-words leading-relaxed text-xs sm:text-sm">
                   {renderTextWithMentions(message.text, message.mentions)}
-                  {message.edited && <span className="text-[9px] opacity-60 ml-1">(edited)</span>}
+                  {message.edited && <span className="text-[9px] opacity-60 ml-1.5 italic">(edited)</span>}
                 </p>
               )}
 
@@ -534,19 +413,19 @@ export const MessageItem = memo(function MessageItem({
               {message.sharedContent && (
                 <RichCardRenderer
                   content={message.sharedContent}
-                  onOpen={onOpenSharedContent ? () => onOpenSharedContent(message.sharedContent) : (onShare ? () => onShare(message) : undefined)}
+                  onOpen={onOpenSharedContent ? () => onOpenSharedContent(message.sharedContent) : undefined}
                   onShare={onShare ? () => onShare(message) : undefined}
                   onBookmark={onBookmark ? () => onBookmark(message) : undefined}
                   isBookmarked={message.bookmarked}
                 />
               )}
 
-              {/* Media & Attachments */}
-              {renderFilePreview()}
+              {/* Attachments / Photos / Voice Notes */}
+              {renderAttachments()}
             </>
           )}
 
-          {/* Active Reactions Summary Badges (Only shown if reactions exist) */}
+          {/* Active Reaction Badges */}
           {activeReactions.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2 pt-1 border-t border-white/10">
               {activeReactions.map(r => {
@@ -570,7 +449,107 @@ export const MessageItem = memo(function MessageItem({
             </div>
           )}
         </div>
+
       </div>
+
+      {/* Floating Context Menu Portal */}
+      {showMenu &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[9999] w-48 rounded-2xl border border-white/15 bg-slate-950 shadow-2xl p-1.5 backdrop-blur-2xl animate-fade-in"
+            style={{
+              top: `${menuPosition.top}px`,
+              left: `${menuPosition.left}px`
+            }}
+          >
+            {/* Quick Emoji Reaction Bar */}
+            <div className="flex items-center justify-between px-1.5 py-1 mb-1 border-b border-white/10">
+              {SUPPORTED_REACTIONS.map(r => {
+                const isUserActive = getReactionUsers(message, r.key).includes(currentUserId);
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={() => {
+                      onToggleReaction?.(message, r.key, isUserActive);
+                      setShowMenu(false);
+                    }}
+                    className="text-base hover:scale-125 transition active:scale-95 p-1 rounded-lg hover:bg-white/10"
+                    title={r.label}
+                  >
+                    {r.emoji}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Menu Actions */}
+            <button
+              type="button"
+              onClick={() => { onReply?.(message); setShowMenu(false); }}
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+            >
+              <MessageSquareReply className="h-3.5 w-3.5 text-indigo-400" />
+              <span>Reply</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { onBookmark?.(message); setShowMenu(false); }}
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+            >
+              <Bookmark className="h-3.5 w-3.5 text-cyan-400" />
+              <span>{message.bookmarked ? 'Unbookmark' : 'Bookmark'}</span>
+            </button>
+
+            {canManageAnnouncements && (
+              <button
+                type="button"
+                onClick={() => { onTogglePin?.(message); setShowMenu(false); }}
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+              >
+                <Pin className="h-3.5 w-3.5 text-amber-400" />
+                <span>{message.pinned ? 'Unpin' : 'Pin to Top'}</span>
+              </button>
+            )}
+
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => { setIsEditing(true); setShowMenu(false); }}
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+              >
+                <Edit3 className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Edit</span>
+              </button>
+            )}
+
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => { onDelete?.(message); setShowMenu(false); }}
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+                <span>Delete</span>
+              </button>
+            )}
+
+            {!isOwnMessage && onReport && (
+              <button
+                type="button"
+                onClick={() => { onReport?.(message); setShowMenu(false); }}
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
+              >
+                <Flag className="h-3.5 w-3.5 text-amber-400" />
+                <span>Report</span>
+              </button>
+            )}
+          </div>,
+          document.body
+        )
+      }
 
     </article>
   );
@@ -580,9 +559,11 @@ export function DateSeparator({ date }) {
   const formatted = formatDateSeparator(date);
   if (!formatted) return null;
   return (
-    <div className="flex items-center gap-3 py-2 px-4 my-2">
+    <div className="flex items-center gap-3 py-3 px-4 my-1 select-none">
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
-      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 bg-slate-900/80 px-2.5 py-1 rounded-full border border-white/10 backdrop-blur-md">{formatted}</span>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 bg-slate-900/90 px-3 py-1 rounded-full border border-white/10 backdrop-blur-md shadow-sm">
+        {formatted}
+      </span>
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
     </div>
   );
