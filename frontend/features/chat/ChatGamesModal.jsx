@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '@services/firebase/config';
 import {
   addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query,
@@ -180,6 +180,18 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     console.log('Game Modal - Current phase:', phase);
   }, [currentUser, currentName, phase]);
 
+  // ─── Handle modal close with cleanup ───────────────────────────────────────────
+  const handleClose = useCallback(() => {
+    // Cancel waiting session if we're the creator
+    if (sessionId && session?.status === 'waiting' && myRole === 'player1') {
+      console.log('Cancelling game session on modal close:', sessionId);
+      deleteDoc(gameDocRef(sessionId)).catch((err) => {
+        console.error('Failed to cancel game session on close:', err);
+      });
+    }
+    onClose();
+  }, [sessionId, session?.status, myRole, onClose]);
+
   // ─── Subscribe to active session ───────────────────────
   useEffect(() => {
     if (!sessionId) return;
@@ -257,7 +269,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     return unsub;
   }, [phase, selectedGame?.id, activeRoomId, currentUser?.uid]);
 
-  // ─── Cleanup waiting session on unmount ────────────────
+  // ─── Cleanup waiting session on unmount or close ────────────────
   const sessionIdRef = useRef(sessionId);
   const myRoleRef = useRef(myRole);
   const sessionStatusRef = useRef(session?.status);
@@ -265,10 +277,12 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
   useEffect(() => { myRoleRef.current = myRole; }, [myRole]);
   useEffect(() => { sessionStatusRef.current = session?.status; }, [session?.status]);
 
+  // Auto-cancel waiting session when creator leaves modal or navigates away
   useEffect(() => {
     return () => {
       // Only delete if we're the creator and session is still waiting
       if (sessionIdRef.current && sessionStatusRef.current === 'waiting' && myRoleRef.current === 'player1') {
+        console.log('Auto-cancelling game session as creator left modal:', sessionIdRef.current);
         deleteDoc(gameDocRef(sessionIdRef.current)).catch((err) => {
           console.error('Failed to cleanup game session:', err);
         });
@@ -406,11 +420,18 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
   const handleCancelSession = async () => {
     if (sessionId && session?.status === 'waiting' && myRole === 'player1') {
-      await deleteDoc(gameDocRef(sessionId)).catch(() => {});
+      try {
+        await deleteDoc(gameDocRef(sessionId));
+        console.log('Game session cancelled:', sessionId);
+      } catch (err) {
+        console.error('Failed to cancel game session:', err);
+        setError('Failed to cancel game session');
+      }
     }
     setSessionId(null);
     setSession(null);
     setMyRole(null);
+    setError(null);
   };
 
   const handleBackToSelect = () => {
@@ -575,7 +596,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
   // ─── Render ──────────────────────────────────────────
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-2xl p-3 sm:p-4 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-2xl p-3 sm:p-4 animate-fade-in" onClick={handleClose}>
       <div
         className="w-full max-w-4xl max-h-[90vh] rounded-3xl border border-white/15 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 shadow-2xl backdrop-blur-2xl flex flex-col overflow-hidden text-white"
         onClick={(e) => e.stopPropagation()}
@@ -605,7 +626,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/70">
+          <button onClick={handleClose} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/70">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -668,15 +689,19 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
               {/* Waiting for opponent (session created) */}
               {sessionId && session?.status === 'waiting' && (
                 <div className="text-center py-8">
-                  {/* Radar pulse animation */}
+                  {/* Radar pulse animation with enhanced highlight */}
                   <div className="relative w-36 h-36 mx-auto mb-6">
-                    <div className="absolute inset-0 rounded-full border-2 border-indigo-500/30 animate-ping" />
-                    <div className="absolute inset-3 rounded-full border-2 border-indigo-500/20 animate-ping" style={{ animationDelay: '0.5s' }} />
-                    <div className="absolute inset-6 rounded-full border-2 border-indigo-500/15 animate-ping" style={{ animationDelay: '1s' }} />
+                    <div className="absolute inset-0 rounded-full border-2 border-indigo-400/50 animate-ping" />
+                    <div className="absolute inset-3 rounded-full border-2 border-indigo-400/40 animate-ping" style={{ animationDelay: '0.5s' }} />
+                    <div className="absolute inset-6 rounded-full border-2 border-indigo-400/30 animate-ping" style={{ animationDelay: '1s' }} />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-18 w-18 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white font-bold text-2xl shadow-2xl shadow-indigo-600/50" style={{ width: 72, height: 72 }}>
+                      <div className="h-18 w-18 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-2xl shadow-2xl shadow-indigo-500/50 ring-4 ring-indigo-400/30" style={{ width: 72, height: 72 }}>
                         {currentName.charAt(0).toUpperCase()}
                       </div>
+                    </div>
+                    {/* Your Game badge */}
+                    <div className="absolute -top-2 -right-2 px-3 py-1 rounded-full bg-indigo-500 border-2 border-indigo-300 text-[10px] font-bold text-white shadow-lg">
+                      Your Game
                     </div>
                   </div>
 
@@ -735,28 +760,59 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                         Open Duels in this Room ({waitingSessions.length})
                       </h4>
                       <div className="space-y-2">
-                        {waitingSessions.map(s => (
-                          <div key={s.id} className="flex items-center justify-between p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/8 transition">
-                            <div className="flex items-center gap-3">
-                              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-600 to-violet-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
-                                {(s.player1?.displayName || '?').charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-white">{s.player1?.displayName || 'Unknown'}</p>
-                                <p className="text-[10px] text-white/40 flex items-center gap-1">
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-                                  Waiting for opponent…
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => handleJoinSession(s.id)}
-                              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition border border-indigo-400 shadow-lg shadow-indigo-600/30 active:scale-95"
+                        {waitingSessions.map(s => {
+                          const isMyGame = s.player1?.uid === currentUser?.uid;
+                          return (
+                            <div
+                              key={s.id}
+                              className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-300 ${
+                                isMyGame
+                                  ? 'border-indigo-400/60 bg-gradient-to-r from-indigo-600/20 to-violet-600/20 shadow-lg shadow-indigo-500/20 ring-2 ring-indigo-400/30'
+                                  : 'border-white/10 bg-white/5 hover:bg-white/8'
+                              }`}
                             >
-                              Join Duel
-                            </button>
-                          </div>
-                        ))}
+                              <div className="flex items-center gap-3">
+                                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg ${
+                                  isMyGame
+                                    ? 'bg-gradient-to-br from-indigo-500 to-violet-500 ring-2 ring-indigo-300'
+                                    : 'bg-gradient-to-br from-indigo-600 to-violet-600'
+                                }`}>
+                                  {(s.player1?.displayName || '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-bold text-white">{s.player1?.displayName || 'Unknown'}</p>
+                                    {isMyGame && (
+                                      <span className="px-2 py-0.5 rounded-full bg-indigo-500/30 border border-indigo-400/50 text-[10px] font-bold text-indigo-300">
+                                        Your Game
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] text-white/40 flex items-center gap-1">
+                                    <span className={`h-1.5 w-1.5 rounded-full animate-pulse inline-block ${isMyGame ? 'bg-indigo-400' : 'bg-emerald-400'}`} />
+                                    Waiting for opponent…
+                                  </p>
+                                </div>
+                              </div>
+                              {!isMyGame && (
+                                <button
+                                  onClick={() => handleJoinSession(s.id)}
+                                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition border border-indigo-400 shadow-lg shadow-indigo-600/30 active:scale-95"
+                                >
+                                  Join Duel
+                                </button>
+                              )}
+                              {isMyGame && (
+                                <button
+                                  onClick={() => handleCancelSession()}
+                                  className="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 text-xs font-bold transition border border-rose-400/30 active:scale-95"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
