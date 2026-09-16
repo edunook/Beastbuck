@@ -173,6 +173,7 @@ function safeModule(module, name) {
 }
 
 const SafeWelcomePanel = createSafeWidget(() => import('./widgets/WelcomePanel').then(m => ({ default: safeModule(m, 'WelcomePanel') })));
+const SafeBeastBuckHeadlinesWidget = createSafeWidget(() => import('./widgets/BeastBuckHeadlinesWidget').then(m => ({ default: safeModule(m, 'BeastBuckHeadlinesWidget') })));
 const SafeXPOverview = createSafeWidget(() => import('./widgets/XPOverview').then(m => ({ default: safeModule(m, 'XPOverview') })));
 const SafeDailyMissionWidget = createSafeWidget(() => import('./widgets/DailyMissionWidget').then(m => ({ default: safeModule(m, 'DailyMissionWidget') })));
 const SafeContinueJourneyWidget = createSafeWidget(() => import('./widgets/ContinueJourneyWidget').then(m => ({ default: safeModule(m, 'ContinueJourneyWidget') })));
@@ -202,6 +203,7 @@ const Dashboard = React.memo(function Dashboard() {
   const { user, roleData } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState({
+    headlines: true,
     mission: true,
     continue: true,
     funflix: true,
@@ -341,6 +343,13 @@ const Dashboard = React.memo(function Dashboard() {
           <div className="animate-fade-in-up hero-section">
             <SafeWelcomePanel />
           </div>
+
+          {/* Top Real News & Executive Wire */}
+          {visibleWidgets.headlines && (
+            <div className="animate-fade-in-up widget-glow">
+              <SafeBeastBuckHeadlinesWidget />
+            </div>
+          )}
 
           {/* Core Row 1: Daily Missions & Continue Journey */}
           {(visibleWidgets.mission || visibleWidgets.continue) && (
@@ -557,6 +566,7 @@ const Dashboard = React.memo(function Dashboard() {
 
             <div className="space-y-2 flex-1 overflow-y-auto pr-1 pb-2 overscroll-contain">
               {[
+                { key: 'headlines', label: '100% Real Top News Wire', icon: '📡' },
                 { key: 'mission', label: 'Daily Missions', icon: '🎯' },
                 { key: 'continue', label: 'Continue Journey', icon: '🚀' },
                 { key: 'funflix', label: 'FunFlix Cinema', icon: '🎬' },
