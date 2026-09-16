@@ -11,20 +11,43 @@ import {
   Sparkles,
   ArrowRight,
   Radio,
-  ExternalLink,
   Plus,
   X,
   CheckCircle2,
   Clock,
-  UserCheck
+  UserCheck,
+  Check,
+  CheckCheck
 } from 'lucide-react';
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { ROLES } from '@shared/constants/roles';
 import { ExecutiveNewsService } from '@services/firestore/executiveNews';
 
+function getReadStorageKey(uid) {
+  return `beastbuck_read_headlines_${uid || 'guest'}`;
+}
+
+function getStoredReadIds(uid) {
+  try {
+    const raw = localStorage.getItem(getReadStorageKey(uid));
+    return raw ? JSON.parse(raw) : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveStoredReadIds(uid, ids) {
+  try {
+    localStorage.setItem(getReadStorageKey(uid), JSON.stringify(ids));
+  } catch (err) {
+    console.error('Failed to save read headline IDs:', err);
+  }
+}
+
 export function BeastBuckHeadlinesWidget() {
   const { user, roleData } = useAuth();
   const [news, setNews] = useState([]);
+  const [readIds, setReadIds] = useState(() => getStoredReadIds(user?.uid));
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [filter, setFilter] = useState('all'); // 'all', 'appointments', 'announcements', 'notifications'
@@ -45,6 +68,11 @@ export function BeastBuckHeadlinesWidget() {
     return role === ROLES.MAIN_CEO || role === 'Main CEO' || role === ROLES.CO_CEO || role === 'Co-CEO';
   }, [roleData?.role, user?.role]);
 
+  // Sync read IDs on user change
+  useEffect(() => {
+    setReadIds(getStoredReadIds(user?.uid));
+  }, [user?.uid]);
+
   // Subscribe to live 100% real news
   useEffect(() => {
     const unsubscribe = ExecutiveNewsService.subscribeToTopNews({
@@ -63,23 +91,28 @@ export function BeastBuckHeadlinesWidget() {
     };
   }, []);
 
-  // Filtered headlines
+  // Filter out already read headlines
+  const unreadNews = useMemo(() => {
+    return news.filter(item => !readIds.includes(item.id));
+  }, [news, readIds]);
+
+  // Filtered headlines based on active category tab
   const filteredNews = useMemo(() => {
     if (filter === 'appointments') {
-      return news.filter(
+      return unreadNews.filter(
         item => item.type === 'co_ceo_appointment' || item.type === 'ceo_appointment' || item.type === 'leadership_promotion'
       );
     }
     if (filter === 'announcements') {
-      return news.filter(
+      return unreadNews.filter(
         item => item.type === 'ceo_announcement' || item.type === 'official_announcement'
       );
     }
     if (filter === 'notifications') {
-      return news.filter(item => item.type === 'system_alert');
+      return unreadNews.filter(item => item.type === 'system_alert');
     }
-    return news;
-  }, [news, filter]);
+    return unreadNews;
+  }, [unreadNews, filter]);
 
   // Ensure current index is within bounds
   useEffect(() => {
@@ -108,6 +141,32 @@ export function BeastBuckHeadlinesWidget() {
     if (filteredNews.length === 0) return;
     setCurrentIndex((prev) => (prev - 1 + filteredNews.length) % filteredNews.length);
   }, [filteredNews.length]);
+
+  // Mark single item as read (vanishes immediately)
+  const handleMarkAsRead = useCallback((headlineId, e) => {
+    if (e) e.stopPropagation();
+    setReadIds((prev) => {
+      const next = Array.from(new Set([...prev, headlineId]));
+      saveStoredReadIds(user?.uid, next);
+      return next;
+    });
+
+    if (selectedHeadline?.id === headlineId) {
+      setSelectedHeadline(null);
+    }
+  }, [user?.uid, selectedHeadline]);
+
+  // Mark all unread items as read (entire widget vanishes immediately)
+  const handleMarkAllAsRead = useCallback((e) => {
+    if (e) e.stopPropagation();
+    const allIds = news.map(item => item.id);
+    setReadIds((prev) => {
+      const next = Array.from(new Set([...prev, ...allIds]));
+      saveStoredReadIds(user?.uid, next);
+      return next;
+    });
+    setSelectedHeadline(null);
+  }, [news, user?.uid]);
 
   const handleBroadcast = async (e) => {
     e.preventDefault();
@@ -142,7 +201,17 @@ export function BeastBuckHeadlinesWidget() {
     }
   };
 
-  const activeItem = filteredNews[currentIndex] || filteredNews[0];
+  // If loading, don't show an empty jarring flicker
+  if (loading) {
+    return null;
+  }
+
+  // If all headlines are read, the widget vanishes completely until something new arrives!
+  if (unreadNews.length === 0) {
+    return null;
+  }
+
+  const activeItem = filteredNews[currentIndex] || filteredNews[0] || unreadNews[0];
 
   return (
     <div
@@ -154,7 +223,7 @@ export function BeastBuckHeadlinesWidget() {
       <div className="absolute -top-32 -left-32 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top Bar: Wire Label + Tabs + Broadcast button */}
+      {/* Top Bar: Wire Label + Tabs + Actions */}
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
         <div className="flex items-center gap-2.5">
           <div className="relative flex items-center justify-center">
@@ -172,7 +241,7 @@ export function BeastBuckHeadlinesWidget() {
           </div>
         </div>
 
-        {/* Filter Pills */}
+        {/* Filter Pills & Actions */}
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => setFilter('all')}
@@ -182,7 +251,7 @@ export function BeastBuckHeadlinesWidget() {
                 : 'bg-white/5 text-text-muted hover:text-white border border-white/5'
             }`}
           >
-            All Wire
+            All Wire ({unreadNews.length})
           </button>
           <button
             onClick={() => setFilter('appointments')}
@@ -218,10 +287,20 @@ export function BeastBuckHeadlinesWidget() {
             Important Notices
           </button>
 
+          {/* Mark all as read button */}
+          <button
+            onClick={handleMarkAllAsRead}
+            title="Mark all headlines as read and clear wire"
+            className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-emerald-500/20 border border-white/10 hover:border-emerald-500/40 text-text-muted hover:text-emerald-300 text-xs font-bold flex items-center gap-1 transition-all ml-auto sm:ml-1"
+          >
+            <CheckCheck className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Mark All as Read</span>
+          </button>
+
           {isExecutive && (
             <button
               onClick={() => setShowBroadcastModal(true)}
-              className="ml-auto sm:ml-2 px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center gap-1 hover:brightness-110 shadow-md transition-all hover:scale-105"
+              className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs flex items-center gap-1 hover:brightness-110 shadow-md transition-all hover:scale-105"
             >
               <Plus className="h-3 w-3" />
               Broadcast Headline
@@ -232,20 +311,13 @@ export function BeastBuckHeadlinesWidget() {
 
       {/* Main Spotlight Headline Content */}
       <div className="relative z-10 mt-4">
-        {loading ? (
-          <div className="h-28 rounded-2xl bg-white/5 border border-white/5 animate-pulse flex items-center justify-center">
-            <div className="flex items-center gap-2 text-xs font-bold text-text-muted">
-              <Sparkles className="h-4 w-4 animate-spin text-cyan-400" />
-              Loading 100% verified BeastBuck leadership feed...
-            </div>
-          </div>
-        ) : filteredNews.length === 0 ? (
+        {filteredNews.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-6 text-center">
             <ShieldCheck className="mx-auto mb-2 h-8 w-8 text-cyan-400/60" />
-            <h4 className="text-sm font-bold text-white mb-1">No headlines in this category yet</h4>
-            <p className="text-xs text-text-muted">Real executive updates and announcements will stream live here.</p>
+            <h4 className="text-sm font-bold text-white mb-1">All headlines in this tab marked as read</h4>
+            <p className="text-xs text-text-muted">Click "All Wire" to see other active headlines or wait for new executive dispatches.</p>
           </div>
-        ) : (
+        ) : activeItem && (
           <div className="group/card relative rounded-2xl border border-white/10 bg-gradient-to-r from-white/[0.04] to-cyan-500/[0.03] p-4 sm:p-5 transition-all duration-300 hover:border-cyan-500/40 hover:bg-white/[0.06]">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               
@@ -305,7 +377,7 @@ export function BeastBuckHeadlinesWidget() {
                 </div>
               </div>
 
-              {/* Right Column: Interactive Details & Quick Action */}
+              {/* Right Column: Interactive Details & Mark as Read */}
               <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                 <button
                   onClick={() => setSelectedHeadline(activeItem)}
@@ -313,6 +385,16 @@ export function BeastBuckHeadlinesWidget() {
                 >
                   <span>Full Statement</span>
                   <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+
+                {/* Mark As Read Button for individual item */}
+                <button
+                  onClick={(e) => handleMarkAsRead(activeItem.id, e)}
+                  title="Mark as read (removes from wire)"
+                  className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/25 border border-emerald-500/30 hover:border-emerald-500/50 text-xs font-bold text-emerald-300 transition-all flex items-center gap-1"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Mark as Read</span>
                 </button>
 
                 {activeItem.username && (
@@ -407,24 +489,34 @@ export function BeastBuckHeadlinesWidget() {
             </div>
 
             <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between gap-3">
-              {selectedHeadline.username ? (
-                <Link
-                  to={`/m/${selectedHeadline.username}`}
-                  onClick={() => setSelectedHeadline(null)}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 hover:text-cyan-300"
+              <div className="flex items-center gap-3">
+                {selectedHeadline.username && (
+                  <Link
+                    to={`/m/${selectedHeadline.username}`}
+                    onClick={() => setSelectedHeadline(null)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 hover:text-cyan-300"
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    View Leader Profile
+                  </Link>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleMarkAsRead(selectedHeadline.id)}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-xs font-bold text-emerald-300 transition-all flex items-center gap-1.5"
                 >
-                  <UserCheck className="h-4 w-4" />
-                  View Leader Profile
-                </Link>
-              ) : (
-                <span className="text-[11px] text-text-muted">Verified 100% BeastBuck Official Wire</span>
-              )}
-              <button
-                onClick={() => setSelectedHeadline(null)}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all"
-              >
-                Close
-              </button>
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Mark as Read</span>
+                </button>
+                <button
+                  onClick={() => setSelectedHeadline(null)}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
