@@ -18,6 +18,7 @@ import {
   startAfter,
 } from 'firebase/firestore';
 import { calculateLevel } from './gamification';
+import { NotificationsService } from './notifications';
 
 function docsFrom(snap) {
   return snap.docs.map(item => ({ id: item.id, ...item.data() }));
@@ -130,28 +131,120 @@ export const AdminService = {
     await this.logAudit({ type: 'MEMBER_UPDATED', actorId, targetId: uid, summary, metadata: patch });
   },
 
-  async approveMember(uid, actorId) {
-    await this.updateMember(uid, { role: 'Member', suspended: false, removed: false }, actorId, 'Member approved');
+  async approveMember(uid, actorId, reason = '') {
+    await this.updateMember(uid, { role: 'Member', membershipStatus: 'approved', suspended: false, removed: false, approvalReason: reason }, actorId, `Member approved${reason ? `: ${reason}` : ''}`);
+    try {
+      await NotificationsService.createNotification({
+        title: '🎉 Membership Approved!',
+        message: `Your membership has been officially approved!${reason ? ` Note: ${reason}` : ' Welcome to BeastBuck!'}`,
+        type: 'member_join',
+        category: 'personal',
+        actorName: 'Admin',
+        actorUid: actorId,
+        targetUid: uid,
+        link: '/dashboard',
+        isPublic: false,
+        isPrivate: true,
+      });
+    } catch (e) {
+      console.warn('Admin approve notification failed:', e);
+    }
   },
 
-  async suspendMember(uid, actorId) {
-    await this.updateMember(uid, { suspended: true }, actorId, 'Member suspended');
+  async suspendMember(uid, actorId, reason = '') {
+    await this.updateMember(uid, { suspended: true, accountStatus: 'suspended', suspendedReason: reason || 'Suspended by admin' }, actorId, `Member suspended${reason ? `: ${reason}` : ''}`);
+    try {
+      await NotificationsService.createNotification({
+        title: '⚠️ Account Suspended',
+        message: `Your account has been suspended by administration.${reason ? ` Reason: ${reason}` : ''}`,
+        type: 'member_update',
+        category: 'personal',
+        actorName: 'Admin',
+        actorUid: actorId,
+        targetUid: uid,
+        link: '/dashboard',
+        isPublic: false,
+        isPrivate: true,
+      });
+    } catch (e) {
+      console.warn('Admin suspend notification failed:', e);
+    }
   },
 
-  async removeMember(uid, actorId) {
-    await this.updateMember(uid, { removed: true, suspended: true }, actorId, 'Member removed');
+  async removeMember(uid, actorId, reason = '') {
+    await this.updateMember(uid, { removed: true, suspended: true, membershipStatus: 'revoked', removeReason: reason || 'Removed by admin' }, actorId, `Member removed${reason ? `: ${reason}` : ''}`);
+    try {
+      await NotificationsService.createNotification({
+        title: '🚫 Membership Revoked',
+        message: `Your membership account has been removed by administration.${reason ? ` Reason: ${reason}` : ''}`,
+        type: 'member_update',
+        category: 'personal',
+        actorName: 'Admin',
+        actorUid: actorId,
+        targetUid: uid,
+        link: '/dashboard',
+        isPublic: false,
+        isPrivate: true,
+      });
+    } catch (e) {
+      console.warn('Admin remove notification failed:', e);
+    }
   },
 
-  async promoteMember(uid, role, actorId) {
-    await this.updateMember(uid, { role }, actorId, `Member promoted to ${role}`);
+  async promoteMember(uid, role, actorId, reason = '') {
+    await this.updateMember(uid, { role }, actorId, `Member role changed to ${role}${reason ? `: ${reason}` : ''}`);
+    try {
+      await NotificationsService.createNotification({
+        title: '🌟 Role Updated',
+        message: `Your role has been changed to "${role}".${reason ? ` Reason: ${reason}` : ''}`,
+        type: 'member_update',
+        category: 'personal',
+        actorName: 'Admin',
+        actorUid: actorId,
+        targetUid: uid,
+        link: '/dashboard',
+        isPublic: false,
+        isPrivate: true,
+      });
+    } catch (e) {
+      console.warn('Admin promote notification failed:', e);
+    }
   },
 
   async assignDepartment(uid, departmentId, actorId) {
     await this.updateMember(uid, { departmentId }, actorId, 'Department assigned');
+    try {
+      await NotificationsService.createNotification({
+        title: '🏢 Department Assigned',
+        message: `You have been assigned to a new department.`,
+        type: 'member_update',
+        category: 'personal',
+        actorName: 'Admin',
+        actorUid: actorId,
+        targetUid: uid,
+        link: '/dashboard',
+        isPublic: false,
+        isPrivate: true,
+      });
+    } catch (e) {}
   },
 
   async assignLab(uid, labId, actorId) {
     await this.updateMember(uid, { labId }, actorId, 'Lab assigned');
+    try {
+      await NotificationsService.createNotification({
+        title: '🔬 Research Lab Assigned',
+        message: `You have been assigned to a new research lab.`,
+        type: 'member_update',
+        category: 'personal',
+        actorName: 'Admin',
+        actorUid: actorId,
+        targetUid: uid,
+        link: '/dashboard',
+        isPublic: false,
+        isPrivate: true,
+      });
+    } catch (e) {}
   },
 
   async assignSpecialization(uid, specializationId, actorId) {
@@ -160,6 +253,20 @@ export const AdminService = {
       updatedAt: serverTimestamp(),
     });
     await this.logAudit({ type: 'BADGE_GRANTED', actorId, targetId: uid, summary: 'Specialization assigned', metadata: { specializationId } });
+    try {
+      await NotificationsService.createNotification({
+        title: '🎖️ Specialization Assigned',
+        message: `You have been awarded a new specialization: "${specializationId}".`,
+        type: 'member_update',
+        category: 'personal',
+        actorName: 'Admin',
+        actorUid: actorId,
+        targetUid: uid,
+        link: '/profile',
+        isPublic: false,
+        isPrivate: true,
+      });
+    } catch (e) {}
   },
 
   async getRoles() {

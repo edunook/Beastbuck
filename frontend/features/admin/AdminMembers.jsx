@@ -168,14 +168,26 @@ export default function AdminMembers() {
                   <div className="flex shrink-0 items-center gap-1.5">
                     <AdminActionButton
                       variant="success"
-                      onClick={(e) => { e.stopPropagation(); run(() => AdminService.approveMember(member.id, user.uid), `${member.displayName || member.username} approved.`); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        const reason = window.prompt(`Reason/notes to approve ${member.displayName || member.username}:`, 'Approved by Admin');
+                        if (reason !== null) {
+                          run(() => AdminService.approveMember(member.id, user.uid, reason), `${member.displayName || member.username} approved.`); 
+                        }
+                      }}
                       title="Approve"
                     >
                       <UserPlus className="h-3.5 w-3.5" />
                     </AdminActionButton>
                     <AdminActionButton
                       variant="danger"
-                      onClick={(e) => { e.stopPropagation(); run(() => AdminService.suspendMember(member.id, user.uid), `${member.displayName || member.username} suspended.`); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        const reason = window.prompt(`Please provide a reason to suspend ${member.displayName || member.username}:`, 'Violation of community guidelines');
+                        if (reason !== null) {
+                          run(() => AdminService.suspendMember(member.id, user.uid, reason), `${member.displayName || member.username} suspended.`); 
+                        }
+                      }}
                       title="Suspend"
                     >
                       <UserMinus className="h-3.5 w-3.5" />
@@ -193,7 +205,13 @@ export default function AdminMembers() {
                         <label className="mb-1 block text-xs font-bold text-text-muted">Promote / Demote</label>
                         <select
                           value={member.role || 'Member'}
-                          onChange={(e) => run(() => AdminService.promoteMember(member.id, e.target.value, user.uid), `Role changed to ${e.target.value}.`)}
+                          onChange={(e) => {
+                            const newRole = e.target.value;
+                            const reason = window.prompt(`Reason for updating role to ${newRole}:`, 'Role update by Admin');
+                            if (reason !== null) {
+                              run(() => AdminService.promoteMember(member.id, newRole, user.uid, reason), `Role changed to ${newRole}.`);
+                            }
+                          }}
                           className="h-9 w-full rounded-xl border border-border bg-white/5 px-3 text-xs text-white focus:border-accent/40 focus:outline-none"
                         >
                           {ROLE_OPTIONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -242,17 +260,34 @@ export default function AdminMembers() {
 
                     {/* Danger Actions */}
                     <div className="mt-3 flex flex-wrap gap-2 border-t border-border/40 pt-3">
-                      <AdminActionButton variant="success" onClick={() => run(() => AdminService.approveMember(member.id, user.uid), 'Member approved.')}>
+                      <AdminActionButton 
+                        variant="success" 
+                        onClick={() => {
+                          const reason = window.prompt(`Reason to approve ${member.displayName || member.username}:`, 'Approved by Admin');
+                          if (reason !== null) {
+                            run(() => AdminService.approveMember(member.id, user.uid, reason), 'Member approved.');
+                          }
+                        }}
+                      >
                         <UserPlus className="h-3.5 w-3.5" /> Approve
                       </AdminActionButton>
-                      <AdminActionButton variant="warning" onClick={() => run(() => AdminService.suspendMember(member.id, user.uid), 'Member suspended.')}>
+                      <AdminActionButton 
+                        variant="warning" 
+                        onClick={() => {
+                          const reason = window.prompt(`Please provide a reason to suspend ${member.displayName || member.username}:`, 'Violation of community guidelines');
+                          if (reason !== null) {
+                            run(() => AdminService.suspendMember(member.id, user.uid, reason), 'Member suspended.');
+                          }
+                        }}
+                      >
                         <UserMinus className="h-3.5 w-3.5" /> Suspend
                       </AdminActionButton>
                       <AdminActionButton
                         variant="danger"
                         onClick={() => {
-                          if (window.confirm(`Remove ${member.displayName || member.username}? This action cannot be undone.`)) {
-                            run(() => AdminService.removeMember(member.id, user.uid), 'Member removed.');
+                          const reason = window.prompt(`Please specify the reason to remove ${member.displayName || member.username}:`, 'Permanent removal by administration');
+                          if (reason !== null) {
+                            run(() => AdminService.removeMember(member.id, user.uid, reason), 'Member removed.');
                           }
                         }}
                       >

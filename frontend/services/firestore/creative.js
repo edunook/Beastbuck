@@ -16,6 +16,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { GamificationService, XP_REWARD_TYPES } from './gamification';
+import { NotificationsService } from './notifications';
 
 export const CREATIVE_CATEGORIES = [
   'Drawing',
@@ -97,15 +98,38 @@ export const CreativeService = {
       updatedAt: serverTimestamp(),
     });
 
-    await GamificationService.awardXP({
-      uid: creator.uid,
-      amount: CREATE_CREATIVE_XP,
-      reason: `Creative work created: ${work.title}`,
-      sourceType: XP_REWARD_TYPES.PRODUCT, // Reuse PRODUCT type for creative works
-      sourceId: docRef.id,
-      actorId: creator.uid,
-      metadata: { category: work.category },
-    });
+    try {
+      await GamificationService.awardXP({
+        uid: creator.uid,
+        amount: CREATE_CREATIVE_XP,
+        reason: `Creative work created: ${work.title}`,
+        sourceType: XP_REWARD_TYPES.PRODUCT, // Reuse PRODUCT type for creative works
+        sourceId: docRef.id,
+        actorId: creator.uid,
+        metadata: { category: work.category },
+      });
+    } catch (xpErr) {
+      console.warn('XP awarding skipped or failed:', xpErr);
+    }
+
+    // Public notification to all members
+    try {
+      if (work.status === 'PUBLISHED') {
+        await NotificationsService.createNotification({
+          title: '✨ New Creative Work!',
+          message: `${creator.name || creator.username || 'A member'} shared a new creative work: "${work.title}". Check it out in the Creative Hub!`,
+          type: 'creativity',
+          category: 'public',
+          actorName: creator.name || creator.username || 'Creator',
+          actorUid: creator.uid,
+          link: `/creative/${docRef.id}`,
+          isPublic: true,
+          isPrivate: false,
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Creative work public notification failed:', notifErr);
+    }
 
     return docRef.id;
   },

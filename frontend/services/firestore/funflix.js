@@ -11,6 +11,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { GamificationService, XP_REWARD_TYPES } from './gamification';
+import { NotificationsService } from './notifications';
 
 const UPLOAD_VIDEO_XP = 25;
 
@@ -68,6 +69,25 @@ export const FunFlixService = {
       });
     } catch (xpErr) {
       console.warn('XP awarding skipped or failed:', xpErr);
+    }
+
+    // Notify all members if public video
+    try {
+      if (data.visibility !== 'private') {
+        await NotificationsService.createNotification({
+          title: '🎬 New FunFlix Video!',
+          message: `${creator.name || creator.username || 'A member'} just uploaded a new video: "${video.title}". Watch it on FunFlix!`,
+          type: 'funflix',
+          category: 'public',
+          actorName: creator.name || creator.username || 'FunFlix Creator',
+          actorUid: creator.uid,
+          link: `/funflix?video=${docRef.id}`,
+          isPublic: true,
+          isPrivate: false,
+        });
+      }
+    } catch (notifErr) {
+      console.warn('FunFlix public notification failed:', notifErr);
     }
 
     return docRef.id;

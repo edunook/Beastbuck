@@ -13,6 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { ROLES } from '@shared/constants/roles';
+import { NotificationsService } from './notifications';
 
 export const APPLICATION_STATUSES = ['pending', 'approved', 'rejected'];
 
@@ -132,6 +133,55 @@ export const MembershipService = {
         membershipStatus: 'approved',
       });
       await batch.commit();
+
+      // 1. Direct notification to applicant
+      try {
+        await NotificationsService.createNotification({
+          title: '🎉 Membership Application Approved!',
+          message: `Congratulations! Your application has been approved.${reviewNotes ? ` Review notes: "${reviewNotes}"` : ' Welcome to the BeastBuck family as an official Member!'}.`,
+          type: 'member_join',
+          category: 'personal',
+          actorName: 'Membership Board',
+          actorUid: reviewerId,
+          targetUid: application.applicantId,
+          link: '/dashboard',
+          isPublic: false,
+          isPrivate: true,
+        });
+
+        // 2. Public announcement to all members
+        await NotificationsService.createNotification({
+          title: '👋 Welcome New Member!',
+          message: `${application.applicantName || 'A new member'} has officially joined BeastBuck! Give them a warm welcome!`,
+          type: 'member_join',
+          category: 'public',
+          actorName: 'BeastBuck',
+          actorUid: reviewerId,
+          link: `/portfolio/${application.applicantId}`,
+          isPublic: true,
+          isPrivate: false,
+        });
+      } catch (notifErr) {
+        console.warn('Membership approval notification failed:', notifErr);
+      }
+    } else if (status === 'rejected' && application.applicantId) {
+      // Direct notification to applicant with rejection reason
+      try {
+        await NotificationsService.createNotification({
+          title: '📋 Membership Application Update',
+          message: `Your membership application was reviewed and not accepted at this time.${reviewNotes ? ` Reason / Feedback: "${reviewNotes}"` : ''}`,
+          type: 'member_update',
+          category: 'personal',
+          actorName: 'Membership Board',
+          actorUid: reviewerId,
+          targetUid: application.applicantId,
+          link: '/membership',
+          isPublic: false,
+          isPrivate: true,
+        });
+      } catch (notifErr) {
+        console.warn('Membership rejection notification failed:', notifErr);
+      }
     }
 
     return true;

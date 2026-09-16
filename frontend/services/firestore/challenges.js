@@ -189,16 +189,36 @@ export const ChallengeService = {
   // COMMUNITY CHALLENGES (Multi-type system)
   // ---------------------------------------------------------------------------
   async createCommunityChallenge(challengeData, creator) {
+    const status = challengeData.status || CHALLENGE_STATUS.DRAFT;
     const docRef = await addDoc(collection(db, 'communityChallenges'), {
       ...challengeData,
       creatorId: creator.uid,
       creatorName: creator.name,
       creatorUsername: creator.username,
-      status: CHALLENGE_STATUS.DRAFT,
+      status,
       participantCount: 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    try {
+      if (status === CHALLENGE_STATUS.ACTIVE) {
+        await NotificationsService.createNotification({
+          title: '⚡ New Challenge Available!',
+          message: `${creator.name || creator.username || 'A member'} created a new challenge: "${challengeData.title}". Join now to test your skills and earn XP!`,
+          type: 'challenge_winner',
+          category: 'public',
+          actorName: creator.name || creator.username || 'Challenge Host',
+          actorUid: creator.uid,
+          link: '/challenges',
+          isPublic: true,
+          isPrivate: false,
+        });
+      }
+    } catch (e) {
+      console.warn('Challenge creation public notification failed:', e);
+    }
+
     return docRef.id;
   },
 

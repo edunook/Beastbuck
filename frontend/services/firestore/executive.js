@@ -1,6 +1,7 @@
 import { doc, setDoc, serverTimestamp, runTransaction, collection, getDocs, query, where, orderBy, limit, getDoc } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
 import { ROLES } from '@shared/constants/roles';
+import { NotificationsService } from './notifications';
 
 /**
  * Executive Service - Handles CEO/Co-CEO assignment and executive operations
@@ -8,6 +9,32 @@ import { ROLES } from '@shared/constants/roles';
 
 const EXECUTIVE_COLLECTION = 'users';
 const AUDIT_LOGS_COLLECTION = 'auditLogs';
+
+/**
+ * Helper to send user-facing Firestore notifications for executive actions
+ */
+export async function sendUserNotification(targetUid, { type, title, message, severity = 'info', reason = '' }) {
+  if (!targetUid) return;
+  try {
+    const formattedMessage = reason && !message.includes(reason) 
+      ? `${message} Reason: ${reason}` 
+      : message;
+    
+    await NotificationsService.createNotification({
+      title: title || 'Executive Notice',
+      message: formattedMessage,
+      type: type === 'MEMBERSHIP_REVOKED' || type === 'ACCOUNT_SUSPENDED' ? 'member_update' : 'member_join',
+      category: 'personal',
+      actorName: 'Executive Leadership',
+      targetUid,
+      link: '/dashboard',
+      isPublic: false,
+      isPrivate: true,
+    });
+  } catch (err) {
+    console.warn('Failed sending executive user notification:', err);
+  }
+}
 
 /**
  * Check if a CEO already exists in the system
@@ -127,6 +154,14 @@ export async function promoteToCoCEO(actorUid, targetUid, reason = '') {
       details: { newRole: ROLES.CO_CEO, reason }
     });
 
+    await sendUserNotification(targetUid, {
+      type: 'ROLE_CHANGED',
+      title: '👑 Appointed as Co-CEO',
+      message: `You have been appointed as Co-CEO by the Main CEO.${reason ? ` Reason: ${reason}` : ''}`,
+      severity: 'success',
+      reason
+    });
+
     return { success: true };
   } catch (error) {
     console.error('Error promoting to Co-CEO:', error);
@@ -222,6 +257,14 @@ export async function designateSuccessor(actorUid, successorUid, reason = '') {
       details: { newCeoUid: successorUid, reason }
     });
 
+    await sendUserNotification(successorUid, {
+      type: 'ROLE_CHANGED',
+      title: '👑 Appointed as Main CEO',
+      message: `You have been designated as the new Main CEO.${reason ? ` Reason: ${reason}` : ''}`,
+      severity: 'success',
+      reason
+    });
+
     return { success: true };
   } catch (error) {
     console.error('Error designating successor:', error);
@@ -272,6 +315,14 @@ export async function removeCoCEO(actorUid, targetUid, reason = '') {
       targetId: targetUid,
       summary: 'Removed from Co-CEO',
       details: { previousRole: ROLES.CO_CEO, newRole: ROLES.MEMBER, reason }
+    });
+
+    await sendUserNotification(targetUid, {
+      type: 'ROLE_CHANGED',
+      title: 'Executive Role Updated',
+      message: `Your Co-CEO designation has been revoked.${reason ? ` Reason: ${reason}` : ''}`,
+      severity: 'warning',
+      reason
     });
 
     return { success: true };
@@ -404,21 +455,7 @@ export async function getActivityFeed(limit = 20) {
   }
 }
 
-/**
- * Send user notification to their subcollection
- */
-async function sendUserNotification(userId, notificationData) {
-  try {
-    const notifRef = doc(collection(db, EXECUTIVE_COLLECTION, userId, 'notifications'));
-    await setDoc(notifRef, {
-      ...notificationData,
-      read: false,
-      createdAt: serverTimestamp()
-    });
-  } catch (err) {
-    console.error('Error sending user notification:', err);
-  }
-}
+
 
 /**
  * Demote a Member to standard User (Main CEO & Co-CEO only)
@@ -671,8 +708,9 @@ export async function reinstateMember(actorUid, targetUid, reason = '') {
     await sendUserNotification(targetUid, {
       type: 'MEMBERSHIP_REINSTATED',
       title: 'Membership Approved',
-      message: `Congratulations! Your membership has been reinstated with full member privileges.`,
-      severity: 'success'
+      message: `Congratulations! Your membership has been reinstated with full member privileges.${reason ? ` Reason / Notes: ${reason}` : ''}`,
+      severity: 'success',
+      reason
     });
 
     return result;
