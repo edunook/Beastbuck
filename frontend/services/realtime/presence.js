@@ -170,20 +170,24 @@ export const PresenceService = {
       errorHandler.warn('RTDB update failed', 'Presence RTDB Update', { error: err.message });
     }
 
-    await setDoc(
-      doc(db, 'presence', uid),
-      {
-        ...(state ? { state } : {}),
-        ...(activity !== undefined ? { activity } : {}),
-        ...(activeWorkspace !== undefined ? { activeWorkspace } : {}),
-        ...(activeProject !== undefined ? { activeProject } : {}),
-        ...(activeDepartment !== undefined ? { activeDepartment } : {}),
-        ...(activeLab !== undefined ? { activeLab } : {}),
-        lastSeen: firestoreTimestamp(),
-        updatedAt: firestoreTimestamp(),
-      },
-      { merge: true }
-    );
+    try {
+      await setDoc(
+        doc(db, 'presence', uid),
+        {
+          ...(state ? { state } : {}),
+          ...(activity !== undefined ? { activity } : {}),
+          ...(activeWorkspace !== undefined ? { activeWorkspace } : {}),
+          ...(activeProject !== undefined ? { activeProject } : {}),
+          ...(activeDepartment !== undefined ? { activeDepartment } : {}),
+          ...(activeLab !== undefined ? { activeLab } : {}),
+          lastSeen: firestoreTimestamp(),
+          updatedAt: firestoreTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      errorHandler.warn('Firestore presence update failed', 'Presence Firestore Update', { error: err?.message || err });
+    }
   },
 
   async setPresenceState(uid, state, extra = {}) {
