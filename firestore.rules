@@ -1009,6 +1009,55 @@ service cloud.firestore {
     }
 
     // ----------------------------------------
+    // GAME SESSIONS (Multiplayer Games)
+    // ----------------------------------------
+    match /gameSessions/{sessionId} {
+      // Any authenticated user can read game sessions
+      allow read: if isAuthenticated();
+
+      // Any authenticated user can create a game session
+      allow create: if isAuthenticated()
+                    && request.resource.data.keys().hasOnly([
+                      'gameId',
+                      'roomId',
+                      'status',
+                      'player1',
+                      'player2',
+                      'gameState',
+                      'winner',
+                      'createdAt',
+                      'updatedAt'
+                    ])
+                    && request.resource.data.gameId is string
+                    && request.resource.data.roomId is string
+                    && request.resource.data.status in ['waiting', 'active', 'finished']
+                    && request.resource.data.player1.uid == request.auth.uid
+                    && request.resource.data.player2 == null
+                    && request.resource.data.winner == null;
+
+      // Players can update game state during gameplay
+      allow update: if isAuthenticated()
+                    && (
+                      // Player 1 can update
+                      resource.data.player1.uid == request.auth.uid ||
+                      // Player 2 can update
+                      resource.data.player2.uid == request.auth.uid
+                    )
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'gameState',
+                      'player2',
+                      'status',
+                      'winner',
+                      'updatedAt'
+                    ]);
+
+      // Session creator can delete waiting sessions
+      allow delete: if isAuthenticated()
+                    && resource.data.player1.uid == request.auth.uid
+                    && resource.data.status == 'waiting';
+    }
+
+    // ----------------------------------------
     // CUSTOM AIs & AI STUDIO CREATOR
     // ----------------------------------------
     match /custom_ais/{aiId} {

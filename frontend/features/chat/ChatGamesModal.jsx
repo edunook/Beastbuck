@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@services/firebase/config';
 import {
-  addDoc, collection, deleteDoc, doc, onSnapshot, query,
+  addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query,
   serverTimestamp, updateDoc, where, limit
 } from 'firebase/firestore';
 import {
@@ -20,6 +20,7 @@ const MULTIPLAYER_GAMES = [
     icon: Target,
     emoji: '❌⭕',
     players: '2 Players',
+    maxPlayers: 2,
     duration: '~2 min',
     description: 'Classic 3×3 strategy duel. Align three marks before your opponent does!',
     gradient: 'from-violet-600/30 to-purple-700/20',
@@ -33,6 +34,7 @@ const MULTIPLAYER_GAMES = [
     icon: Target,
     emoji: '🔴🟡',
     players: '2 Players',
+    maxPlayers: 2,
     duration: '~3 min',
     description: 'Drop discs into the 7-column grid. First to connect four in a row wins!',
     gradient: 'from-blue-600/30 to-cyan-700/20',
@@ -46,6 +48,7 @@ const MULTIPLAYER_GAMES = [
     icon: Gamepad2,
     emoji: '✊✋✌️',
     players: '2 Players',
+    maxPlayers: 2,
     duration: '~1 min',
     description: 'Best of 3 showdown! Choose your weapon simultaneously and outsmart your rival!',
     gradient: 'from-amber-600/30 to-orange-700/20',
@@ -59,6 +62,7 @@ const MULTIPLAYER_GAMES = [
     icon: Brain,
     emoji: '🧠⚡',
     players: '2 Players',
+    maxPlayers: 2,
     duration: '~3 min',
     description: 'Race through trivia questions. Both answer each question — most correct wins!',
     gradient: 'from-emerald-600/30 to-teal-700/20',
@@ -83,12 +87,27 @@ const TRIVIA_QUESTIONS = [
    GAME LOGIC HELPERS
    ═══════════════════════════════════════════════════════════════ */
 function initialGameState(gameId) {
+  console.log('Initializing game state for:', gameId);
   switch (gameId) {
-    case 'ttt': return { board: Array(9).fill(null), currentTurn: 'player1', winner: null };
-    case 'c4': return { board: Array(42).fill(null), currentTurn: 'player1', winner: null };
-    case 'rps': return { p1Choice: null, p2Choice: null, round: 1, p1Score: 0, p2Score: 0, bestOf: 3, roundHistory: [] };
-    case 'trivia': return { questionIndex: 0, p1Answer: null, p2Answer: null, p1Score: 0, p2Score: 0, questionResults: [] };
-    default: return {};
+    case 'ttt':
+      const tttState = { board: Array(9).fill(null), currentTurn: 'player1', winner: null };
+      console.log('TTT initial state:', tttState);
+      return tttState;
+    case 'c4':
+      const c4State = { board: Array(42).fill(null), currentTurn: 'player1', winner: null };
+      console.log('C4 initial state:', c4State);
+      return c4State;
+    case 'rps':
+      const rpsState = { p1Choice: null, p2Choice: null, round: 1, p1Score: 0, p2Score: 0, bestOf: 3, roundHistory: [] };
+      console.log('RPS initial state:', rpsState);
+      return rpsState;
+    case 'trivia':
+      const triviaState = { questionIndex: 0, p1Answer: null, p2Answer: null, p1Score: 0, p2Score: 0, questionResults: [] };
+      console.log('Trivia initial state:', triviaState);
+      return triviaState;
+    default:
+      console.error('Unknown game ID:', gameId);
+      return {};
   }
 }
 
@@ -148,10 +167,18 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
   const [waitingSessions, setWaitingSessions] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const [inviteSent, setInviteSent] = useState(false);
+  const [error, setError] = useState(null);
 
   const currentName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'You';
   const phaseRef = useRef(phase);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
+
+  // Debug: Log current user state
+  useEffect(() => {
+    console.log('Game Modal - Current user:', currentUser);
+    console.log('Game Modal - Current name:', currentName);
+    console.log('Game Modal - Current phase:', phase);
+  }, [currentUser, currentName, phase]);
 
   // ─── Subscribe to active session ───────────────────────
   useEffect(() => {
@@ -161,17 +188,19 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     const unsub = onSnapshot(gameDocRef(sessionId), async (snap) => {
       if (!snap.exists()) {
         setSession(null);
+        setError('Game session not found or was deleted');
         return;
       }
       const data = { id: snap.id, ...snap.data() };
       setSession(data);
+      setError(null);
 
       // Auto-determine role
       if (data.player1?.uid === currentUser?.uid) {
         setMyRole('player1');
       } else if (data.player2?.uid === currentUser?.uid) {
         setMyRole('player2');
-      } else if (data.status === 'waiting' && !hasJoined) {
+      } else if (data.status === 'waiting' && !hasJoined && joinSessionId) {
         // Auto-join for joinSessionId scenario
         hasJoined = true;
         try {
@@ -183,6 +212,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
           setMyRole('player2');
         } catch (err) {
           console.error('Auto-join failed:', err);
+          setError('Failed to join game session');
         }
       }
 
@@ -198,10 +228,11 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
       }
     }, (err) => {
       console.error('Session subscription error:', err);
+      setError('Failed to connect to game session');
     });
 
     return unsub;
-  }, [sessionId, currentUser?.uid, currentName]);
+  }, [sessionId, currentUser?.uid, currentName, joinSessionId]);
 
   // ─── Subscribe to waiting sessions (lobby) ────────────
   useEffect(() => {
@@ -214,12 +245,15 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
         .filter(s => {
           if (s.roomId !== activeRoomId) return false;
           if (s.gameId !== selectedGame.id) return false;
-          if (s.player1?.uid === currentUser?.uid) return false;
+          if (s.player1?.uid === currentUser?.uid) return false; // Don't show own sessions
+          if (!s.player1?.uid) return false; // Invalid session
           const created = s.createdAt?.toMillis?.() || 0;
           return created > fifteenMinAgo;
         });
       setWaitingSessions(filtered);
-    }, () => setWaitingSessions([]));
+    }, (err) => {
+      console.error('Failed to subscribe to waiting sessions:', err);
+    });
     return unsub;
   }, [phase, selectedGame?.id, activeRoomId, currentUser?.uid]);
 
@@ -233,8 +267,11 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
   useEffect(() => {
     return () => {
+      // Only delete if we're the creator and session is still waiting
       if (sessionIdRef.current && sessionStatusRef.current === 'waiting' && myRoleRef.current === 'player1') {
-        deleteDoc(gameDocRef(sessionIdRef.current)).catch(() => {});
+        deleteDoc(gameDocRef(sessionIdRef.current)).catch((err) => {
+          console.error('Failed to cleanup game session:', err);
+        });
       }
     };
   }, []);
@@ -247,44 +284,111 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     setSession(null);
     setMyRole(null);
     setWaitingSessions([]);
+    setError(null);
   };
 
   const handleCreateSession = async () => {
-    if (isCreating || !selectedGame) return;
+    if (isCreating || !selectedGame || !currentUser?.uid) {
+      if (!currentUser?.uid) {
+        setError('You must be logged in to create a game');
+      }
+      return;
+    }
+
+    // Check if user already has an active session
+    if (sessionId && session?.status === 'waiting') {
+      setError('You already have an active game session waiting for an opponent');
+      return;
+    }
+
     setIsCreating(true);
+    setError(null);
     try {
+      console.log('Creating game session for:', selectedGame.id, 'user:', currentUser.uid);
+      const gameState = initialGameState(selectedGame.id);
+      console.log('Initial game state:', gameState);
+
+      // Validate game state before creating
+      if (!gameState || Object.keys(gameState).length === 0) {
+        throw new Error('Invalid game state generated');
+      }
+
       const ref = await addDoc(gamesCol(), {
         gameId: selectedGame.id,
         roomId: activeRoomId,
         status: 'waiting',
         player1: { uid: currentUser.uid, displayName: currentName },
         player2: null,
-        gameState: initialGameState(selectedGame.id),
+        gameState: gameState,
         winner: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      console.log('Game session created with ID:', ref.id);
       setSessionId(ref.id);
       setMyRole('player1');
+      setError(null);
     } catch (err) {
       console.error('Failed to create game session:', err);
+      const errorMessage = err?.message || 'Unknown error occurred';
+      setError(`Failed to create game session: ${errorMessage}`);
+      setSessionId(null);
+      setMyRole(null);
     } finally {
       setIsCreating(false);
     }
   };
 
   const handleJoinSession = async (id) => {
+    if (!currentUser?.uid) {
+      setError('You must be logged in to join a game');
+      return;
+    }
+
+    // Check if we're already in this session
+    if (sessionId === id) {
+      setError('You are already in this game session');
+      return;
+    }
+
     try {
+      console.log('Joining game session:', id, 'as user:', currentUser.uid);
+
+      // First check if session still exists and is waiting
+      const snap = await getDoc(gameDocRef(id));
+
+      if (!snap.exists()) {
+        setError('This game session no longer exists');
+        return;
+      }
+
+      const sessionData = snap.data();
+      if (sessionData.status !== 'waiting') {
+        setError('This game is no longer available to join');
+        return;
+      }
+
+      if (sessionData.player1?.uid === currentUser?.uid) {
+        setError('You cannot join your own game session');
+        return;
+      }
+
       await updateDoc(gameDocRef(id), {
         player2: { uid: currentUser.uid, displayName: currentName },
         status: 'active',
         updatedAt: serverTimestamp(),
       });
+
+      console.log('Successfully joined game session:', id);
       setSessionId(id);
       setMyRole('player2');
       setPhase('playing');
+      setError(null);
     } catch (err) {
       console.error('Failed to join session:', err);
+      const errorMessage = err?.message || 'Unknown error occurred';
+      setError(`Failed to join game: ${errorMessage}`);
     }
   };
 
@@ -314,6 +418,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     setSelectedGame(null);
     setPhase('select');
     setWaitingSessions([]);
+    setError(null);
   };
 
   const handleNewGame = () => {
@@ -321,6 +426,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     setSession(null);
     setMyRole(null);
     setPhase('lobby');
+    setError(null);
   };
 
   // ─── Game Move Handlers ──────────────────────────────
@@ -333,108 +439,138 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
   // TTT Move
   const handleTTTMove = async (idx) => {
-    if (!gs || gs.winner || gs.board[idx] || !isMyTurn) return;
-    const newBoard = [...gs.board];
-    const mark = myRole === 'player1' ? 'X' : 'O';
-    newBoard[idx] = mark;
-    const rawWinner = checkTTTWinner(newBoard);
-    let winner = null;
-    if (rawWinner === 'draw') winner = 'draw';
-    else if (rawWinner === 'X') winner = 'player1';
-    else if (rawWinner === 'O') winner = 'player2';
+    if (!gs || gs.winner || gs.board[idx] || !isMyTurn || !sessionId) return;
+    try {
+      const newBoard = [...gs.board];
+      const mark = myRole === 'player1' ? 'X' : 'O';
+      newBoard[idx] = mark;
+      const rawWinner = checkTTTWinner(newBoard);
+      let winner = null;
+      if (rawWinner === 'draw') winner = 'draw';
+      else if (rawWinner === 'X') winner = 'player1';
+      else if (rawWinner === 'O') winner = 'player2';
 
-    const newState = { ...gs, board: newBoard, currentTurn: myRole === 'player1' ? 'player2' : 'player1', winner };
-    const updates = { gameState: newState, updatedAt: serverTimestamp() };
-    if (winner) updates.status = 'finished';
-    await updateDoc(gameDocRef(sessionId), updates);
+      const newState = { ...gs, board: newBoard, currentTurn: myRole === 'player1' ? 'player2' : 'player1', winner };
+      const updates = { gameState: newState, updatedAt: serverTimestamp() };
+      if (winner) updates.status = 'finished';
+      await updateDoc(gameDocRef(sessionId), updates);
+    } catch (err) {
+      console.error('Failed to make TTT move:', err);
+      setError('Failed to make move. Please try again.');
+    }
   };
 
   // C4 Drop
   const handleC4Drop = async (col) => {
-    if (!gs || gs.winner || !isMyTurn) return;
-    const board = [...gs.board];
-    let row = -1;
-    for (let r = 5; r >= 0; r--) {
-      if (!board[r * 7 + col]) { row = r; break; }
-    }
-    if (row === -1) return;
-    const mark = myRole === 'player1' ? 'Red' : 'Yellow';
-    board[row * 7 + col] = mark;
-    const won = checkC4Win(board, row, col, mark);
-    const isDraw = !won && board.every(c => c !== null);
-    const winner = won ? myRole : isDraw ? 'draw' : null;
+    if (!gs || gs.winner || !isMyTurn || !sessionId) return;
+    try {
+      const board = [...gs.board];
+      let row = -1;
+      for (let r = 5; r >= 0; r--) {
+        if (!board[r * 7 + col]) { row = r; break; }
+      }
+      if (row === -1) return;
+      const mark = myRole === 'player1' ? 'Red' : 'Yellow';
+      board[row * 7 + col] = mark;
+      const won = checkC4Win(board, row, col, mark);
+      const isDraw = !won && board.every(c => c !== null);
+      const winner = won ? myRole : isDraw ? 'draw' : null;
 
-    const newState = { ...gs, board, currentTurn: myRole === 'player1' ? 'player2' : 'player1', winner };
-    const updates = { gameState: newState, updatedAt: serverTimestamp() };
-    if (winner) updates.status = 'finished';
-    await updateDoc(gameDocRef(sessionId), updates);
+      const newState = { ...gs, board, currentTurn: myRole === 'player1' ? 'player2' : 'player1', winner };
+      const updates = { gameState: newState, updatedAt: serverTimestamp() };
+      if (winner) updates.status = 'finished';
+      await updateDoc(gameDocRef(sessionId), updates);
+    } catch (err) {
+      console.error('Failed to make C4 move:', err);
+      setError('Failed to make move. Please try again.');
+    }
   };
 
   // RPS Choice (uses dot-notation partial field update to avoid write conflicts)
   const handleRPSChoice = async (choice) => {
-    if (!gs) return;
-    const myField = myRole === 'player1' ? 'p1Choice' : 'p2Choice';
-    if (gs[myField]) return; // already chosen
-    await updateDoc(gameDocRef(sessionId), {
-      [`gameState.${myField}`]: choice,
-      updatedAt: serverTimestamp(),
-    });
+    if (!gs || !sessionId) return;
+    try {
+      const myField = myRole === 'player1' ? 'p1Choice' : 'p2Choice';
+      if (gs[myField]) return; // already chosen
+      await updateDoc(gameDocRef(sessionId), {
+        [`gameState.${myField}`]: choice,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('Failed to make RPS choice:', err);
+      setError('Failed to submit choice. Please try again.');
+    }
   };
 
   // RPS advance to next round
   const handleRPSNextRound = async () => {
-    if (!gs || !gs.p1Choice || !gs.p2Choice) return;
-    const result = getRPSResult(gs.p1Choice, gs.p2Choice);
-    const newP1Score = result === 'player1' ? gs.p1Score + 1 : gs.p1Score;
-    const newP2Score = result === 'player2' ? gs.p2Score + 1 : gs.p2Score;
-    const winsNeeded = Math.ceil(gs.bestOf / 2);
-    const gameOver = newP1Score >= winsNeeded || newP2Score >= winsNeeded;
+    if (!gs || !gs.p1Choice || !gs.p2Choice || !sessionId) return;
+    try {
+      const result = getRPSResult(gs.p1Choice, gs.p2Choice);
+      const newP1Score = result === 'player1' ? gs.p1Score + 1 : gs.p1Score;
+      const newP2Score = result === 'player2' ? gs.p2Score + 1 : gs.p2Score;
+      const winsNeeded = Math.ceil(gs.bestOf / 2);
+      const gameOver = newP1Score >= winsNeeded || newP2Score >= winsNeeded;
 
-    const newState = {
-      ...gs,
-      p1Choice: null, p2Choice: null,
-      round: gs.round + 1,
-      p1Score: newP1Score, p2Score: newP2Score,
-      roundHistory: [...(gs.roundHistory || []), { round: gs.round, p1Choice: gs.p1Choice, p2Choice: gs.p2Choice, winner: result }],
-    };
-    if (gameOver) newState.winner = newP1Score >= winsNeeded ? 'player1' : 'player2';
-    const updates = { gameState: newState, updatedAt: serverTimestamp() };
-    if (gameOver) updates.status = 'finished';
-    await updateDoc(gameDocRef(sessionId), updates);
+      const newState = {
+        ...gs,
+        p1Choice: null, p2Choice: null,
+        round: gs.round + 1,
+        p1Score: newP1Score, p2Score: newP2Score,
+        roundHistory: [...(gs.roundHistory || []), { round: gs.round, p1Choice: gs.p1Choice, p2Choice: gs.p2Choice, winner: result }],
+      };
+      if (gameOver) newState.winner = newP1Score >= winsNeeded ? 'player1' : 'player2';
+      const updates = { gameState: newState, updatedAt: serverTimestamp() };
+      if (gameOver) updates.status = 'finished';
+      await updateDoc(gameDocRef(sessionId), updates);
+    } catch (err) {
+      console.error('Failed to advance RPS round:', err);
+      setError('Failed to advance round. Please try again.');
+    }
   };
 
   // Trivia answer (uses dot-notation partial field update)
   const handleTriviaAnswer = async (answer) => {
-    if (!gs) return;
-    const myField = myRole === 'player1' ? 'p1Answer' : 'p2Answer';
-    if (gs[myField]) return;
-    await updateDoc(gameDocRef(sessionId), {
-      [`gameState.${myField}`]: answer,
-      updatedAt: serverTimestamp(),
-    });
+    if (!gs || !sessionId) return;
+    try {
+      const myField = myRole === 'player1' ? 'p1Answer' : 'p2Answer';
+      if (gs[myField]) return;
+      await updateDoc(gameDocRef(sessionId), {
+        [`gameState.${myField}`]: answer,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('Failed to submit trivia answer:', err);
+      setError('Failed to submit answer. Please try again.');
+    }
   };
 
   // Trivia advance to next question
   const handleTriviaNext = async () => {
-    if (!gs || !gs.p1Answer || !gs.p2Answer) return;
-    const correct = TRIVIA_QUESTIONS[gs.questionIndex]?.answer;
-    const newP1Score = gs.p1Answer === correct ? gs.p1Score + 1 : gs.p1Score;
-    const newP2Score = gs.p2Answer === correct ? gs.p2Score + 1 : gs.p2Score;
-    const isLast = gs.questionIndex + 1 >= TRIVIA_QUESTIONS.length;
+    if (!gs || !gs.p1Answer || !gs.p2Answer || !sessionId) return;
+    try {
+      const correct = TRIVIA_QUESTIONS[gs.questionIndex]?.answer;
+      const newP1Score = gs.p1Answer === correct ? gs.p1Score + 1 : gs.p1Score;
+      const newP2Score = gs.p2Answer === correct ? gs.p2Score + 1 : gs.p2Score;
+      const isLast = gs.questionIndex + 1 >= TRIVIA_QUESTIONS.length;
 
-    const newState = {
-      ...gs,
-      p1Answer: null, p2Answer: null,
-      questionIndex: gs.questionIndex + 1,
-      p1Score: newP1Score, p2Score: newP2Score,
-      questionResults: [...(gs.questionResults || []), { q: gs.questionIndex, p1Answer: gs.p1Answer, p2Answer: gs.p2Answer, correct }],
-    };
-    if (isLast) {
-      newState.winner = newP1Score > newP2Score ? 'player1' : newP2Score > newP1Score ? 'player2' : 'draw';
+      const newState = {
+        ...gs,
+        p1Answer: null, p2Answer: null,
+        questionIndex: gs.questionIndex + 1,
+        p1Score: newP1Score, p2Score: newP2Score,
+        questionResults: [...(gs.questionResults || []), { q: gs.questionIndex, p1Answer: gs.p1Answer, p2Answer: gs.p2Answer, correct }],
+      };
+      if (isLast) {
+        newState.winner = newP1Score > newP2Score ? 'player1' : newP2Score > newP1Score ? 'player2' : 'draw';
+      }
+      const updates = { gameState: newState, updatedAt: serverTimestamp() };
+      if (isLast) updates.status = 'finished';
+      await updateDoc(gameDocRef(sessionId), updates);
+    } catch (err) {
+      console.error('Failed to advance trivia question:', err);
+      setError('Failed to advance question. Please try again.');
     }
-    const updates = { gameState: newState, updatedAt: serverTimestamp() };
-    if (isLast) updates.status = 'finished';
-    await updateDoc(gameDocRef(sessionId), updates);
   };
 
   // ─── Render ──────────────────────────────────────────
@@ -476,6 +612,15 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
         {/* ═══ BODY ═══ */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400 flex items-center gap-2">
+              <span>⚠️</span>
+              <span>{error}</span>
+              <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">✕</button>
+            </div>
+          )}
 
           {/* ═══ PHASE: SELECT ═══ */}
           {phase === 'select' && (
@@ -566,14 +711,20 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                 <div className="space-y-5">
                   <button
                     onClick={handleCreateSession}
-                    disabled={isCreating}
-                    className="w-full p-5 rounded-2xl border border-indigo-500/40 bg-gradient-to-r from-indigo-600/20 to-violet-600/20 hover:from-indigo-600/30 hover:to-violet-600/30 transition-all duration-300 text-center group cursor-pointer"
+                    disabled={isCreating || !currentUser?.uid}
+                    className={`w-full p-5 rounded-2xl border transition-all duration-300 text-center group ${
+                      !currentUser?.uid
+                        ? 'border-white/10 bg-white/5 cursor-not-allowed opacity-50'
+                        : 'border-indigo-500/40 bg-gradient-to-r from-indigo-600/20 to-violet-600/20 hover:from-indigo-600/30 hover:to-violet-600/30 cursor-pointer'
+                    }`}
                   >
                     <div className="text-3xl mb-2">⚔️</div>
                     <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition">
-                      {isCreating ? 'Creating Duel…' : 'Create New Duel'}
+                      {!currentUser?.uid ? 'Login Required' : isCreating ? 'Creating Duel…' : 'Create New Duel'}
                     </h3>
-                    <p className="text-xs text-white/50 mt-1">Start a session and wait for an opponent to join</p>
+                    <p className="text-xs text-white/50 mt-1">
+                      {!currentUser?.uid ? 'You must be logged in to create games' : 'Start a session and wait for an opponent to join'}
+                    </p>
                   </button>
 
                   {/* Open duels from other players */}

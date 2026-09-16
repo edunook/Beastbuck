@@ -198,13 +198,13 @@ export function RichCardRenderer({ content, onOpen, onShare, onBookmark, isBookm
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="text-[11px] font-bold text-emerald-400">Match Ready</span>
+            <span className="text-[11px] font-bold text-emerald-400">{content.status === 'active' ? 'Match in Progress' : 'Match Ready'}</span>
           </div>
           <button
             onClick={() => onOpen?.(content)}
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white font-bold text-xs shadow-lg shadow-indigo-600/40 active:scale-95 transition-all flex items-center gap-2 border border-indigo-400/30"
           >
-            <span>⚔️ Join & Play</span>
+            <span>{content.status === 'active' ? '🎮 Watch/Join' : '⚔️ Join & Play'}</span>
             <ArrowRight className="h-3.5 w-3.5" />
           </button>
         </div>

@@ -21,7 +21,6 @@ export const MessageList = memo(forwardRef(function MessageList({
   onShare,
   onShowProfile,
   onMediaOpen,
-  onAIAction,
   onReport,
   onOpenSharedContent,
   compact = false,
@@ -200,7 +199,6 @@ export const MessageList = memo(forwardRef(function MessageList({
               onShare={onShare}
               onShowProfile={onShowProfile}
               onMediaOpen={onMediaOpen}
-              onAIAction={onAIAction}
               onReport={onReport}
               onOpenSharedContent={onOpenSharedContent}
               showAvatar={showAvatar}

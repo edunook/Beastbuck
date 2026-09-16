@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  MoreVertical, MessageSquareReply, Pin, Trash2, Bookmark, BookmarkCheck, 
-  Edit3, Check, X, Paperclip, Flag, Play, Pause, Wand2, Sparkles, Volume2
+import {
+  MoreVertical, MessageSquareReply, Pin, Trash2, Bookmark, BookmarkCheck,
+  Edit3, Check, X, Paperclip, Flag, Play, Pause, Info, Volume2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SUPPORTED_REACTIONS } from '@services/firestore/chat';
@@ -22,6 +22,18 @@ function formatTime(createdAt) {
   const date = createdAt?.toDate?.();
   if (!date) return 'Just now';
   return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function formatExactDate(createdAt) {
+  const date = createdAt?.toDate?.();
+  if (!date) return 'Just now';
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   }).format(date);
@@ -162,7 +174,6 @@ export const MessageItem = memo(function MessageItem({
   onShare,
   onShowProfile,
   onMediaOpen,
-  onAIAction,
   onReport,
   onOpenSharedContent,
   showAvatar = true,
@@ -170,6 +181,7 @@ export const MessageItem = memo(function MessageItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.text || '');
   const [showMenu, setShowMenu] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const menuRef = useRef(null);
   const menuButtonRef = useRef(null);
@@ -183,12 +195,18 @@ export const MessageItem = memo(function MessageItem({
       if (editRef.current && !editRef.current.contains(e.target)) {
         setIsEditing(false);
       }
+      if (showInfo) {
+        const infoModal = document.querySelector('[data-info-modal="true"]');
+        if (infoModal && !infoModal.contains(e.target)) {
+          setShowInfo(false);
+        }
+      }
     }
-    if (showMenu || isEditing) {
+    if (showMenu || isEditing || showInfo) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showMenu, isEditing]);
+  }, [showMenu, isEditing, showInfo]);
 
   const handleMenuToggle = () => {
     if (!showMenu && menuButtonRef.current) {
@@ -362,26 +380,14 @@ export const MessageItem = memo(function MessageItem({
                   <span>Reply in Thread</span>
                 </button>
 
-                {onAIAction && message.text && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => { onAIAction?.(message, 'explain'); setShowMenu(false); }}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-purple-300 hover:text-white hover:bg-purple-500/20 rounded-lg transition"
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-purple-400" />
-                      <span>AI Explain</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { onAIAction?.(message, 'summarize'); setShowMenu(false); }}
-                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-cyan-300 hover:text-white hover:bg-cyan-500/20 rounded-lg transition"
-                    >
-                      <Wand2 className="h-3.5 w-3.5 text-cyan-400" />
-                      <span>AI Summarize</span>
-                    </button>
-                  </>
-                )}
+                <button
+                  type="button"
+                  onClick={() => { setShowInfo(true); setShowMenu(false); }}
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                >
+                  <Info className="h-3.5 w-3.5 text-slate-400" />
+                  <span>Message Info</span>
+                </button>
 
                 <button
                   type="button"
@@ -435,6 +441,53 @@ export const MessageItem = memo(function MessageItem({
                     <span>Report</span>
                   </button>
                 )}
+              </div>,
+              document.body
+            )
+          }
+
+          {/* Message Info Modal */}
+          {showInfo &&
+            createPortal(
+              <div
+                data-info-modal="true"
+                className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in"
+                onClick={() => setShowInfo(false)}
+              >
+                <div
+                  className="w-full max-w-sm rounded-2xl border border-white/15 bg-slate-950 shadow-2xl p-5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-white">Message Information</h3>
+                    <button
+                      onClick={() => setShowInfo(false)}
+                      className="p-1 rounded-lg hover:bg-white/10 transition"
+                    >
+                      <X className="h-4 w-4 text-white/60" />
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Sent by</p>
+                      <p className="text-sm text-white">{message.senderName || 'Member'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Exact Date</p>
+                      <p className="text-sm text-white">{formatExactDate(message.createdAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Message ID</p>
+                      <p className="text-xs text-white/70 font-mono">{message.id}</p>
+                    </div>
+                    {message.edited && (
+                      <div>
+                        <p className="text-[10px] text-white/50 uppercase tracking-wider mb-1">Status</p>
+                        <p className="text-sm text-white/70">Edited</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>,
               document.body
             )

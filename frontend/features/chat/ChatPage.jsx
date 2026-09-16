@@ -3,7 +3,6 @@ import { AlertCircle, X, Pin, MessageSquareReply, Settings, Flag, Image } from '
 import { useAuth } from '../auth/AuthContext';
 import { ChatService, SUPPORTED_REACTIONS } from '@services/firestore/chat';
 import { UsersService } from '@services/firestore/users';
-import { AIService } from '@services/ai/aiService';
 import { hasPermission } from '@shared/permissions/permissions';
 import { ChatHeader, VoiceCallOverlay, MemberListModal } from './ChatHeader';
 import { MessageInput } from './MessageInput';
@@ -521,37 +520,6 @@ const ChatPage = React.memo(function ChatPage() {
     }
   }, [user?.uid, reportMessage, memberName, reportReason, addNotification]);
 
-  const handleAIAction = useCallback(async (message, actionId) => {
-    if (!user?.uid || !message?.text) return;
-    try {
-      const prompts = {
-        explain: `Explain this message in clear, concise terms for a team member:\n\n"${message.text}"`,
-        summarize: `Summarize the following chat message in 1-2 clear bullet points:\n\n"${message.text}"`,
-        rewrite: `Rewrite the following message with professional clarity and friendly tone:\n\n"${message.text}"`,
-        reply: `Suggest a thoughtful, constructive reply to this message:\n\n"${message.text}"`,
-        translate: `Translate this message to English (or if already English, provide Spanish & French translations):\n\n"${message.text}"`,
-        brainstorm: `Brainstorm 3 creative ideas or action steps inspired by this message:\n\n"${message.text}"`,
-        enhance: `Enhance this message with better structure, engaging formatting, and relevant emojis:\n\n"${message.text}"`,
-      };
-      const prompt = prompts[actionId] || `Help with this message:\n\n"${message.text}"`;
-      const aiResponse = await AIService.chat({
-        mode: 'general',
-        messages: [{ role: 'user', content: prompt }]
-      });
-
-      addNotification({
-        type: 'ai',
-        title: `AI ${actionId.charAt(0).toUpperCase() + actionId.slice(1)}`,
-        message: aiResponse.slice(0, 180) + (aiResponse.length > 180 ? '...' : ''),
-      });
-
-      return aiResponse;
-    } catch (err) {
-      console.error('AI Action failed:', err);
-      return 'AI assistant is currently optimizing. Please try again shortly.';
-    }
-  }, [user?.uid, addNotification]);
-
   const handleMediaOpen = useCallback((url) => {
     setMediaViewerSrc(url);
     setShowMediaViewer(true);
@@ -565,8 +533,13 @@ const ChatPage = React.memo(function ChatPage() {
   const handleOpenSharedContent = useCallback((content) => {
     if (content?.type === 'game') {
       const sessId = content.sessionId || content.gameSessionId || null;
-      setJoinGameSessionId(sessId);
-      setShowGamesModal(true);
+      console.log('Opening game session:', sessId, 'content:', content);
+      if (sessId) {
+        setJoinGameSessionId(sessId);
+        setShowGamesModal(true);
+      } else {
+        console.error('No session ID found in game content');
+      }
     } else if (content?.url) {
       handleMediaOpen(content.url);
     }
@@ -647,7 +620,6 @@ const ChatPage = React.memo(function ChatPage() {
               onDelete={handleDelete}
               onBookmark={handleBookmark}
               onReport={handleReportPrompt}
-              onAIAction={handleAIAction}
               senderPresence={memberPresence}
               onShowProfile={(senderId, senderName) => setSelectedDrawerMember({ id: senderId, displayName: senderName, role: 'Member' })}
               onMediaOpen={handleMediaOpen}
@@ -865,6 +837,7 @@ const ChatPage = React.memo(function ChatPage() {
                   description: gameCardData.description,
                   gameId: gameCardData.gameId,
                   sessionId: gameCardData.sessionId,
+                  status: 'waiting',
                   author: memberName,
                   icon: '🎮',
                 }
