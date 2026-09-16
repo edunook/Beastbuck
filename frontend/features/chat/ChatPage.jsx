@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, X, Pin, MessageSquareReply, Settings, Flag, Menu, Image } from 'lucide-react';
+import { AlertCircle, X, Pin, MessageSquareReply, Settings, Flag, Image } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { ChatService, SUPPORTED_REACTIONS } from '@services/firestore/chat';
 import { UsersService } from '@services/firestore/users';
 import { AIService } from '@services/ai/aiService';
 import { hasPermission } from '@shared/permissions/permissions';
 import { ChatHeader, VoiceCallOverlay, MemberListModal } from './ChatHeader';
-import { ChannelSidebar } from './ChannelSidebar';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
 import { VoiceRoomBar } from './VoiceRoomBar';
@@ -20,24 +18,10 @@ import { CelebrationContainer } from './Celebrations';
 import { MemberProfileDrawer } from './MemberProfileDrawer';
 import { ChatGamesModal } from './ChatGamesModal';
 
-const DEFAULT_ROOMS = [
-  { id: 'general', name: 'general', description: 'Realtime BeastBuck team messages', type: 'public', pinned: true, isDefault: true },
-  { id: 'announcements', name: 'announcements', description: 'Official community announcements from leadership', type: 'announcement', pinned: true, isDefault: true },
-  { id: 'ai-creations', name: 'ai-creations', description: 'Showcase & discuss AI models, agents, and prompts', type: 'public', isDefault: true },
-  { id: 'research-hub', name: 'research-hub', description: 'Collaborate on research papers and scientific ideas', type: 'public', isDefault: true },
-  { id: 'project-showcase', name: 'project-showcase', description: 'Share project updates & creative achievements', type: 'public', isDefault: true },
-  { id: 'marketplace-hub', name: 'marketplace-hub', description: 'Discuss marketplace items & releases', type: 'public', isDefault: true },
-  { id: 'funflix-lounge', name: 'funflix-lounge', description: 'FunFlix movies & interactive video discussions', type: 'public', isDefault: true },
-];
+const CHAT_ROOM_ID = 'general';
 
 const ChatPage = React.memo(function ChatPage() {
   const { user, roleData } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const queryRoom = searchParams.get('room');
-
-  const [rooms, setRooms] = useState(DEFAULT_ROOMS);
-  const [activeRoomId, setActiveRoomIdState] = useState(queryRoom || 'general');
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,39 +68,6 @@ const ChatPage = React.memo(function ChatPage() {
   const canManageAnnouncements = hasPermission(memberRole, 'canManageAnnouncements') || memberRole === 'Leader' || memberRole === 'Admin';
   const canSendInRoom = !!user;
 
-  // Change room and sync search params
-  const setActiveRoomId = useCallback((roomId) => {
-    setActiveRoomIdState(roomId);
-    setSearchParams({ room: roomId }, { replace: true });
-    setMobileSidebarOpen(false);
-    setError(null);
-    setReplyTarget(null);
-  }, [setSearchParams]);
-
-  // Sync with URL search params changes
-  useEffect(() => {
-    if (queryRoom && queryRoom !== activeRoomId) {
-      setActiveRoomIdState(queryRoom);
-      setError(null);
-      setReplyTarget(null);
-    }
-  }, [queryRoom, activeRoomId]);
-
-  // Subscribe to all rooms from Firestore
-  useEffect(() => {
-    const unsubscribe = ChatService.subscribeToRooms({
-      onRooms: (fetchedRooms) => {
-        if (fetchedRooms && fetchedRooms.length > 0) {
-          setRooms(fetchedRooms);
-        }
-      },
-      onError: (err) => {
-        console.warn('Channel list subscription note:', err);
-      },
-    });
-    return () => unsubscribe();
-  }, []);
-
   // Load chat settings from Firestore on mount
   useEffect(() => {
     if (!user?.uid) return;
@@ -149,23 +100,23 @@ const ChatPage = React.memo(function ChatPage() {
     }
   }, [chatSettings, user?.uid]);
 
-  // Subscribe to messages for active chat room
+  // Subscribe to messages for community chat
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const unsubscribe = ChatService.subscribeToRoomMessages(activeRoomId, {
+    const unsubscribe = ChatService.subscribeToRoomMessages(CHAT_ROOM_ID, {
       onMessages: (nextMessages) => {
         setMessages(nextMessages.filter(message => !message.archived));
         setLoading(false);
       },
       onError: (err) => {
         console.error('Message listener failed:', err);
-        setError('Failed to load messages for this channel.');
+        setError('Failed to load community chat messages.');
         setLoading(false);
       },
     });
     return () => unsubscribe();
-  }, [activeRoomId]);
+  }, []);
 
   // Load assignable members
   useEffect(() => {
@@ -182,41 +133,41 @@ const ChatPage = React.memo(function ChatPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Typing indicators for active room
+  // Typing indicators
   useEffect(() => {
     if (!user?.uid) return;
-    const unsubscribe = ChatService.subscribeToTyping(activeRoomId, (users) => {
+    const unsubscribe = ChatService.subscribeToTyping(CHAT_ROOM_ID, (users) => {
       setTypingUsers(users.filter(u => u.userId !== user.uid));
     });
     return () => unsubscribe();
-  }, [user?.uid, activeRoomId]);
+  }, [user?.uid]);
 
-  // Voice room participants for active room
+  // Voice room participants
   useEffect(() => {
     if (!inVoiceRoom) return;
-    const unsubscribe = ChatService.subscribeToVoiceRoom(activeRoomId, (participants) => {
+    const unsubscribe = ChatService.subscribeToVoiceRoom(CHAT_ROOM_ID, (participants) => {
       setVoiceParticipants(participants);
     });
     return () => unsubscribe();
-  }, [inVoiceRoom, activeRoomId]);
+  }, [inVoiceRoom]);
 
-  // Pinned messages for active room
+  // Pinned messages
   useEffect(() => {
     if (!showPinnedModal) return;
-    const unsubscribe = ChatService.subscribeToPinnedMessages(activeRoomId, (messages) => {
+    const unsubscribe = ChatService.subscribeToPinnedMessages(CHAT_ROOM_ID, (messages) => {
       setPinnedMessages(messages);
     });
     return () => unsubscribe();
-  }, [showPinnedModal, activeRoomId]);
+  }, [showPinnedModal]);
 
-  // Leave voice room on unmount or room switch
+  // Leave voice room on unmount
   useEffect(() => {
     return () => {
       if (inVoiceRoom && user?.uid) {
-        ChatService.leaveVoiceRoom(activeRoomId, user.uid);
+        ChatService.leaveVoiceRoom(CHAT_ROOM_ID, user.uid);
       }
     };
-  }, [inVoiceRoom, user?.uid, activeRoomId]);
+  }, [inVoiceRoom, user?.uid]);
 
   // Screen effects timeout
   useEffect(() => {
@@ -278,22 +229,6 @@ const ChatPage = React.memo(function ChatPage() {
     setCelebrations(prev => prev.filter(c => c.id !== id));
   }, []);
 
-  // Demo keyword celebrations
-  useEffect(() => {
-    if (!chatSettings.showCelebrations) return;
-    const lastMessage = allMessages[allMessages.length - 1];
-    if (!lastMessage?.text) return;
-    const text = lastMessage.text.toLowerCase();
-    if (text.includes('congratulations') || text.includes('congrats') || text.includes('achievement unlocked')) {
-      addCelebration({
-        type: 'achievement',
-        title: 'Achievement Celebration!',
-        description: 'Community milestone recognized. Keep up the high energy!',
-        xp: 50,
-      });
-    }
-  }, [allMessages, chatSettings.showCelebrations, addCelebration]);
-
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -320,10 +255,6 @@ const ChatPage = React.memo(function ChatPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const currentRoom = useMemo(() => {
-    return rooms.find(r => r.id === activeRoomId) || rooms[0] || { id: activeRoomId, name: activeRoomId, type: 'public' };
-  }, [rooms, activeRoomId]);
-
   const handlePullToRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -341,8 +272,8 @@ const ChatPage = React.memo(function ChatPage() {
     setError(null);
     const payload = {
       id: `temp-${Date.now()}`,
-      roomId: activeRoomId,
-      roomType: currentRoom.type || 'public',
+      roomId: CHAT_ROOM_ID,
+      roomType: 'public',
       senderId: user?.uid,
       senderName: memberName,
       senderRole: memberRole,
@@ -370,8 +301,8 @@ const ChatPage = React.memo(function ChatPage() {
       }
 
       await ChatService.sendMessage({
-        roomId: activeRoomId,
-        roomType: currentRoom.type || 'public',
+        roomId: CHAT_ROOM_ID,
+        roomType: 'public',
         senderId: user?.uid,
         senderName: memberName,
         senderRole: memberRole,
@@ -384,10 +315,10 @@ const ChatPage = React.memo(function ChatPage() {
 
       setOptimisticMessages(prev => prev.filter(m => m.id !== payload.id));
       if (user?.uid) {
-        ChatService.setTypingStatus(activeRoomId, user.uid, memberName, false);
+        ChatService.setTypingStatus(CHAT_ROOM_ID, user.uid, memberName, false);
       }
     } catch (err) {
-      console.error('Channel message send failed:', err);
+      console.error('Chat message send failed:', err);
       const message_text = (err?.message || '').toLowerCase();
       if (message_text.includes('permission') || message_text.includes('insufficient')) {
         setError('You do not have permission to send messages. Join as an approved Member to unlock full chat features.');
@@ -396,42 +327,6 @@ const ChatPage = React.memo(function ChatPage() {
         setOptimisticMessages(prev => prev.map(m => m.id === payload.id ? { ...m, deliveryStatus: 'queued' } : m));
         setError('Message queued. Will retry when connected.');
       }
-    }
-  };
-
-  const handleCreateChannel = async ({ name, description, type }) => {
-    try {
-      const newRoomId = await ChatService.createChannel({
-        name,
-        description: description || '',
-        type: type || 'public',
-        createdBy: user?.uid || 'system',
-      });
-      setActiveRoomId(newRoomId);
-      addNotification({
-        type: 'system',
-        title: 'Channel Created!',
-        message: `#${newRoomId} is now ready for discussions.`,
-      });
-    } catch (err) {
-      console.error('Channel creation failed:', err);
-      setError(err?.message || 'Failed to create channel.');
-    }
-  };
-
-  const handleArchiveChannel = async (roomId) => {
-    try {
-      await ChatService.archiveChannel(roomId);
-      if (activeRoomId === roomId) {
-        setActiveRoomId('general');
-      }
-      addNotification({
-        type: 'system',
-        title: 'Channel Archived',
-        message: `#${roomId} has been archived.`,
-      });
-    } catch (err) {
-      console.error('Failed to archive channel:', err);
     }
   };
 
@@ -451,49 +346,49 @@ const ChatPage = React.memo(function ChatPage() {
   const handleJoinVoiceRoom = useCallback(async () => {
     if (!user?.uid) return;
     try {
-      await ChatService.joinVoiceRoom(activeRoomId, user.uid, memberName);
+      await ChatService.joinVoiceRoom(CHAT_ROOM_ID, user.uid, memberName);
       setInVoiceRoom(true);
       addNotification({
         type: 'system',
-        title: 'Voice Room Joined',
-        message: `You joined voice chat for #${currentRoom.name}.`,
+        title: 'Voice Lounge Joined',
+        message: `You joined the community voice lounge.`,
       });
     } catch (error) {
       console.error('Failed to join voice room:', error);
       setError('Failed to join voice room');
     }
-  }, [user?.uid, activeRoomId, memberName, currentRoom.name, addNotification]);
+  }, [user?.uid, memberName, addNotification]);
 
   const handleLeaveVoiceRoom = useCallback(async () => {
     if (!user?.uid) return;
     try {
-      await ChatService.leaveVoiceRoom(activeRoomId, user.uid);
+      await ChatService.leaveVoiceRoom(CHAT_ROOM_ID, user.uid);
       setInVoiceRoom(false);
       setVoiceParticipants({});
       setIsMuted(false);
     } catch (error) {
       console.error('Failed to leave voice room:', error);
     }
-  }, [user?.uid, activeRoomId]);
+  }, [user?.uid]);
 
   const handleToggleMute = useCallback(() => {
     setIsMuted(prev => {
       const next = !prev;
       if (user?.uid) {
-        ChatService.toggleVoiceMute(activeRoomId, user.uid, next);
+        ChatService.toggleVoiceMute(CHAT_ROOM_ID, user.uid, next);
       }
       return next;
     });
-  }, [user?.uid, activeRoomId]);
+  }, [user?.uid]);
 
   const handleTyping = useCallback((isTyping) => {
     if (!user?.uid || !memberName) return;
     try {
-      ChatService.setTypingStatus(activeRoomId, user.uid, memberName, isTyping);
+      ChatService.setTypingStatus(CHAT_ROOM_ID, user.uid, memberName, isTyping);
     } catch {
       // Ignore typing indicator errors
     }
-  }, [user?.uid, memberName, activeRoomId]);
+  }, [user?.uid, memberName]);
 
   const handleFileSelect = useCallback((files) => {
     if (!files?.length) return;
@@ -514,7 +409,7 @@ const ChatPage = React.memo(function ChatPage() {
     if (!msgId) return;
     try {
       await ChatService.toggleReaction({
-        roomId: activeRoomId,
+        roomId: CHAT_ROOM_ID,
         messageId: msgId,
         reactionKey,
         userId: user.uid,
@@ -523,7 +418,7 @@ const ChatPage = React.memo(function ChatPage() {
     } catch (error) {
       console.error('Failed to toggle reaction:', error);
     }
-  }, [user?.uid, activeRoomId]);
+  }, [user?.uid]);
 
   const handleTogglePin = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
@@ -531,51 +426,51 @@ const ChatPage = React.memo(function ChatPage() {
     const isPinned = typeof messageTarget === 'object' ? !messageTarget?.pinned : true;
     if (!msgId) return;
     try {
-      await ChatService.pinMessage(activeRoomId, msgId, isPinned);
+      await ChatService.pinMessage(CHAT_ROOM_ID, msgId, isPinned);
       addNotification({
         type: 'system',
         title: isPinned ? 'Message Pinned' : 'Message Unpinned',
-        message: isPinned ? 'Pinned message to channel header.' : 'Removed pin.',
+        message: isPinned ? 'Pinned message to top.' : 'Removed pin.',
       });
     } catch (error) {
       console.error('Failed to toggle pin:', error);
     }
-  }, [user?.uid, activeRoomId, addNotification]);
+  }, [user?.uid, addNotification]);
 
   const handleArchiveAnnouncement = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId) return;
     try {
-      await ChatService.updateAnnouncement({ roomId: activeRoomId, messageId: msgId, archived: true });
+      await ChatService.updateAnnouncement({ roomId: CHAT_ROOM_ID, messageId: msgId, archived: true });
     } catch (error) {
       console.error('Failed to archive announcement:', error);
     }
-  }, [user?.uid, activeRoomId]);
+  }, [user?.uid]);
 
   const handleEdit = useCallback(async (messageTarget, newText) => {
     if (!user?.uid) return;
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId || !newText?.trim()) return;
     try {
-      await ChatService.editMessage(activeRoomId, msgId, newText.trim());
+      await ChatService.editMessage(CHAT_ROOM_ID, msgId, newText.trim());
     } catch (error) {
       console.error('Failed to edit message:', error);
       setError('Failed to edit message');
     }
-  }, [user?.uid, activeRoomId]);
+  }, [user?.uid]);
 
   const handleDelete = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId) return;
     try {
-      await ChatService.deleteMessage(activeRoomId, msgId);
+      await ChatService.deleteMessage(CHAT_ROOM_ID, msgId);
     } catch (error) {
       console.error('Failed to delete message:', error);
       setError('Failed to delete message');
     }
-  }, [user?.uid, activeRoomId]);
+  }, [user?.uid]);
 
   const handleBookmark = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
@@ -583,7 +478,7 @@ const ChatPage = React.memo(function ChatPage() {
     const isBookmarked = typeof messageTarget === 'object' ? !messageTarget?.bookmarked : true;
     if (!msgId) return;
     try {
-      await ChatService.bookmarkMessage(activeRoomId, msgId, isBookmarked);
+      await ChatService.bookmarkMessage(CHAT_ROOM_ID, msgId, isBookmarked);
       addNotification({
         type: 'system',
         title: isBookmarked ? 'Message Bookmarked' : 'Bookmark Removed',
@@ -592,7 +487,7 @@ const ChatPage = React.memo(function ChatPage() {
     } catch (error) {
       console.error('Failed to bookmark message:', error);
     }
-  }, [user?.uid, activeRoomId, addNotification]);
+  }, [user?.uid, addNotification]);
 
   const handleReportPrompt = useCallback((messageTarget) => {
     setReportMessage(messageTarget);
@@ -608,7 +503,7 @@ const ChatPage = React.memo(function ChatPage() {
       await addDoc(collection(db, 'chatReports'), {
         messageId: reportMessage.id,
         messageText: reportMessage.text || '',
-        roomId: activeRoomId,
+        roomId: CHAT_ROOM_ID,
         reportedBy: user.uid,
         reporterName: memberName,
         reason: reportReason.trim() || 'Flagged by user for moderation review',
@@ -626,7 +521,7 @@ const ChatPage = React.memo(function ChatPage() {
       console.error('Failed to report message:', error);
       setShowReportModal(false);
     }
-  }, [user?.uid, reportMessage, activeRoomId, memberName, reportReason, addNotification]);
+  }, [user?.uid, reportMessage, memberName, reportReason, addNotification]);
 
   const handleAIAction = useCallback(async (message, actionId) => {
     if (!user?.uid || !message?.text) return;
@@ -693,50 +588,12 @@ const ChatPage = React.memo(function ChatPage() {
     <div className={`flex h-[calc(100dvh-4rem-5rem)] md:h-[calc(100dvh-4rem)] w-full flex-col p-0 md:p-2 overflow-hidden ${getFontSizeClass()} ${chatSettings.reducedMotion ? 'reduce-motion' : ''}`}>
       <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden rounded-none md:rounded-2xl border-0 md:border border-white/15 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 shadow-2xl backdrop-blur-2xl">
         
-        {/* Desktop Channel Sidebar */}
-        <div className="hidden md:flex h-full w-72 shrink-0 border-r border-white/10">
-          <ChannelSidebar
-            rooms={rooms}
-            activeRoomId={activeRoomId}
-            canManageChannels={canManageAnnouncements}
-            onSelectRoom={setActiveRoomId}
-            onCreateChannel={handleCreateChannel}
-            onArchiveChannel={handleArchiveChannel}
-            unreadCounts={{}}
-            memberPresence={memberPresence}
-          />
-        </div>
-
-        {/* Mobile Channel Sidebar Drawer Overlay */}
-        {mobileSidebarOpen && (
-          <div className="fixed inset-0 z-50 flex md:hidden animate-fade-in">
-            <div 
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-              onClick={() => setMobileSidebarOpen(false)} 
-            />
-            <div className="relative h-full w-4/5 max-w-xs bg-slate-950 shadow-2xl z-10 border-r border-white/15 animate-slide-in-right">
-              <ChannelSidebar
-                rooms={rooms}
-                activeRoomId={activeRoomId}
-                canManageChannels={canManageAnnouncements}
-                onSelectRoom={setActiveRoomId}
-                onCreateChannel={handleCreateChannel}
-                onArchiveChannel={handleArchiveChannel}
-                unreadCounts={{}}
-                memberPresence={memberPresence}
-              />
-            </div>
-          </div>
-        )}
-
         {/* Main Conversation Area */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <ChatHeader
-            room={currentRoom}
             memberName={memberName}
             memberRole={memberRole}
             canSend={canSendInRoom}
-            onToggleSidebar={() => setMobileSidebarOpen(prev => !prev)}
             onShowPinned={() => setShowPinnedModal(true)}
             onShowMedia={() => setShowMediaHub(true)}
             onShowGames={() => setShowGamesModal(true)}
