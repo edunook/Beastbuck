@@ -1,5 +1,6 @@
 /* eslint-disable */
 const { onDocumentWritten } = require('firebase-functions/v2/firestore');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
 admin.initializeApp();
 
@@ -207,4 +208,74 @@ exports.onMarketplaceItemWritten = onDocumentWritten('marketplaceItems/{itemId}'
 const mediaFunctions = require('./mediaApi');
 exports.mediaApi = mediaFunctions.mediaApi;
 exports.cleanupStaleUploads = mediaFunctions.cleanupStaleUploads;
+
+// Scheduled cleanup for chat messages older than 7 days
+exports.cleanupOldChatMessages = onSchedule('every 24 hours', async () => {
+  const db = admin.firestore();
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 7); // 7 days ago
+
+  try {
+    console.log('[Chat Cleanup] Starting cleanup of messages older than 7 days...');
+
+    // Get all chat rooms
+    const roomsSnapshot = await db.collection('chatRooms').get();
+    console.log(`[Chat Cleanup] Found ${roomsSnapshot.size} chat rooms to process`);
+
+    let totalDeleted = 0;
+
+    for (const roomDoc of roomsSnapshot.docs) {
+      const roomId = roomDoc.id;
+
+      try {
+        // Query messages older than 7 days
+        const oldMessages = await db
+          .collection('chatRooms')
+          .doc(roomId)
+          .collection('messages')
+          .where('createdAt', '<', cutoffDate)
+          .limit(500) // Limit per batch to avoid timeouts
+          .get();
+
+        if (oldMessages.empty) {
+          continue;
+        }
+
+        // Delete old messages in batches (max 500 operations per batch)
+        const batch = db.batch();
+        let batchCount = 0;
+
+        for (const doc of oldMessages.docs) {
+          batch.delete(doc.ref);
+          batchCount++;
+
+          if (batchCount >= 500) {
+            await batch.commit();
+            console.log(`[Chat Cleanup] Deleted batch of ${batchCount} messages from room ${roomId}`);
+            totalDeleted += batchCount;
+            batchCount = 0;
+          }
+        }
+
+        // Commit remaining operations
+        if (batchCount > 0) {
+          await batch.commit();
+          console.log(`[Chat Cleanup] Deleted final batch of ${batchCount} messages from room ${roomId}`);
+          totalDeleted += batchCount;
+        }
+
+      } catch (roomError) {
+        console.error(`[Chat Cleanup] Error processing room ${roomId}:`, roomError.message);
+        // Continue with other rooms even if one fails
+      }
+    }
+
+    console.log(`[Chat Cleanup] Completed. Total messages deleted: ${totalDeleted}`);
+    return null;
+
+  } catch (error) {
+    console.error('[Chat Cleanup] Fatal error:', error);
+    throw error;
+  }
+});
 

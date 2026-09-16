@@ -18,8 +18,6 @@ import { CelebrationContainer } from './Celebrations';
 import { MemberProfileDrawer } from './MemberProfileDrawer';
 import { ChatGamesModal } from './ChatGamesModal';
 
-const CHAT_ROOM_ID = 'general';
-
 const ChatPage = React.memo(function ChatPage() {
   const { user, roleData } = useAuth();
 
@@ -100,18 +98,18 @@ const ChatPage = React.memo(function ChatPage() {
     }
   }, [chatSettings, user?.uid]);
 
-  // Subscribe to messages for community chat
+  // Subscribe to messages
   useEffect(() => {
     setLoading(true);
     setError(null);
-    const unsubscribe = ChatService.subscribeToRoomMessages(CHAT_ROOM_ID, {
+    const unsubscribe = ChatService.subscribeToRoomMessages('general', {
       onMessages: (nextMessages) => {
         setMessages(nextMessages.filter(message => !message.archived));
         setLoading(false);
       },
       onError: (err) => {
         console.error('Message listener failed:', err);
-        setError('Failed to load community chat messages.');
+        setError('Failed to load chat messages.');
         setLoading(false);
       },
     });
@@ -136,7 +134,7 @@ const ChatPage = React.memo(function ChatPage() {
   // Typing indicators
   useEffect(() => {
     if (!user?.uid) return;
-    const unsubscribe = ChatService.subscribeToTyping(CHAT_ROOM_ID, (users) => {
+    const unsubscribe = ChatService.subscribeToTyping('general', (users) => {
       setTypingUsers(users.filter(u => u.userId !== user.uid));
     });
     return () => unsubscribe();
@@ -145,7 +143,7 @@ const ChatPage = React.memo(function ChatPage() {
   // Voice room participants
   useEffect(() => {
     if (!inVoiceRoom) return;
-    const unsubscribe = ChatService.subscribeToVoiceRoom(CHAT_ROOM_ID, (participants) => {
+    const unsubscribe = ChatService.subscribeToVoiceRoom('general', (participants) => {
       setVoiceParticipants(participants);
     });
     return () => unsubscribe();
@@ -154,7 +152,7 @@ const ChatPage = React.memo(function ChatPage() {
   // Pinned messages
   useEffect(() => {
     if (!showPinnedModal) return;
-    const unsubscribe = ChatService.subscribeToPinnedMessages(CHAT_ROOM_ID, (messages) => {
+    const unsubscribe = ChatService.subscribeToPinnedMessages('general', (messages) => {
       setPinnedMessages(messages);
     });
     return () => unsubscribe();
@@ -164,7 +162,7 @@ const ChatPage = React.memo(function ChatPage() {
   useEffect(() => {
     return () => {
       if (inVoiceRoom && user?.uid) {
-        ChatService.leaveVoiceRoom(CHAT_ROOM_ID, user.uid);
+        ChatService.leaveVoiceRoom('general', user.uid);
       }
     };
   }, [inVoiceRoom, user?.uid]);
@@ -272,7 +270,7 @@ const ChatPage = React.memo(function ChatPage() {
     setError(null);
     const payload = {
       id: `temp-${Date.now()}`,
-      roomId: CHAT_ROOM_ID,
+      roomId: 'general',
       roomType: 'public',
       senderId: user?.uid,
       senderName: memberName,
@@ -301,7 +299,7 @@ const ChatPage = React.memo(function ChatPage() {
       }
 
       await ChatService.sendMessage({
-        roomId: CHAT_ROOM_ID,
+        roomId: 'general',
         roomType: 'public',
         senderId: user?.uid,
         senderName: memberName,
@@ -315,7 +313,7 @@ const ChatPage = React.memo(function ChatPage() {
 
       setOptimisticMessages(prev => prev.filter(m => m.id !== payload.id));
       if (user?.uid) {
-        ChatService.setTypingStatus(CHAT_ROOM_ID, user.uid, memberName, false);
+        ChatService.setTypingStatus('general', user.uid, memberName, false);
       }
     } catch (err) {
       console.error('Chat message send failed:', err);
@@ -346,12 +344,12 @@ const ChatPage = React.memo(function ChatPage() {
   const handleJoinVoiceRoom = useCallback(async () => {
     if (!user?.uid) return;
     try {
-      await ChatService.joinVoiceRoom(CHAT_ROOM_ID, user.uid, memberName);
+      await ChatService.joinVoiceRoom('general', user.uid, memberName);
       setInVoiceRoom(true);
       addNotification({
         type: 'system',
         title: 'Voice Lounge Joined',
-        message: `You joined the community voice lounge.`,
+        message: `You joined the voice lounge.`,
       });
     } catch (error) {
       console.error('Failed to join voice room:', error);
@@ -362,7 +360,7 @@ const ChatPage = React.memo(function ChatPage() {
   const handleLeaveVoiceRoom = useCallback(async () => {
     if (!user?.uid) return;
     try {
-      await ChatService.leaveVoiceRoom(CHAT_ROOM_ID, user.uid);
+      await ChatService.leaveVoiceRoom('general', user.uid);
       setInVoiceRoom(false);
       setVoiceParticipants({});
       setIsMuted(false);
@@ -375,7 +373,7 @@ const ChatPage = React.memo(function ChatPage() {
     setIsMuted(prev => {
       const next = !prev;
       if (user?.uid) {
-        ChatService.toggleVoiceMute(CHAT_ROOM_ID, user.uid, next);
+        ChatService.toggleVoiceMute('general', user.uid, next);
       }
       return next;
     });
@@ -384,7 +382,7 @@ const ChatPage = React.memo(function ChatPage() {
   const handleTyping = useCallback((isTyping) => {
     if (!user?.uid || !memberName) return;
     try {
-      ChatService.setTypingStatus(CHAT_ROOM_ID, user.uid, memberName, isTyping);
+      ChatService.setTypingStatus('general', user.uid, memberName, isTyping);
     } catch {
       // Ignore typing indicator errors
     }
@@ -409,7 +407,7 @@ const ChatPage = React.memo(function ChatPage() {
     if (!msgId) return;
     try {
       await ChatService.toggleReaction({
-        roomId: CHAT_ROOM_ID,
+        roomId: 'general',
         messageId: msgId,
         reactionKey,
         userId: user.uid,
@@ -426,7 +424,7 @@ const ChatPage = React.memo(function ChatPage() {
     const isPinned = typeof messageTarget === 'object' ? !messageTarget?.pinned : true;
     if (!msgId) return;
     try {
-      await ChatService.pinMessage(CHAT_ROOM_ID, msgId, isPinned);
+      await ChatService.pinMessage('general', msgId, isPinned);
       addNotification({
         type: 'system',
         title: isPinned ? 'Message Pinned' : 'Message Unpinned',
@@ -442,7 +440,7 @@ const ChatPage = React.memo(function ChatPage() {
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId) return;
     try {
-      await ChatService.updateAnnouncement({ roomId: CHAT_ROOM_ID, messageId: msgId, archived: true });
+      await ChatService.updateAnnouncement({ roomId: 'general', messageId: msgId, archived: true });
     } catch (error) {
       console.error('Failed to archive announcement:', error);
     }
@@ -453,7 +451,7 @@ const ChatPage = React.memo(function ChatPage() {
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId || !newText?.trim()) return;
     try {
-      await ChatService.editMessage(CHAT_ROOM_ID, msgId, newText.trim());
+      await ChatService.editMessage('general', msgId, newText.trim());
     } catch (error) {
       console.error('Failed to edit message:', error);
       setError('Failed to edit message');
@@ -465,7 +463,7 @@ const ChatPage = React.memo(function ChatPage() {
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId) return;
     try {
-      await ChatService.deleteMessage(CHAT_ROOM_ID, msgId);
+      await ChatService.deleteMessage('general', msgId);
     } catch (error) {
       console.error('Failed to delete message:', error);
       setError('Failed to delete message');
@@ -478,7 +476,7 @@ const ChatPage = React.memo(function ChatPage() {
     const isBookmarked = typeof messageTarget === 'object' ? !messageTarget?.bookmarked : true;
     if (!msgId) return;
     try {
-      await ChatService.bookmarkMessage(CHAT_ROOM_ID, msgId, isBookmarked);
+      await ChatService.bookmarkMessage('general', msgId, isBookmarked);
       addNotification({
         type: 'system',
         title: isBookmarked ? 'Message Bookmarked' : 'Bookmark Removed',
@@ -503,7 +501,7 @@ const ChatPage = React.memo(function ChatPage() {
       await addDoc(collection(db, 'chatReports'), {
         messageId: reportMessage.id,
         messageText: reportMessage.text || '',
-        roomId: CHAT_ROOM_ID,
+        roomId: 'general',
         reportedBy: user.uid,
         reporterName: memberName,
         reason: reportReason.trim() || 'Flagged by user for moderation review',
@@ -638,8 +636,8 @@ const ChatPage = React.memo(function ChatPage() {
               messages={allMessages}
               loading={loading}
               currentUserId={user?.uid}
-              roomName={currentRoom.name}
-              isAnnouncementRoom={currentRoom.type === 'announcement'}
+              roomName="general"
+              isAnnouncementRoom={false}
               canManageAnnouncements={canManageAnnouncements}
               onReply={handleReply}
               onToggleReaction={handleToggleReaction}
@@ -670,7 +668,7 @@ const ChatPage = React.memo(function ChatPage() {
             <MessageInput
               disabled={!user}
               readOnlyReason=""
-              placeholder={`Message #${currentRoom.name}...`}
+              placeholder="Message #general..."
               onSend={handleSend}
               onTyping={handleTyping}
               replyTo={replyTarget}
@@ -767,7 +765,7 @@ const ChatPage = React.memo(function ChatPage() {
               <CardTitle className="flex items-center justify-between text-white">
                 <div className="flex items-center gap-2">
                   <Pin className="h-5 w-5 text-amber-400" />
-                  <span>Pinned Messages in #{currentRoom.name}</span>
+                  <span>Pinned Messages in #general</span>
                 </div>
                 <button onClick={() => setShowPinnedModal(false)} className="p-1 rounded-lg hover:bg-white/10 transition active:scale-95" aria-label="Close pinned messages">
                   <X className="h-5 w-5" />
@@ -812,12 +810,12 @@ const ChatPage = React.memo(function ChatPage() {
 
       {/* Voice Call Overlay */}
       {inVoiceRoom && (
-        <VoiceCallOverlay 
-          roomName={currentRoom.name} 
-          participants={voiceParticipants} 
-          isMuted={isMuted} 
-          onToggleMute={handleToggleMute} 
-          onLeave={handleLeaveVoiceRoom} 
+        <VoiceCallOverlay
+          roomName="general"
+          participants={voiceParticipants}
+          isMuted={isMuted}
+          onToggleMute={handleToggleMute}
+          onLeave={handleLeaveVoiceRoom}
         />
       )}
 
@@ -850,13 +848,13 @@ const ChatPage = React.memo(function ChatPage() {
           }}
           members={members}
           currentUser={user}
-          activeRoomId={activeRoomId}
+          activeRoomId="general"
           joinSessionId={joinGameSessionId}
           onSendGameCard={async (gameCardData) => {
             try {
               await ChatService.sendMessage({
-                roomId: activeRoomId,
-                roomType: currentRoom.type || 'public',
+                roomId: 'general',
+                roomType: 'public',
                 senderId: user?.uid,
                 senderName: memberName,
                 senderRole: memberRole,
