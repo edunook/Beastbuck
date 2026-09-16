@@ -172,30 +172,22 @@ function safeModule(module, name) {
   return Component;
 }
 
-const SafeWelcomePanel = createSafeWidget(() => import('./widgets/WelcomePanel').then(m => ({ default: safeModule(m, 'WelcomePanel') })));
 const SafeBeastBuckHeadlinesWidget = createSafeWidget(() => import('./widgets/BeastBuckHeadlinesWidget').then(m => ({ default: safeModule(m, 'BeastBuckHeadlinesWidget') })));
+const SafeWelcomePanel = createSafeWidget(() => import('./widgets/WelcomePanel').then(m => ({ default: safeModule(m, 'WelcomePanel') })));
 const SafeXPOverview = createSafeWidget(() => import('./widgets/XPOverview').then(m => ({ default: safeModule(m, 'XPOverview') })));
 const SafeDailyMissionWidget = createSafeWidget(() => import('./widgets/DailyMissionWidget').then(m => ({ default: safeModule(m, 'DailyMissionWidget') })));
 const SafeContinueJourneyWidget = createSafeWidget(() => import('./widgets/ContinueJourneyWidget').then(m => ({ default: safeModule(m, 'ContinueJourneyWidget') })));
-const SafeAchievementGalaxyWidget = createSafeWidget(() => import('./widgets/AchievementGalaxyWidget').then(m => ({ default: safeModule(m, 'AchievementGalaxyWidget') })));
 const SafeRecentAchievementsWidget = createSafeWidget(() => import('./widgets/XPOverview').then(m => ({ default: safeModule(m, 'RecentAchievementsWidget') })));
 const SafeCreativeSpotlightWidget = createSafeWidget(() => import('./widgets/CreativeSpotlightWidget').then(m => ({ default: safeModule(m, 'CreativeSpotlightWidget') })));
 const SafeFriendsActivityWidget = createSafeWidget(() => import('./widgets/FriendsActivityWidget').then(m => ({ default: safeModule(m, 'FriendsActivityWidget') })));
 const SafeTrendingWidget = createSafeWidget(() => import('./widgets/TrendingWidget').then(m => ({ default: safeModule(m, 'TrendingWidget') })));
-const SafeCreativeEnergyCrystalWidget = createSafeWidget(() => import('./widgets/CreativeEnergyCrystalWidget').then(m => ({ default: safeModule(m, 'CreativeEnergyCrystalWidget') })));
-const SafePersonalGrowthTreeWidget = createSafeWidget(() => import('./widgets/PersonalGrowthTreeWidget').then(m => ({ default: safeModule(m, 'PersonalGrowthTreeWidget') })));
 const SafeEventsWidget = createSafeWidget(() => import('./widgets/EventsWidget').then(m => ({ default: safeModule(m, 'EventsWidget') })));
 const SafeLeaderboardPreviewWidget = createSafeWidget(() => import('./widgets/LeaderboardPreviewWidget').then(m => ({ default: safeModule(m, 'LeaderboardPreviewWidget') })));
 const SafePersonalGoalsWidget = createSafeWidget(() => import('./widgets/PersonalGoalsWidget').then(m => ({ default: safeModule(m, 'PersonalGoalsWidget') })));
 const SafeFunFlixWidget = createSafeWidget(() => import('./widgets/FunFlixWidget').then(m => ({ default: safeModule(m, 'FunFlixWidget') })));
 const SafeQuickActionsPanel = createSafeWidget(() => import('./widgets/MiscWidgets').then(m => ({ default: safeModule(m, 'QuickActionsPanel') })));
-const SafeAnnouncementsPanel = createSafeWidget(() => import('./widgets/AnnouncementsPanel').then(m => ({ default: safeModule(m, 'AnnouncementsPanel') })));
-const SafeDailyHighlightsWidget = createSafeWidget(() => import('./widgets/DailyHighlightsWidget').then(m => ({ default: safeModule(m, 'DailyHighlightsWidget') })));
 const SafeNotificationsWidget = createSafeWidget(() => import('./widgets/NotificationsWidget').then(m => ({ default: safeModule(m, 'NotificationsWidget') })));
 const SafeProjectsWidget = createSafeWidget(() => import('./widgets/ProjectsWidget').then(m => ({ default: safeModule(m, 'ProjectsWidget') })));
-const SafeExperimentsWidget = createSafeWidget(() => import('./widgets/ExperimentsWidget').then(m => ({ default: safeModule(m, 'ExperimentsWidget') })));
-const SafeSurpriseBoxWidget = createSafeWidget(() => import('./widgets/SurpriseBoxWidget').then(m => ({ default: safeModule(m, 'SurpriseBoxWidget') })));
-const SafeLearningJourneyWidget = createSafeWidget(() => import('./widgets/LearningJourneyWidget').then(m => ({ default: safeModule(m, 'LearningJourneyWidget') })));
 const SafeMySquadWidget = createSafeWidget(() => import('./widgets/MySquadWidget').then(m => ({ default: safeModule(m, 'MySquadWidget') })));
 const SafeRecentActivityPanel = createSafeWidget(() => import('./widgets/RecentActivityPanel').then(m => ({ default: safeModule(m, 'RecentActivityPanel') })));
 
@@ -204,6 +196,7 @@ const Dashboard = React.memo(function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState({
     headlines: true,
+    welcome: true,
     mission: true,
     continue: true,
     funflix: true,
@@ -214,18 +207,10 @@ const Dashboard = React.memo(function Dashboard() {
     goals: true,
     quickActions: true,
     projects: true,
-    experiments: true,
     notifications: true,
-    announcements: true,
     activity: true,
-    highlights: true,
-    surpriseBox: true,
     friends: true,
     trending: true,
-    energyCrystal: true,
-    growthTree: true,
-    achievementGalaxy: true,
-    learningJourney: true,
     squad: true,
   });
   const [particles, setParticles] = useState([]);
@@ -340,11 +325,13 @@ const Dashboard = React.memo(function Dashboard() {
       <SectionWrapper>
         <div className="space-y-6 md:space-y-8">
           {/* Hero Welcome Section */}
-          <div className="animate-fade-in-up hero-section">
-            <SafeWelcomePanel />
-          </div>
+          {visibleWidgets.welcome !== false && (
+            <div className="animate-fade-in-up hero-section">
+              <SafeWelcomePanel />
+            </div>
+          )}
 
-          {/* Top Real News & Executive Wire */}
+          {/* Top 100% Real Executive News & Wire - Placed right below Welcome Panel */}
           {visibleWidgets.headlines && (
             <div className="animate-fade-in-up widget-glow">
               <SafeBeastBuckHeadlinesWidget />
@@ -400,7 +387,7 @@ const Dashboard = React.memo(function Dashboard() {
           )}
 
           {/* Progression Row: Achievements & Goals */}
-          {(visibleWidgets.achievements || visibleWidgets.goals || visibleWidgets.achievementGalaxy || visibleWidgets.growthTree) && (
+          {(visibleWidgets.achievements || visibleWidgets.goals) && (
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
               {visibleWidgets.achievements && (
                 <div className="widget-glow">
@@ -412,21 +399,11 @@ const Dashboard = React.memo(function Dashboard() {
                   <SafePersonalGoalsWidget />
                 </div>
               )}
-              {visibleWidgets.achievementGalaxy && (
-                <div className="widget-glow">
-                  <SafeAchievementGalaxyWidget />
-                </div>
-              )}
-              {visibleWidgets.growthTree && (
-                <div className="widget-glow">
-                  <SafePersonalGrowthTreeWidget />
-                </div>
-              )}
             </div>
           )}
 
-          {/* Quick Access Grid (4-Column cards) */}
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Quick Access Grid (3-Column clean cards) */}
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
             {visibleWidgets.quickActions && (
               <div className="widget-glow">
                 <SafeQuickActionsPanel />
@@ -437,11 +414,6 @@ const Dashboard = React.memo(function Dashboard() {
                 <SafeProjectsWidget />
               </div>
             )}
-            {visibleWidgets.experiments && (
-              <div className="widget-glow">
-                <SafeExperimentsWidget />
-              </div>
-            )}
             {visibleWidgets.notifications && (
               <div className="widget-glow">
                 <SafeNotificationsWidget />
@@ -449,32 +421,8 @@ const Dashboard = React.memo(function Dashboard() {
             )}
           </div>
 
-          {/* Updates & Secondary Row */}
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {visibleWidgets.announcements && (
-              <div className="widget-glow">
-                <SafeAnnouncementsPanel />
-              </div>
-            )}
-            {visibleWidgets.highlights && (
-              <div className="widget-glow">
-                <SafeDailyHighlightsWidget />
-              </div>
-            )}
-            {visibleWidgets.surpriseBox && (
-              <div className="widget-glow">
-                <SafeSurpriseBoxWidget />
-              </div>
-            )}
-            {visibleWidgets.learningJourney && (
-              <div className="widget-glow">
-                <SafeLearningJourneyWidget />
-              </div>
-            )}
-          </div>
-
           {/* Social & Community Activity */}
-          {(visibleWidgets.friends || visibleWidgets.trending || visibleWidgets.squad || visibleWidgets.activity || visibleWidgets.energyCrystal) && (
+          {(visibleWidgets.friends || visibleWidgets.trending || visibleWidgets.squad || visibleWidgets.activity) && (
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
               {visibleWidgets.friends && (
                 <div className="widget-glow">
@@ -494,11 +442,6 @@ const Dashboard = React.memo(function Dashboard() {
               {visibleWidgets.activity && (
                 <div className="widget-glow">
                   <SafeRecentActivityPanel />
-                </div>
-              )}
-              {visibleWidgets.energyCrystal && (
-                <div className="widget-glow">
-                  <SafeCreativeEnergyCrystalWidget />
                 </div>
               )}
             </div>
@@ -567,6 +510,7 @@ const Dashboard = React.memo(function Dashboard() {
             <div className="space-y-2 flex-1 overflow-y-auto pr-1 pb-2 overscroll-contain">
               {[
                 { key: 'headlines', label: '100% Real Top News Wire', icon: '📡' },
+                { key: 'welcome', label: 'Welcome & Status Hero', icon: '👋' },
                 { key: 'mission', label: 'Daily Missions', icon: '🎯' },
                 { key: 'continue', label: 'Continue Journey', icon: '🚀' },
                 { key: 'funflix', label: 'FunFlix Cinema', icon: '🎬' },
@@ -577,21 +521,13 @@ const Dashboard = React.memo(function Dashboard() {
                 { key: 'goals', label: 'Personal Goals', icon: '🎯' },
                 { key: 'quickActions', label: 'Quick Teleport', icon: '⚡' },
                 { key: 'projects', label: 'My Projects', icon: '📁' },
-                { key: 'experiments', label: 'Lab Experiments', icon: '🧪' },
                 { key: 'notifications', label: 'Notifications', icon: '🔔' },
-                { key: 'announcements', label: 'Announcements', icon: '📢' },
-                { key: 'highlights', label: 'Daily Highlights', icon: '✨' },
-                { key: 'surpriseBox', label: 'Surprise Box', icon: '🎁' },
-                { key: 'learningJourney', label: 'Learning Journey', icon: '📚' },
                 { key: 'friends', label: 'Friends Activity', icon: '👥' },
                 { key: 'trending', label: 'Trending', icon: '📈' },
                 { key: 'squad', label: 'My Squad', icon: '👫' },
                 { key: 'activity', label: 'Recent Activity Logs', icon: '📊' },
-                { key: 'energyCrystal', label: 'Creative Energy', icon: '💎' },
-                { key: 'growthTree', label: 'Growth Tree', icon: '🌳' },
-                { key: 'achievementGalaxy', label: 'Achievement Galaxy', icon: '⭐' },
               ].map(({ key, label, icon }) => {
-                const active = visibleWidgets[key];
+                const active = visibleWidgets[key] !== false;
                 return (
                   <div
                     key={key}
