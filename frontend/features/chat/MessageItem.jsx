@@ -8,14 +8,49 @@ import { Link } from 'react-router-dom';
 import { SUPPORTED_REACTIONS } from '@services/firestore/chat';
 import { RichCardRenderer } from './RichCardRenderer';
 
-const AVATAR_EMOJIS = ['👩‍🔬', '👨‍💼', '👩‍💻', '👨‍🚀', '👩‍🏫', '🧪', '💡', '🎨', '🚀', '🔥', '⭐', '🌟', '💎', '🎯', '🏆', '⚡'];
+export function MemberAvatar({ photoURL, name = 'Member', size = 'md', className = '' }) {
+  const [imgError, setImgError] = useState(false);
 
-function getAvatarEmoji(name = 'Member') {
-  let hash = 0;
-  for (let i = 0; i < (name || 'M').length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  const getInitials = (n) => {
+    if (!n) return 'M';
+    const clean = n.replace(/^@/, '').trim();
+    const parts = clean.split(/\s+/);
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return clean.slice(0, 2).toUpperCase() || 'M';
+  };
+
+  const sizeClasses = {
+    xs: 'h-5 w-5 text-[9px]',
+    sm: 'h-6 w-6 text-[10px]',
+    md: 'h-8 w-8 text-xs',
+    lg: 'h-10 w-10 text-sm',
+    xl: 'h-20 w-20 text-2xl font-black',
+  };
+
+  const baseSize = sizeClasses[size] || sizeClasses.md;
+
+  if (photoURL && !imgError) {
+    return (
+      <div className={`relative shrink-0 rounded-full overflow-hidden bg-slate-800 border border-white/15 shadow-md flex items-center justify-center ${baseSize} ${className}`}>
+        <img
+          src={photoURL}
+          alt={name}
+          className="h-full w-full object-cover rounded-full"
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+      </div>
+    );
   }
-  return AVATAR_EMOJIS[Math.abs(hash) % AVATAR_EMOJIS.length];
+
+  const initials = getInitials(name);
+  return (
+    <div className={`relative shrink-0 rounded-full bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 border border-white/15 text-white font-bold flex items-center justify-center shadow-md select-none ${baseSize} ${className}`}>
+      {initials}
+    </div>
+  );
 }
 
 function formatTime(createdAt) {
@@ -155,6 +190,8 @@ function AudioVoicePlayer({ src, name, isOwnMessage }) {
 
 export const MessageItem = memo(function MessageItem({
   message,
+  member,
+  membersMap,
   isOwnMessage,
   currentUserId,
   canManageAnnouncements = false,
@@ -208,7 +245,9 @@ export const MessageItem = memo(function MessageItem({
 
   if (message.deleted || message.archived) return null;
 
-  const avatar = getAvatarEmoji(message.senderName || message.senderId);
+  const senderMember = member || membersMap?.get(message.senderId);
+  const senderPhoto = message.senderPhoto || message.senderPhotoURL || message.photoURL || senderMember?.photoURL || senderMember?.avatar;
+  const senderDisplayName = message.senderName || senderMember?.displayName || senderMember?.username || 'Member';
   const timeStr = formatTime(message.createdAt);
   const canEdit = isOwnMessage && !message.deleted;
   const canDelete = isOwnMessage || canManageAnnouncements;
@@ -289,16 +328,20 @@ export const MessageItem = memo(function MessageItem({
   return (
     <article className={`relative group/msg flex items-end gap-2 my-1.5 px-2 sm:px-4 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
       
-      {/* Avatar */}
+      {/* Real Avatar */}
       {!isOwnMessage && showAvatar && (
         <button
           type="button"
-          onClick={() => onShowProfile?.(message.senderId, message.senderName)}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 border border-white/15 text-sm transition hover:scale-105 shadow-md"
-          aria-label={`Open ${message.senderName || 'Member'}'s profile`}
-          title={message.senderName || 'Member'}
+          onClick={() => onShowProfile?.(message.senderId, senderDisplayName)}
+          className="shrink-0 transition hover:scale-105 active:scale-95"
+          aria-label={`Open ${senderDisplayName}'s profile`}
+          title={senderDisplayName}
         >
-          {avatar}
+          <MemberAvatar 
+            photoURL={senderPhoto} 
+            name={senderDisplayName} 
+            size="md" 
+          />
         </button>
       )}
 
@@ -317,12 +360,12 @@ export const MessageItem = memo(function MessageItem({
           <div className="flex items-center justify-between gap-3 mb-1 text-[11px] leading-none">
             <div className="flex items-center gap-1.5 min-w-0">
               <span 
-                onClick={() => onShowProfile?.(message.senderId, message.senderName)}
+                onClick={() => onShowProfile?.(message.senderId, senderDisplayName)}
                 className={`font-bold truncate cursor-pointer hover:underline ${
                   isOwnMessage ? 'text-indigo-200' : 'text-indigo-400'
                 }`}
               >
-                {isOwnMessage ? 'You' : (message.senderName || 'Member')}
+                {isOwnMessage ? 'You' : senderDisplayName}
               </span>
               
               {message.senderRole && (

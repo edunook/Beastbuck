@@ -18,15 +18,7 @@ const PRESENCE_COLORS = {
   dnd: '#dc2626',
 };
 
-const AVATAR_EMOJIS = ['👩‍🔬', '👨‍💼', '👩‍💻', '👨‍🚀', '👩‍🏫', '🧪', '💡', '🎨', '🚀', '🔥', '⭐', '🌟', '💎', '🎯', '🏆', '🎪'];
 
-function getAvatarEmoji(name = 'Member') {
-  let hash = 0;
-  for (let i = 0; i < (name || 'M').length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_EMOJIS[Math.abs(hash) % AVATAR_EMOJIS.length];
-}
 
 function getConversationIcon(room) {
   if (room.type === 'announcement') return Megaphone;

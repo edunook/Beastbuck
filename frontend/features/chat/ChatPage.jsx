@@ -155,8 +155,31 @@ const ChatPage = React.memo(function ChatPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const membersMap = useMemo(() => new Map(members.map(m => [m.id, m])), [members]);
+
+  const handleShowProfile = useCallback(async (senderId, senderName) => {
+    if (!senderId) return;
+    const existing = members.find(m => m.id === senderId);
+    if (existing) {
+      setSelectedDrawerMember(existing);
+      return;
+    }
+    try {
+      const fullProfile = await UsersService.getUserProfile(senderId);
+      if (fullProfile) {
+        setSelectedDrawerMember(fullProfile);
+        return;
+      }
+    } catch (err) {
+      console.warn('Error fetching user profile:', err);
+    }
+    setSelectedDrawerMember({ id: senderId, displayName: senderName, role: 'Member' });
+  }, [members]);
+
   const handleSend = async (text, mentions = [], attachments = []) => {
     setError(null);
+    const senderPhoto = roleData?.photoURL || roleData?.avatar || user?.photoURL || '';
+
     const payload = {
       id: `temp-${Date.now()}`,
       roomId: CHAT_ROOM_ID,
@@ -164,6 +187,7 @@ const ChatPage = React.memo(function ChatPage() {
       senderId: user?.uid,
       senderName: memberName,
       senderRole: memberRole,
+      senderPhoto,
       text,
       mentions,
       createdAt: new Date(),
@@ -184,6 +208,7 @@ const ChatPage = React.memo(function ChatPage() {
         senderId: user?.uid,
         senderName: memberName,
         senderRole: memberRole,
+        senderPhoto,
         text,
         replyTo: payload.replyTo,
         mentions,
@@ -393,6 +418,8 @@ const ChatPage = React.memo(function ChatPage() {
           <MessageList
             ref={messageListRef}
             messages={allMessages}
+            members={members}
+            membersMap={membersMap}
             loading={loading}
             currentUserId={user?.uid}
             canManageAnnouncements={canManageAnnouncements}
@@ -402,7 +429,7 @@ const ChatPage = React.memo(function ChatPage() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onBookmark={handleBookmark}
-            onShowProfile={(senderId, senderName) => setSelectedDrawerMember({ id: senderId, displayName: senderName, role: 'Member' })}
+            onShowProfile={handleShowProfile}
             onMediaOpen={handleMediaOpen}
             onReport={handleReportPrompt}
             onOpenSharedContent={handleOpenSharedContent}

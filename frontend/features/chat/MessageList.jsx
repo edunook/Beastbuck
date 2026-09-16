@@ -5,6 +5,8 @@ import { MessageItem, DateSeparator } from './MessageItem';
 
 export const MessageList = memo(forwardRef(function MessageList({
   messages = [],
+  members = [],
+  membersMap = null,
   loading = false,
   currentUserId,
   currentRoom,
@@ -105,7 +107,7 @@ export const MessageList = memo(forwardRef(function MessageList({
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-1 sm:px-3 py-4 space-y-1 custom-scrollbar"
       >
-        {/* Channel Welcome Banner when few or no messages */}
+        {/* Welcome Banner when few or no messages */}
         {displayedMessages.length === 0 ? (
           <div className="flex h-full min-h-[300px] flex-col items-center justify-center p-6 text-center animate-fade-in">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/20 to-purple-500/10 shadow-xl shadow-indigo-500/10 text-indigo-400">
@@ -113,13 +115,13 @@ export const MessageList = memo(forwardRef(function MessageList({
             </div>
             
             <h2 className="text-lg font-bold text-white mb-1">
-              {searchQuery ? 'No matching messages' : `Welcome to #${roomName}!`}
+              {searchQuery ? 'No matching messages' : 'Welcome to Community Chat!'}
             </h2>
             
             <p className="max-w-md text-xs sm:text-sm text-white/50 leading-relaxed">
               {searchQuery 
                 ? `No messages matched "${searchQuery}". Try a different keyword.`
-                : currentRoom?.description || `This is the start of the #${roomName} channel.`}
+                : 'Connect, collaborate, and share with fellow BeastBuck creators.'}
             </p>
 
             {!searchQuery && (
@@ -130,13 +132,13 @@ export const MessageList = memo(forwardRef(function MessageList({
           </div>
         ) : (
           <>
-            {/* Channel Top Header Marker */}
+            {/* Top Header Marker */}
             <div className="px-4 pt-4 pb-6 text-left border-b border-white/5 mb-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 mb-2">
                 {isAnnouncement ? <Megaphone className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-white">Welcome to #{roomName}!</h2>
-              <p className="text-xs text-white/50">{currentRoom?.description || 'Start of conversation.'}</p>
+              <h2 className="text-base sm:text-lg font-bold text-white">Welcome to Community Chat!</h2>
+              <p className="text-xs text-white/50">Connect, collaborate, and share with fellow BeastBuck creators.</p>
             </div>
 
             {/* Message Stream */}
@@ -147,11 +149,14 @@ export const MessageList = memo(forwardRef(function MessageList({
 
               const msg = item.message;
               const isOwn = msg.senderId === currentUserId;
+              const senderMember = membersMap?.get(msg.senderId) || members?.find(m => m.id === msg.senderId);
 
               return (
                 <MessageItem
                   key={msg.id}
                   message={msg}
+                  member={senderMember}
+                  membersMap={membersMap}
                   isOwnMessage={isOwn}
                   currentUserId={currentUserId}
                   canManageAnnouncements={canManageAnnouncements}

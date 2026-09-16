@@ -3,6 +3,7 @@ import {
   Users, Settings, Hash, Megaphone, Search, Pin, 
   Image as ImageIcon, Gamepad2, X, Sparkles, SlidersHorizontal
 } from 'lucide-react';
+import { MemberAvatar } from './MessageItem';
 
 export function ChatHeader({ 
   currentRoom,
@@ -218,9 +219,11 @@ export function MemberListModal({ members = [], onClose }) {
             filtered.map(member => (
               <div key={member.id} className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5 hover:border-white/10 transition">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-8 w-8 rounded-full bg-slate-800 border border-white/15 flex items-center justify-center text-xs font-bold text-white">
-                    {(member.displayName || member.username || 'M')[0]?.toUpperCase()}
-                  </div>
+                  <MemberAvatar 
+                    photoURL={member.photoURL || member.avatar} 
+                    name={member.displayName || member.username || 'Member'} 
+                    size="md" 
+                  />
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-white truncate">{member.displayName || member.username}</p>
                     <p className="text-[10px] text-white/40 truncate">@{member.username || member.id}</p>

@@ -5,17 +5,9 @@ import {
   UserPlus, UserCheck, AtSign, Share2, Grid, FolderOpen, Video, Image as ImageIcon,
   Flame, Gem, CheckCircle, Heart
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Button from '@frontend/components/ui/Button';
-
-const AVATAR_EMOJIS = ['👩‍🔬', '👨‍💼', '👩‍💻', '👨‍🚀', '👩‍🏫', '🧪', '💡', '🎨', '🚀', '🔥', '⭐', '🌟'];
-
-function getAvatarEmoji(name = 'Member') {
-  let hash = 0;
-  for (let i = 0; i < (name || 'M').length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return AVATAR_EMOJIS[Math.abs(hash) % AVATAR_EMOJIS.length];
-}
+import { MemberAvatar } from './MessageItem';
 
 export function MemberProfileDrawer({ member, currentUserId, onClose, onMessage, onMention }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -25,15 +17,13 @@ export function MemberProfileDrawer({ member, currentUserId, onClose, onMessage,
   if (!member) return null;
 
   const memberName = member.displayName || member.username || member.name || 'Member';
-  const role = member.role || 'Senior Member';
+  const role = member.role || 'Member';
   const department = member.department || 'Innovation & Engineering';
-  const team = member.team || 'Core Product Team';
   const status = member.status || 'online';
-  const activity = member.activity || 'Building next-gen features in React & AI';
-  const bio = member.bio || 'Passionate developer and innovator building high-impact digital experiences for the BeastBuck ecosystem.';
+  const activity = member.activity || 'Active Community Member';
   const xp = member.xp || 14250;
   const level = member.level || 36;
-  const avatarEmoji = getAvatarEmoji(memberName);
+  const photoURL = member.photoURL || member.avatar || member.profileImage || '';
 
   const skills = member.skills || ['React.js', 'Node.js', 'AI Engineering', 'UI/UX Design', 'TypeScript', 'Firebase'];
   const achievements = member.achievements || ['Top Contributor 2026', 'Code Wizard', 'Innovator of the Month', 'Community Mentor'];
@@ -44,16 +34,6 @@ export function MemberProfileDrawer({ member, currentUserId, onClose, onMessage,
     { label: 'Research', count: member.researchCount || 12, color: 'text-purple-400', icon: FileText },
     { label: 'AI Models', count: member.aiModelsCount || 7, color: 'text-cyan-400', icon: Sparkles },
     { label: 'Marketplace', count: member.productsCount || 5, color: 'text-emerald-400', icon: Gem },
-  ];
-
-  const showcaseItems = [
-    { title: 'Neural AI Assistant v2', type: 'AI Creation', rating: '4.9 ★', views: '2.4k' },
-    { title: 'BeastBuck UI Component Library', type: 'Project', rating: '5.0 ★', views: '5.1k' },
-    { title: 'Quantum Ledger Smart Contract', type: 'Research', rating: '4.8 ★', views: '1.8k' },
-  ];
-
-  const mutualGroups = [
-    'General Engineering', 'AI Innovators Hub', 'Product Launch 2026', 'BeastBuck Founders'
   ];
 
   const handleShare = () => {
@@ -87,14 +67,27 @@ export function MemberProfileDrawer({ member, currentUserId, onClose, onMessage,
         <div className="px-6 -mt-14 relative shrink-0 border-b border-white/10 pb-5">
           <div className="flex items-end justify-between mb-3">
             <div className="relative">
-              <div className="h-20 w-20 rounded-3xl bg-gradient-to-br from-accent/30 via-purple-500/20 to-slate-800 border-2 border-accent/50 flex items-center justify-center text-4xl shadow-xl shadow-accent/20">
-                {avatarEmoji}
-              </div>
+              <MemberAvatar 
+                photoURL={photoURL} 
+                name={memberName} 
+                size="xl" 
+                className="!h-20 !w-20 !rounded-3xl border-2 border-accent/50 shadow-xl shadow-accent/20" 
+              />
               <div className="absolute bottom-0 right-0 h-5 w-5 rounded-full bg-emerald-500 border-2 border-slate-900 shadow-lg shadow-emerald-500/50 flex items-center justify-center">
                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
               </div>
             </div>
             <div className="flex gap-2">
+              {(member.id || member.uid) && (
+                <Link
+                  to={`/profile/${member.id || member.uid}`}
+                  className="p-2 rounded-xl bg-white/10 border border-white/15 text-white/80 hover:text-white hover:bg-white/20 transition flex items-center gap-1"
+                  title="View Full BeastBuck Profile"
+                  onClick={onClose}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Link>
+              )}
               <button
                 onClick={() => setIsFollowing(!isFollowing)}
                 className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 ${
