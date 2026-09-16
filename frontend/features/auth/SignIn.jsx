@@ -1,14 +1,20 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { AuthService } from '@services/auth/auth';
-import { Lock, User, ArrowRight, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Lock, User, ArrowRight, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import AuthLayout, { AuthField } from './AuthLayout';
 import Button from '@frontend/components/ui/Button';
 
 export default function SignIn() {
-  const [username, setUsername] = useState('');
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const initialUsername = location.state?.username || searchParams.get('username') || '';
+  const successMsg = location.state?.message || null;
+
+  const [username, setUsername] = useState(initialUsername);
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(successMsg);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
@@ -18,6 +24,7 @@ export default function SignIn() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     try {
       await AuthService.signIn(username, password);
@@ -43,6 +50,16 @@ export default function SignIn() {
 
   return (
     <AuthLayout title="Welcome back" subtitle="Sign in to continue to your workspace">
+      {success && (
+        <div
+          role="status"
+          className="mb-6 flex items-start gap-3 p-4 rounded-2xl bg-status-success/10 border border-status-success/25 text-status-success text-sm"
+        >
+          <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
+          <span>{success}</span>
+        </div>
+      )}
+
       {error && (
         <div
           role="alert"

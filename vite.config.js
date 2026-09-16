@@ -5,6 +5,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { beastbuckMediaDevPlugin } from './backend/middleware/viteDevMediaPlugin.js'
+import { beastbuckAuthDevPlugin } from './backend/middleware/viteDevAuthPlugin.js'
 
 
 const tailwindInput = String.raw`
@@ -250,7 +251,7 @@ function beastbuckTailwind() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [beastbuckTailwind(), react(), beastbuckMediaDevPlugin()],
+  plugins: [beastbuckTailwind(), react(), beastbuckMediaDevPlugin(), beastbuckAuthDevPlugin()],
   server: {
     host: true,
     strictPort: false,

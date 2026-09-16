@@ -8,7 +8,7 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from 'firebase/auth';
-import { addDoc, collection, doc, getDoc, serverTimestamp, writeBatch, runTransaction, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, getDoc, serverTimestamp, runTransaction, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { ROLES } from '@shared/constants/roles';
 
 export const AuthService = {
@@ -207,7 +207,7 @@ export const AuthService = {
   },
 
   /**
-   * Verify username + phone for account recovery (no auth required).
+   * Verify username + phone for account recovery.
    */
   async verifyRecoveryCredentials(username, phoneNumber) {
     const normalizedUsername = this.normalizeUsername(username?.trim() || '');
@@ -222,52 +222,93 @@ export const AuthService = {
       throw new Error('Phone number is required.');
     }
 
-    const snap = await getDoc(doc(db, 'usernames', normalizedUsername));
-    if (!snap.exists()) {
-      throw new Error('Account not found. Check your username or create an account.');
+    try {
+      const response = await fetch('/api/auth/verify-recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: normalizedUsername,
+          phoneNumber: providedPhone,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Verification failed. Please check your credentials.');
+      }
+
+      return {
+        valid: true,
+        uid: data.uid,
+        username: data.username || normalizedUsername,
+      };
+    } catch (apiErr) {
+      // Fallback to client-side Firestore check if API route is temporarily unreachable
+      if (apiErr.message?.includes('Failed to fetch') || apiErr.message?.includes('NetworkError')) {
+        const snap = await getDoc(doc(db, 'usernames', normalizedUsername));
+        if (!snap.exists()) {
+          throw new Error('Account not found. Check your username or create an account.', { cause: apiErr });
+        }
+
+        const docData = snap.data();
+        const storedPhone = this.normalizePhone(docData.phoneNumber);
+
+        if (!storedPhone || storedPhone !== providedPhone) {
+          throw new Error('Phone number does not match our records.', { cause: apiErr });
+        }
+
+        return {
+          valid: true,
+          uid: docData.uid,
+          authEmail: docData.authEmail,
+          username: normalizedUsername,
+        };
+      }
+      throw apiErr;
     }
-
-    const data = snap.data();
-    const storedPhone = this.normalizePhone(data.phoneNumber);
-
-    if (!storedPhone || storedPhone !== providedPhone) {
-      throw new Error('Phone number does not match our records.');
-    }
-
-    return {
-      uid: data.uid,
-      authEmail: data.authEmail,
-      normalizedUsername,
-    };
   },
 
   /**
-   * Queue a password reset after identity verification.
-   * Processed server-side via backend/admin/process-password-resets.mjs
+   * Directly reset password after identity verification.
    */
-  async submitPasswordResetRequest(username, phoneNumber, newPassword) {
+  async resetPasswordWithRecovery(username, phoneNumber, newPassword) {
     if (!newPassword || newPassword.length < 6) {
       throw new Error('Password must be at least 6 characters.');
     }
 
-    const lastRequest = localStorage.getItem('lastPasswordResetRequest');
-    if (lastRequest && Date.now() - parseInt(lastRequest, 10) < 300000) {
-      throw new Error('Please wait 5 minutes before submitting another reset request.');
-    }
+    const normalizedUsername = this.normalizeUsername(username?.trim() || '');
+    const normalizedPhoneNumber = this.normalizePhone(phoneNumber);
 
-    const { uid, normalizedUsername } = await this.verifyRecoveryCredentials(username, phoneNumber);
-
-    await addDoc(collection(db, 'passwordResetRequests'), {
-      uid,
-      username: normalizedUsername,
-      phoneNumber: this.normalizePhone(phoneNumber),
-      status: 'pending',
-      requestedAt: serverTimestamp(),
-      newPassword,
+    const response = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: normalizedUsername,
+        phoneNumber: normalizedPhoneNumber,
+        newPassword,
+      }),
     });
 
-    localStorage.setItem('lastPasswordResetRequest', Date.now().toString());
-    return { success: true };
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to reset password. Please try again.');
+    }
+
+    // Reset login attempts so user can log in immediately
+    this.clearLoginAttempts();
+
+    return {
+      success: true,
+      message: data.message || 'Password updated successfully.',
+      username: normalizedUsername,
+    };
+  },
+
+  /**
+   * Backward-compatible alias for resetPasswordWithRecovery
+   */
+  async submitPasswordResetRequest(username, phoneNumber, newPassword) {
+    return this.resetPasswordWithRecovery(username, phoneNumber, newPassword);
   },
 
   clearLoginAttempts() {

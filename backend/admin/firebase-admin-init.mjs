@@ -12,13 +12,35 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '../..');
 
-function resolveCredentialPath() {
+function getServiceAccount() {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch {
+      // ignore JSON parse error and try file
+    }
+  }
+
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    try {
+      return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
   const fromEnv = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (fromEnv && existsSync(fromEnv)) return resolve(root, fromEnv);
+  if (fromEnv && existsSync(fromEnv)) {
+    return JSON.parse(readFileSync(resolve(root, fromEnv), 'utf8'));
+  }
+
   const local = resolve(root, 'service-account.json');
-  if (existsSync(local)) return local;
+  if (existsSync(local)) {
+    return JSON.parse(readFileSync(local, 'utf8'));
+  }
+
   throw new Error(
-    'Missing service-account.json. Copy service-account.example.json or set GOOGLE_APPLICATION_CREDENTIALS.'
+    'Missing Firebase Admin credentials. Provide FIREBASE_SERVICE_ACCOUNT env or service-account.json.'
   );
 }
 
@@ -32,12 +54,11 @@ export async function getAdminApp() {
     return { app, db: getFirestore(app), auth: getAuth(app) };
   }
 
-  const credPath = resolveCredentialPath();
-  const serviceAccount = JSON.parse(readFileSync(credPath, 'utf8'));
+  const serviceAccount = getServiceAccount();
 
   const app = initializeApp({
     credential: cert(serviceAccount),
-    projectId: serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID,
+    projectId: serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || 'beastbuck-5c42b',
     databaseURL: process.env.VITE_FIREBASE_DATABASE_URL
       || 'https://beastbuck-5c42b-default-rtdb.asia-southeast1.firebasedatabase.app',
   });

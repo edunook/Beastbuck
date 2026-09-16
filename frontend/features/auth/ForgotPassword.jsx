@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthService } from '@services/auth/auth';
 import {
   User,
@@ -11,21 +11,25 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle,
+  ShieldCheck,
+  KeyRound,
 } from 'lucide-react';
 import AuthLayout, { AuthField } from './AuthLayout';
 import Button from '@frontend/components/ui/Button';
 
 export default function ForgotPassword() {
-  const [step, setStep] = useState('verify');
+  const [step, setStep] = useState('verify'); // 'verify' | 'reset'
   const [username, setUsername] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -36,7 +40,7 @@ export default function ForgotPassword() {
       await AuthService.verifyRecoveryCredentials(username, phoneNumber);
       setStep('reset');
     } catch (err) {
-      setError(err.message || 'Unable to verify your account.');
+      setError(err.message || 'Unable to verify your account with the provided details.');
     } finally {
       setLoading(false);
     }
@@ -47,44 +51,64 @@ export default function ForgotPassword() {
     setError(null);
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+      setError('New password must be at least 6 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError('Passwords do not match. Please verify and try again.');
       return;
     }
 
     setLoading(true);
 
     try {
-      await AuthService.submitPasswordResetRequest(username, phoneNumber, password);
+      await AuthService.resetPasswordWithRecovery(username, phoneNumber, password);
       setSubmitted(true);
     } catch (err) {
-      setError(err.message || 'Failed to submit reset request.');
+      setError(err.message || 'Failed to update password. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleGoToSignIn = () => {
+    navigate('/signin', {
+      state: {
+        username: username.toLowerCase().trim(),
+        message: 'Your password has been changed successfully. Please sign in with your new password.',
+      },
+    });
+  };
+
   if (submitted) {
     return (
-      <AuthLayout title="Request received" subtitle="Your password reset is being processed">
-        <div className="text-center">
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-status-success/25 bg-status-success/10">
-            <CheckCircle className="h-8 w-8 text-status-success" />
+      <AuthLayout title="Password Reset Complete" subtitle="Your account credentials have been updated">
+        <div className="text-center py-2">
+          <div className="relative mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl border border-status-success/30 bg-status-success/10 shadow-[0_0_30px_rgba(0,255,136,0.2)] animate-pulse">
+            <CheckCircle className="h-10 w-10 text-status-success" />
           </div>
-          <p className="mb-8 text-sm leading-relaxed text-text-soft">
-            We verified your identity for <span className="font-semibold text-text">{username}</span>.
-            Your new password will be applied shortly once the request is processed.
-          </p>
-          <Link to="/signin">
-            <Button variant="primary" className="w-full !rounded-2xl !py-4">
-              Return to Sign In
-              <ArrowRight className="h-5 w-5" />
+
+          <div className="mb-6 space-y-2">
+            <h3 className="text-lg font-bold text-text">Success! Password Changed</h3>
+            <p className="text-sm leading-relaxed text-text-soft">
+              The password for account <span className="font-semibold text-accent">@{username}</span> has been successfully changed and is active immediately.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              onClick={handleGoToSignIn}
+              ripple
+              className="w-full !rounded-2xl !py-4 !text-base !font-black !shadow-[0_4px_24px_rgba(0,240,255,0.25)] hover:!shadow-[0_8px_32px_rgba(0,240,255,0.35)]"
+            >
+              Sign In With New Password
+              <ArrowRight className="h-5 w-5 ml-1" />
             </Button>
-          </Link>
+          </div>
         </div>
       </AuthLayout>
     );
@@ -92,11 +116,11 @@ export default function ForgotPassword() {
 
   return (
     <AuthLayout
-      title={step === 'verify' ? 'Forgot password?' : 'Set new password'}
+      title={step === 'verify' ? 'Forgot password?' : 'Create new password'}
       subtitle={
         step === 'verify'
-          ? 'Verify your username and phone number to continue'
-          : 'Choose a new password for your account'
+          ? 'Enter your username and registered phone number to verify your identity'
+          : 'Identity verified. Choose a strong new password for your account'
       }
     >
       {error && (
@@ -126,9 +150,9 @@ export default function ForgotPassword() {
 
           <AuthField
             icon={Phone}
-            label="Phone number"
+            label="Registered Phone Number"
             type="tel"
-            placeholder="Enter your registered phone number"
+            placeholder="e.g. +1234567890 or digits"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
             onFocus={() => setFocusedField('phone')}
@@ -145,25 +169,33 @@ export default function ForgotPassword() {
               size="lg"
               loading={loading}
               ripple
-              className="w-full !rounded-2xl !py-4 !text-base !font-black"
+              className="w-full !rounded-2xl !py-4 !text-base !font-black !shadow-[0_4px_24px_rgba(0,240,255,0.25)] hover:!shadow-[0_8px_32px_rgba(0,240,255,0.35)]"
             >
               {!loading && (
                 <>
-                  Continue
-                  <ArrowRight className="h-5 w-5" />
+                  Verify Identity
+                  <ArrowRight className="h-5 w-5 ml-1" />
                 </>
               )}
-              {loading && 'Verifying...'}
+              {loading && 'Verifying credentials...'}
             </Button>
           </div>
         </form>
       ) : (
         <form onSubmit={handleReset} className="space-y-5">
+          {/* Identity verified pill badge */}
+          <div className="flex items-center gap-2.5 rounded-xl border border-status-success/30 bg-status-success/10 px-3.5 py-2 text-xs font-medium text-status-success">
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            <span>
+              Verified account: <strong className="font-semibold text-white">@{username}</strong>
+            </span>
+          </div>
+
           <AuthField
-            icon={Lock}
+            icon={KeyRound}
             label="New password"
             type={showPassword ? 'text' : 'password'}
-            placeholder="Enter a new password"
+            placeholder="Enter a new password (min. 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onFocus={() => setFocusedField('password')}
@@ -185,8 +217,8 @@ export default function ForgotPassword() {
 
           <AuthField
             icon={Lock}
-            label="Confirm password"
-            type={showPassword ? 'text' : 'password'}
+            label="Confirm new password"
+            type={showConfirmPassword ? 'text' : 'password'}
             placeholder="Confirm your new password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -195,8 +227,32 @@ export default function ForgotPassword() {
             focused={focusedField === 'confirm'}
             required
             autoComplete="new-password"
-            error={confirmPassword && password !== confirmPassword}
+            error={Boolean(confirmPassword && password && password !== confirmPassword)}
+            trailing={
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="rounded-lg p-1.5 text-text-muted transition-colors hover:bg-white/5 hover:text-text"
+                aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            }
           />
+
+          {password && (
+            <div className="text-xs text-text-muted">
+              {password.length < 6 ? (
+                <span className="text-status-warning">Password must be at least 6 characters</span>
+              ) : confirmPassword && password === confirmPassword ? (
+                <span className="text-status-success">Passwords match</span>
+              ) : confirmPassword && password !== confirmPassword ? (
+                <span className="text-status-danger">Passwords do not match</span>
+              ) : (
+                <span className="text-status-success">Password length is good</span>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-col gap-3 pt-2">
             <Button
@@ -205,15 +261,15 @@ export default function ForgotPassword() {
               size="lg"
               loading={loading}
               ripple
-              className="w-full !rounded-2xl !py-4 !text-base !font-black"
+              className="w-full !rounded-2xl !py-4 !text-base !font-black !shadow-[0_4px_24px_rgba(0,240,255,0.25)] hover:!shadow-[0_8px_32px_rgba(0,240,255,0.35)]"
             >
               {!loading && (
                 <>
-                  Submit Reset Request
-                  <ArrowRight className="h-5 w-5" />
+                  Change Password
+                  <ArrowRight className="h-5 w-5 ml-1" />
                 </>
               )}
-              {loading && 'Submitting...'}
+              {loading && 'Updating password...'}
             </Button>
 
             <button
@@ -224,10 +280,10 @@ export default function ForgotPassword() {
                 setConfirmPassword('');
                 setError(null);
               }}
-              className="inline-flex items-center justify-center gap-2 text-sm text-text-muted transition-colors hover:text-text"
+              className="inline-flex items-center justify-center gap-2 py-2 text-sm text-text-muted transition-colors hover:text-text"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to verification
+              Change username or phone number
             </button>
           </div>
         </form>
@@ -247,3 +303,4 @@ export default function ForgotPassword() {
     </AuthLayout>
   );
 }
+
