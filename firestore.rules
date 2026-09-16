@@ -150,6 +150,7 @@ service cloud.firestore {
                       'coverImage',
                       'customSections',
                       'theme',
+                      'customTheme',
                       'profileCustomization',
                       'updatedAt'
                     ]);
@@ -181,15 +182,6 @@ service cloud.firestore {
         allow update, delete: if isAuthenticated() && request.auth.uid == userId;
       }
 
-    // ----------------------------------------
-    // SYSTEM NOTIFICATIONS & PUBLIC EVENTS
-    // ----------------------------------------
-    match /system_notifications/{notificationId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update, delete: if isAuthenticated();
-    }
-
       match /aiHistory/{historyId} {
         allow read, write: if isAuthenticated() && request.auth.uid == userId;
       }
@@ -202,6 +194,76 @@ service cloud.firestore {
       match /achievements/{achievementId} {
         allow read: if isAuthenticated();
         allow write: if canManageMembers();
+      }
+
+      match /recentActivity/{id} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || canManageMembers());
+      }
+
+      match /dailyMissions/{id} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || canManageMembers());
+      }
+
+      match /activeMissions/{id} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || canManageMembers());
+      }
+
+      match /goals/{id} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || canManageMembers());
+      }
+
+      match /journey/{id} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || canManageMembers());
+      }
+
+      match /{subcollection}/{docId} {
+        allow read, write: if isAuthenticated() && (request.auth.uid == userId || canManageMembers());
+      }
+    }
+
+    // ----------------------------------------
+    // SYSTEM NOTIFICATIONS & PUBLIC EVENTS
+    // ----------------------------------------
+    match /system_notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if canManageMembers();
+    }
+
+    match /systemNotifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if canManageMembers();
+    }
+
+    // ----------------------------------------
+    // DISCOVERY & TRENDING
+    // ----------------------------------------
+    match /dailyDiscoveries/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /dailyHighlights/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    match /trending/{id} {
+      allow read: if isAuthenticated();
+      allow write: if canManageOrganization();
+    }
+
+    // ----------------------------------------
+    // CHAT ROOMS & CHANNELS
+    // ----------------------------------------
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+
+      match /messages/{messageId} {
+        allow read, create: if isAuthenticated();
+        allow update, delete: if isAuthenticated() && (resource.data.senderId == request.auth.uid || canDeleteContent() || canManageMembers());
       }
     }
 
@@ -224,6 +286,7 @@ service cloud.firestore {
                       'interests',
                       'customSections',
                       'theme',
+                      'customTheme',
                       'role',
                       'xp',
                       'level',
@@ -256,6 +319,7 @@ service cloud.firestore {
                       'interests',
                       'customSections',
                       'theme',
+                      'customTheme',
                       'specializations',
                       'achievements',
                       'certificates',
@@ -1617,21 +1681,10 @@ service cloud.firestore {
     // AUDIT LOGS (Admin Command Center)
     // ----------------------------------------
     match /auditLogs/{logId} {
-      // Only CEO/Co-CEO can read audit logs
-      allow read: if canManageMembers();
+      // Authenticated members can read audit logs for platform headlines & activity
+      allow read: if isAuthenticated();
       // Any authenticated user can create an audit log (application code)
-      allow create: if isAuthenticated()
-                    && request.resource.data.keys().hasOnly([
-                      'type',
-                      'actorId',
-                      'targetId',
-                      'summary',
-                      'metadata',
-                      'createdAt'
-                    ])
-                    && request.resource.data.actorId is string
-                    && request.resource.data.type is string
-                    && request.resource.data.summary is string;
+      allow create: if isAuthenticated();
       // Immutable - no updates or deletes
       allow update, delete: if false;
     }
