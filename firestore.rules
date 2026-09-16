@@ -74,9 +74,21 @@ service cloud.firestore {
       return roomId in [
         'general',
         'announcements',
+        'questions',
+        'help',
+        'resources',
+        'ideas',
+        'feedback',
+        'projects',
+        'research',
+        'random',
+        'introductions',
+        'events',
+        'challenges',
+        'media-sharing',
+        'career-advice',
         'experiments',
         'products',
-        'ideas',
         'coding',
         'science'
       ];
@@ -87,7 +99,9 @@ service cloud.firestore {
         ? 'announcement'
         : isDefaultChatRoom(roomId)
           ? 'public'
-          : get(/databases/$(database)/documents/chatRooms/$(roomId)).data.type;
+          : (exists(/databases/$(database)/documents/chatRooms/$(roomId))
+            ? get(/databases/$(database)/documents/chatRooms/$(roomId)).data.type
+            : 'public');
     }
 
     function isAnnouncementRoom(roomId) {
@@ -1295,13 +1309,17 @@ service cloud.firestore {
       
       match /messages/{messageId} {
         allow read: if isAuthenticated();
-        allow create: if isMember()
+        allow create: if isAuthenticated()
                       && request.resource.data.senderId == request.auth.uid
                       && request.resource.data.keys().hasOnly([
                         'senderId',
                         'senderName',
                         'senderRole',
+                        'senderPhoto',
                         'text',
+                        'attachments',
+                        'file',
+                        'sharedContent',
                         'createdAt',
                         'edited',
                         'deleted',
@@ -1310,11 +1328,17 @@ service cloud.firestore {
                         'mentions',
                         'announcement',
                         'pinned',
-                        'archived'
+                        'archived',
+                        'forwarded',
+                        'originalRoomId',
+                        'originalMessageId',
+                        'originalSenderName',
+                        'deliveryStatus',
+                        'readAt',
+                        'bookmarked'
                       ])
                       && request.resource.data.text is string
-                      && request.resource.data.text.size() > 0
-                      && request.resource.data.text.size() <= 1000
+                      && request.resource.data.text.size() <= 4000
                       && request.resource.data.edited == false
                       && request.resource.data.deleted == false
                       && (
@@ -1340,12 +1364,20 @@ service cloud.firestore {
                         'smile'
                       ]);
         allow update: if isAuthenticated()
-                      && resource.data.senderId == request.auth.uid
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited', 'editedAt', 'deleted', 'deletedAt', 'bookmarked']);
-        allow update: if canManageMembers()
-                      && resource.data.announcement == true
-                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinned', 'archived']);
-        allow delete: if isAuthenticated() && (resource.data.senderId == request.auth.uid || canDeleteContent());
+                      && (resource.data.senderId == request.auth.uid || canDeleteContent() || canManageMembers())
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'text',
+                        'edited',
+                        'editedAt',
+                        'deleted',
+                        'deletedAt',
+                        'bookmarked',
+                        'deliveryStatus',
+                        'readAt',
+                        'pinned',
+                        'archived'
+                      ]);
+        allow delete: if isAuthenticated() && (resource.data.senderId == request.auth.uid || canDeleteContent() || canManageMembers());
       }
     }
 

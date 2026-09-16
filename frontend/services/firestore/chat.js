@@ -393,38 +393,15 @@ export const ChatService = {
     );
 
     if (uniqueMentions.length > 0) {
-      const batch = writeBatch(db);
-
-      for (const mention of uniqueMentions) {
-        const notificationRef = doc(collection(db, 'users', mention.uid, 'notifications'));
-        batch.set(notificationRef, {
-          type: 'MENTION',
-          title: 'You were mentioned',
-          message: `${senderName} mentioned you in #${roomId}.`,
-          link: getAnnouncementLink(roomId),
-          read: false,
-          createdAt: serverTimestamp(),
-          actorId: senderId,
-        });
-      }
-
-      await batch.commit();
-    }
-
-    if (roomType === 'announcement') {
-      const uniqueMembers = members.filter((member, index, all) =>
-        member.id !== senderId && all.findIndex(item => item.id === member.id) === index
-      );
-
-      if (uniqueMembers.length > 0) {
+      try {
         const batch = writeBatch(db);
 
-        for (const member of uniqueMembers) {
-          const notificationRef = doc(collection(db, 'users', member.id, 'notifications'));
+        for (const mention of uniqueMentions) {
+          const notificationRef = doc(collection(db, 'users', mention.uid, 'notifications'));
           batch.set(notificationRef, {
-            type: 'ANNOUNCEMENT',
-            title: 'New announcement',
-            message: `${senderName} posted in #${roomId}.`,
+            type: 'MENTION',
+            title: 'You were mentioned',
+            message: `${senderName} mentioned you in #${roomId}.`,
             link: getAnnouncementLink(roomId),
             read: false,
             createdAt: serverTimestamp(),
@@ -433,6 +410,37 @@ export const ChatService = {
         }
 
         await batch.commit();
+      } catch (mentionErr) {
+        console.warn('Mention notification error (non-fatal):', mentionErr);
+      }
+    }
+
+    if (roomType === 'announcement') {
+      try {
+        const uniqueMembers = members.filter((member, index, all) =>
+          member.id !== senderId && all.findIndex(item => item.id === member.id) === index
+        );
+
+        if (uniqueMembers.length > 0) {
+          const batch = writeBatch(db);
+
+          for (const member of uniqueMembers) {
+            const notificationRef = doc(collection(db, 'users', member.id, 'notifications'));
+            batch.set(notificationRef, {
+              type: 'ANNOUNCEMENT',
+              title: 'New announcement',
+              message: `${senderName} posted in #${roomId}.`,
+              link: getAnnouncementLink(roomId),
+              read: false,
+              createdAt: serverTimestamp(),
+              actorId: senderId,
+            });
+          }
+
+          await batch.commit();
+        }
+      } catch (announcementErr) {
+        console.warn('Announcement notification error (non-fatal):', announcementErr);
       }
     }
 
