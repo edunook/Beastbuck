@@ -256,7 +256,8 @@ export default defineConfig({
     strictPort: false,
     hmr: {
       overlay: true
-    }
+    },
+    proxy: {}
   },
   publicDir: 'public',
   resolve: {

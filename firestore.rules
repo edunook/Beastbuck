@@ -1035,19 +1035,36 @@ service cloud.firestore {
                     && request.resource.data.player2 == null
                     && request.resource.data.winner == null;
 
-      // Players can update game state during gameplay
+      // Player 1 can update their own session
       allow update: if isAuthenticated()
-                    && (
-                      // Player 1 can update
-                      resource.data.player1.uid == request.auth.uid ||
-                      // Player 2 can update
-                      resource.data.player2.uid == request.auth.uid
-                    )
+                    && resource.data.player1.uid == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                       'gameState',
                       'player2',
                       'status',
                       'winner',
+                      'updatedAt'
+                    ]);
+
+      // Player 2 can update game state once they've joined
+      allow update: if isAuthenticated()
+                    && resource.data.player2.uid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'gameState',
+                      'status',
+                      'winner',
+                      'updatedAt'
+                    ]);
+
+      // Any authenticated user can join a waiting session (update player2 and status)
+      allow update: if isAuthenticated()
+                    && resource.data.status == 'waiting'
+                    && resource.data.player2 == null
+                    && request.resource.data.player2.uid == request.auth.uid
+                    && request.resource.data.player2.uid != resource.data.player1.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'player2',
+                      'status',
                       'updatedAt'
                     ]);
 
