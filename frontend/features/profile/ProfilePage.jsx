@@ -1487,6 +1487,9 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Custom Sections */}
+        <CustomSectionsCard profile={profile} theme={profileTheme} />
+
         {/* Education & Interests Section */}
         {(profile?.education || profile?.interests) && (
           <Card style={{ borderColor: `${profileTheme.accentColor}40`, background: profileTheme.cardBg || 'rgba(255, 255, 255, 0.05)' }}>

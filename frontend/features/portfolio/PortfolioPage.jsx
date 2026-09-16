@@ -37,6 +37,7 @@ import { useAuth } from '../auth/AuthContext';
 import { ROLES } from '@shared/constants/roles';
 import { PERMISSIONS } from '@shared/permissions/permissions';
 import { THEME_TEMPLATES, resolveTheme, getThemeBackgroundStyle } from '@shared/constants/themes';
+import { PresenceService } from '@services/realtime/presence';
 // End of Theme Templates
 
 function getVerificationHalo(role, badges) {
@@ -203,20 +204,23 @@ export default function PortfolioPage() {
 
   if (isNotApprovedMember) {
     return (
-      <PageContainer>
-        <Card className="max-w-xl mx-auto my-16 border-amber-500/20 bg-amber-500/5 text-center p-8">
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-xl mx-auto border-amber-500/20 bg-amber-500/5 text-center p-8">
           <CardContent className="space-y-4">
             <Lock className="w-12 h-12 text-amber-400 mx-auto" />
             <h2 className="text-xl font-bold text-white">Member Portfolio Restricted</h2>
             <p className="text-text-muted text-sm">
               Portfolios on BeastBuck are reserved exclusively for approved members. This account is currently pending membership approval or is not an active member.
             </p>
-            <Link to="/portfolio">
-              <Button className="mt-4">Back to Member Portfolios</Button>
+            <Link
+              to="/portfolio"
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-accent text-background font-bold hover:bg-cyan-300 transition-colors"
+            >
+              Back to Member Portfolios
             </Link>
           </CardContent>
         </Card>
-      </PageContainer>
+      </div>
     );
   }
 
@@ -225,23 +229,17 @@ export default function PortfolioPage() {
   }
 
   const theme = (() => {
-    // Check if profileCustomization has actual content
+    // If profile has customTheme or theme is custom
+    if (profile?.customTheme || profile?.theme === 'custom') {
+      return resolveTheme(profile?.theme || 'custom', profile?.customTheme);
+    }
+
+    // Check if legacy profileCustomization has actual content
     const hasCustomTheme = profile?.profileCustomization?.accentColor ||
                          profile?.profileCustomization?.backgroundTheme;
 
-    // Use profile.theme directly instead of selectedTheme state to avoid timing issues
-    const themeToUse = hasCustomTheme ? 'custom' : (profile?.theme || 'default');
-
-    console.log('PortfolioPage - Calculating theme with:', {
-      themeToUse,
-      profileTheme: profile?.theme,
-      hasProfileCustomization: hasCustomTheme,
-      profileCustomization: profile?.profileCustomization
-    });
-
-    if (themeToUse === 'custom' && hasCustomTheme) {
+    if (hasCustomTheme) {
       const custom = profile.profileCustomization;
-      console.log('PortfolioPage - Rendering custom theme with accentColor:', custom.accentColor);
       return {
         id: 'custom',
         name: 'Custom Theme',
@@ -266,10 +264,7 @@ export default function PortfolioPage() {
       };
     }
 
-    // Find the preset theme by ID
-    const foundTheme = THEME_TEMPLATES.find(t => t.id === themeToUse);
-    console.log('PortfolioPage - Rendering preset theme:', foundTheme?.id, foundTheme?.name);
-    return foundTheme || THEME_TEMPLATES[0];
+    return resolveTheme(profile?.theme || 'default', profile?.customTheme);
   })();
   const privacy = portfolioData?.privacy || {};
 

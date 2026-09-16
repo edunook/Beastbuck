@@ -429,6 +429,12 @@ export default function ProfileEdit() {
         return;
       }
 
+      // If user is currently editing custom theme studio, make sure 'custom' theme is selected
+      let themeToSave = selectedTheme;
+      if (activeThemeTab === 'custom-studio') {
+        themeToSave = 'custom';
+      }
+
       const updateData = {
         displayName: formData.displayName,
         bio: formData.bio,
@@ -438,11 +444,11 @@ export default function ProfileEdit() {
         education: formData.education,
         interests: formData.interests,
         customSections: formData.customSections,
-        theme: selectedTheme
+        theme: themeToSave
       };
 
       // If custom theme is chosen or custom config is active, save full customTheme object
-      if (selectedTheme === 'custom') {
+      if (themeToSave === 'custom') {
         let finalBg = computedCustomBackground;
         if (customThemeImageFile) {
           try {

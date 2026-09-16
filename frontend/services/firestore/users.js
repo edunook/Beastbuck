@@ -91,14 +91,15 @@ export const UsersService = {
     if (data.interests !== undefined) updates.interests = data.interests;
     if (data.customSections !== undefined) updates.customSections = data.customSections || [];
     if (data.theme !== undefined) updates.theme = data.theme || 'default';
+    if (data.customTheme !== undefined) updates.customTheme = data.customTheme;
     if (data.photoURL !== undefined) updates.photoURL = data.photoURL;
     if (data.photoCID !== undefined) updates.photoCID = data.photoCID;
     updates.updatedAt = new Date();
 
-    // Use batch write to update both users and publicProfiles collections
+    // Use batch write with merge: true to update/create both users and publicProfiles collections
     const batch = writeBatch(db);
-    batch.update(userDocRef, updates);
-    batch.update(publicProfileRef, updates);
+    batch.set(userDocRef, updates, { merge: true });
+    batch.set(publicProfileRef, updates, { merge: true });
     
     await batch.commit();
   },
