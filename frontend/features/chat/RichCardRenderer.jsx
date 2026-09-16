@@ -191,7 +191,24 @@ export function RichCardRenderer({ content, onOpen, onShare, onBookmark, isBookm
       </div>
 
       {/* Actions */}
-      {actionButtons.length > 0 && (
+      {content.type === 'game' ? (
+        <div className="px-4 py-3 border-t border-white/10 bg-gradient-to-r from-violet-950/40 via-indigo-950/40 to-slate-950/40 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-[11px] font-bold text-emerald-400">Match Ready</span>
+          </div>
+          <button
+            onClick={() => onOpen?.(content)}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-indigo-500 hover:from-violet-500 hover:to-indigo-400 text-white font-bold text-xs shadow-lg shadow-indigo-600/40 active:scale-95 transition-all flex items-center gap-2 border border-indigo-400/30"
+          >
+            <span>⚔️ Join & Play</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : actionButtons.length > 0 ? (
         <div className="px-4 py-3 border-t border-white/10 bg-white/5 flex items-center gap-2">
           {actionButtons.map((action, idx) => (
             <button
@@ -214,7 +231,7 @@ export function RichCardRenderer({ content, onOpen, onShare, onBookmark, isBookm
             <MoreVertical className="h-3.5 w-3.5" />
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

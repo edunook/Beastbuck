@@ -1,42 +1,49 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { AlertCircle, X, Pin, MessageSquareReply, Settings, Flag } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertCircle, X, Pin, MessageSquareReply, Settings, Flag, Menu, Image } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { ChatService, SUPPORTED_REACTIONS } from '@services/firestore/chat';
 import { UsersService } from '@services/firestore/users';
+import { AIService } from '@services/ai/aiService';
 import { hasPermission } from '@shared/permissions/permissions';
 import { ChatHeader, VoiceCallOverlay, MemberListModal } from './ChatHeader';
+import { ChannelSidebar } from './ChannelSidebar';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
 import { VoiceRoomBar } from './VoiceRoomBar';
+import { ThreadDrawer } from './ThreadDrawer';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
-import { useFocusTrap } from '@frontend/hooks/useFocusTrap';
-import { ChatNotification, ChatNotificationCenter } from './ChatNotifications';
+import { ChatNotificationCenter } from './ChatNotifications';
 import { MediaHub } from './MediaHub';
 import { CelebrationContainer } from './Celebrations';
 import { MemberProfileDrawer } from './MemberProfileDrawer';
 import { ChatGamesModal } from './ChatGamesModal';
 
-
 const DEFAULT_ROOMS = [
-  { id: 'general', name: 'general', description: 'Realtime BeastBuck team messages', type: 'public', pinned: true },
-  { id: 'announcements', name: 'announcements', description: 'Official community announcements', type: 'announcement', pinned: true },
-  { id: 'ai-creations', name: 'ai-creations', description: 'Showcase & discuss AI models and prompts', type: 'public' },
-  { id: 'research-hub', name: 'research-hub', description: 'Collaborate on research papers and ideas', type: 'public' },
-  { id: 'project-showcase', name: 'project-showcase', description: 'Share project updates & achievements', type: 'public' },
-  { id: 'marketplace-hub', name: 'marketplace-hub', description: 'Discuss marketplace items & releases', type: 'public' },
-  { id: 'funflix-lounge', name: 'funflix-lounge', description: 'FunFlix movies & video discussions', type: 'public' },
+  { id: 'general', name: 'general', description: 'Realtime BeastBuck team messages', type: 'public', pinned: true, isDefault: true },
+  { id: 'announcements', name: 'announcements', description: 'Official community announcements from leadership', type: 'announcement', pinned: true, isDefault: true },
+  { id: 'ai-creations', name: 'ai-creations', description: 'Showcase & discuss AI models, agents, and prompts', type: 'public', isDefault: true },
+  { id: 'research-hub', name: 'research-hub', description: 'Collaborate on research papers and scientific ideas', type: 'public', isDefault: true },
+  { id: 'project-showcase', name: 'project-showcase', description: 'Share project updates & creative achievements', type: 'public', isDefault: true },
+  { id: 'marketplace-hub', name: 'marketplace-hub', description: 'Discuss marketplace items & releases', type: 'public', isDefault: true },
+  { id: 'funflix-lounge', name: 'funflix-lounge', description: 'FunFlix movies & interactive video discussions', type: 'public', isDefault: true },
 ];
 
 const ChatPage = React.memo(function ChatPage() {
   const { user, roleData } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const queryRoom = searchParams.get('room');
+
   const [rooms, setRooms] = useState(DEFAULT_ROOMS);
-  const [activeRoomId, setActiveRoomId] = useState('general');
+  const [activeRoomId, setActiveRoomIdState] = useState(queryRoom || 'general');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null);
+  const [activeThreadMessage, setActiveThreadMessage] = useState(null);
   const [members, setMembers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [voiceParticipants, setVoiceParticipants] = useState({});
@@ -45,18 +52,18 @@ const ChatPage = React.memo(function ChatPage() {
   const [showPinnedModal, setShowPinnedModal] = useState(false);
   const [pinnedMessages, setPinnedMessages] = useState([]);
   const [screenEffect, setScreenEffect] = useState(null);
-  const [showReplyPanel, setShowReplyPanel] = useState(false);
   const [memberPresence, setMemberPresence] = useState({});
   const [showMemberList, setShowMemberList] = useState(false);
   const [showPersonalization, setShowPersonalization] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMessage, setReportMessage] = useState(null);
+  const [reportReason, setReportReason] = useState('');
   const [celebration, setCelebration] = useState(null);
   const [celebrations, setCelebrations] = useState([]);
   const [showMediaHub, setShowMediaHub] = useState(false);
   const [showGamesModal, setShowGamesModal] = useState(false);
+  const [joinGameSessionId, setJoinGameSessionId] = useState(null);
   const [selectedDrawerMember, setSelectedDrawerMember] = useState(null);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [optimisticMessages, setOptimisticMessages] = useState([]);
   const [showAvatarProfile, setShowAvatarProfile] = useState(null);
@@ -70,26 +77,45 @@ const ChatPage = React.memo(function ChatPage() {
   const [mediaViewerSrc, setMediaViewerSrc] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
-  const [offlineQueue, setOfflineQueue] = useState(() => {
-    try {
-      const saved = localStorage.getItem('beastbuck-chat-offline-queue');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
   const messageListRef = useRef(null);
 
   const memberName = roleData?.displayName || roleData?.username || user?.displayName || 'Member';
   const memberRole = roleData?.role || 'Member';
-  const canManageAnnouncements = hasPermission(memberRole, 'canManageAnnouncements');
+  const canManageAnnouncements = hasPermission(memberRole, 'canManageAnnouncements') || memberRole === 'Leader' || memberRole === 'Admin';
   const canSendInRoom = !!user;
 
-  const sender = useMemo(() => ({
-    senderId: user?.uid,
-    senderName: memberName,
-    senderRole: memberRole,
-  }), [memberName, memberRole, user?.uid]);
+  // Change room and sync search params
+  const setActiveRoomId = useCallback((roomId) => {
+    setActiveRoomIdState(roomId);
+    setSearchParams({ room: roomId }, { replace: true });
+    setMobileSidebarOpen(false);
+    setError(null);
+    setReplyTarget(null);
+  }, [setSearchParams]);
+
+  // Sync with URL search params changes
+  useEffect(() => {
+    if (queryRoom && queryRoom !== activeRoomId) {
+      setActiveRoomIdState(queryRoom);
+      setError(null);
+      setReplyTarget(null);
+    }
+  }, [queryRoom, activeRoomId]);
+
+  // Subscribe to all rooms from Firestore
+  useEffect(() => {
+    const unsubscribe = ChatService.subscribeToRooms({
+      onRooms: (fetchedRooms) => {
+        if (fetchedRooms && fetchedRooms.length > 0) {
+          setRooms(fetchedRooms);
+        }
+      },
+      onError: (err) => {
+        console.warn('Channel list subscription note:', err);
+      },
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Load chat settings from Firestore on mount
   useEffect(() => {
@@ -103,8 +129,7 @@ const ChatPage = React.memo(function ChatPage() {
           setChatSettings(prev => ({ ...prev, ...snap.data() }));
         }
       } catch (err) {
-        if (err?.code !== 'permission-denied') {
-        }
+        // ignore permission errors for guest/restricted users
       }
     };
     loadSettings();
@@ -119,15 +144,15 @@ const ChatPage = React.memo(function ChatPage() {
       const { doc, setDoc } = await import('firebase/firestore');
       const { db } = await import('@services/firebase/config');
       await setDoc(doc(db, 'users', user.uid, 'chatSettings', 'preferences'), next, { merge: true });
-    } catch (err) {
-      if (err?.code !== 'permission-denied') {
-      }
+    } catch {
+      // ignore write errors
     }
   }, [chatSettings, user?.uid]);
 
   // Subscribe to messages for active chat room
   useEffect(() => {
     setLoading(true);
+    setError(null);
     const unsubscribe = ChatService.subscribeToRoomMessages(activeRoomId, {
       onMessages: (nextMessages) => {
         setMessages(nextMessages.filter(message => !message.archived));
@@ -135,13 +160,14 @@ const ChatPage = React.memo(function ChatPage() {
       },
       onError: (err) => {
         console.error('Message listener failed:', err);
-        setError('Failed to load messages');
+        setError('Failed to load messages for this channel.');
         setLoading(false);
       },
     });
     return () => unsubscribe();
   }, [activeRoomId]);
 
+  // Load assignable members
   useEffect(() => {
     let cancelled = false;
     async function loadMembers() {
@@ -156,42 +182,43 @@ const ChatPage = React.memo(function ChatPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Typing indicators for active room
   useEffect(() => {
     if (!user?.uid) return;
-    const roomId = 'general';
-    const unsubscribe = ChatService.subscribeToTyping(roomId, (users) => {
+    const unsubscribe = ChatService.subscribeToTyping(activeRoomId, (users) => {
       setTypingUsers(users.filter(u => u.userId !== user.uid));
     });
     return () => unsubscribe();
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId]);
 
+  // Voice room participants for active room
   useEffect(() => {
     if (!inVoiceRoom) return;
-    const roomId = 'general';
-    const unsubscribe = ChatService.subscribeToVoiceRoom(roomId, (participants) => {
+    const unsubscribe = ChatService.subscribeToVoiceRoom(activeRoomId, (participants) => {
       setVoiceParticipants(participants);
     });
     return () => unsubscribe();
-  }, [inVoiceRoom]);
+  }, [inVoiceRoom, activeRoomId]);
 
+  // Pinned messages for active room
   useEffect(() => {
     if (!showPinnedModal) return;
-    const roomId = 'general';
-    const unsubscribe = ChatService.subscribeToPinnedMessages(roomId, (messages) => {
+    const unsubscribe = ChatService.subscribeToPinnedMessages(activeRoomId, (messages) => {
       setPinnedMessages(messages);
     });
     return () => unsubscribe();
-  }, [showPinnedModal]);
+  }, [showPinnedModal, activeRoomId]);
 
+  // Leave voice room on unmount or room switch
   useEffect(() => {
     return () => {
       if (inVoiceRoom && user?.uid) {
-        const roomId = 'general';
-        ChatService.leaveVoiceRoom(roomId, user.uid);
+        ChatService.leaveVoiceRoom(activeRoomId, user.uid);
       }
     };
-  }, [inVoiceRoom, user?.uid]);
+  }, [inVoiceRoom, user?.uid, activeRoomId]);
 
+  // Screen effects timeout
   useEffect(() => {
     if (screenEffect) {
       const timer = setTimeout(() => setScreenEffect(null), 3000);
@@ -199,6 +226,7 @@ const ChatPage = React.memo(function ChatPage() {
     }
   }, [screenEffect]);
 
+  // Pinned modal escape listener
   useEffect(() => {
     if (!showPinnedModal) return;
     const handleKeyDown = (e) => { if (e.key === 'Escape') setShowPinnedModal(false); };
@@ -250,37 +278,23 @@ const ChatPage = React.memo(function ChatPage() {
     setCelebrations(prev => prev.filter(c => c.id !== id));
   }, []);
 
-  // Demo: trigger welcome notification
-  useEffect(() => {
-    if (notifications.length > 0) return;
-    const timer = setTimeout(() => {
-      addNotification({
-        type: 'system',
-        title: 'Welcome to BeastBuck Chat!',
-        message: 'Explore your conversations, join voice rooms, and connect with the community.',
-        badge: 'New',
-      });
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [notifications.length, addNotification]);
-
-  // Demo: trigger celebration on specific keywords
+  // Demo keyword celebrations
   useEffect(() => {
     if (!chatSettings.showCelebrations) return;
     const lastMessage = allMessages[allMessages.length - 1];
     if (!lastMessage?.text) return;
     const text = lastMessage.text.toLowerCase();
-    if (text.includes('congratulations') || text.includes('congrats') || text.includes('achievement')) {
+    if (text.includes('congratulations') || text.includes('congrats') || text.includes('achievement unlocked')) {
       addCelebration({
         type: 'achievement',
-        title: 'Achievement Unlocked!',
-        description: 'You discovered a secret keyword. Keep exploring!',
+        title: 'Achievement Celebration!',
+        description: 'Community milestone recognized. Keep up the high energy!',
         xp: 50,
       });
     }
   }, [allMessages, chatSettings.showCelebrations, addCelebration]);
 
-  // Keyboard shortcuts
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
@@ -297,19 +311,28 @@ const ChatPage = React.memo(function ChatPage() {
         setShowReportModal(false);
         setShowAvatarProfile(null);
         setShowMemberList(false);
+        setShowMediaHub(false);
+        setShowGamesModal(false);
+        setActiveThreadMessage(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const currentRoom = useMemo(() => {
+    return rooms.find(r => r.id === activeRoomId) || rooms[0] || { id: activeRoomId, name: activeRoomId, type: 'public' };
+  }, [rooms, activeRoomId]);
+
   const handlePullToRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await ChatService.syncRoom('general');
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+        setIsRefreshing(false);
+      }, 500);
     } catch {
-      // ignore sync errors
-    } finally {
       setIsRefreshing(false);
     }
   }, []);
@@ -318,8 +341,8 @@ const ChatPage = React.memo(function ChatPage() {
     setError(null);
     const payload = {
       id: `temp-${Date.now()}`,
-      roomId: 'general',
-      roomType: 'public',
+      roomId: activeRoomId,
+      roomType: currentRoom.type || 'public',
       senderId: user?.uid,
       senderName: memberName,
       senderRole: memberRole,
@@ -331,20 +354,9 @@ const ChatPage = React.memo(function ChatPage() {
       deleted: false,
       reactions: {},
       deliveryStatus: navigator.onLine ? 'sending' : 'queued',
-      attachments: attachments.map(a => ({ name: a.name, size: a.size, type: a.type, url: a.url })),
-      replyTo: replyTarget ? { messageId: replyTarget.messageId, senderName: replyTarget.senderName, text: replyTarget.text } : null,
+      attachments: attachments.map(a => ({ name: a.name, size: a.size, type: a.type, url: a.url, isVoiceNote: a.isVoiceNote })),
+      replyTo: replyTarget ? { messageId: replyTarget.messageId || replyTarget.id, senderName: replyTarget.senderName, text: replyTarget.text } : null,
     };
-
-    if (!navigator.onLine) {
-      setOfflineQueue(prev => {
-        const next = [...prev, payload];
-        localStorage.setItem('beastbuck-chat-offline-queue', JSON.stringify(next));
-        return next;
-      });
-      setOptimisticMessages(prev => [...prev, payload]);
-      setReplyTarget(null);
-      return;
-    }
 
     setOptimisticMessages(prev => [...prev, payload]);
     setReplyTarget(null);
@@ -353,22 +365,27 @@ const ChatPage = React.memo(function ChatPage() {
       const lowerText = text.toLowerCase();
       if (chatSettings.showCelebrations) {
         if (lowerText.includes('completed') || lowerText.includes('done') || lowerText.includes('finished')) setScreenEffect('confetti');
-        if (lowerText.includes('fire') || lowerText.includes('burn')) setScreenEffect('fire');
-        if (lowerText.includes('party') || lowerText.includes('celebrate')) setScreenEffect('party');
+        if (lowerText.includes('fire') || lowerText.includes('burn') || lowerText.includes('lit')) setScreenEffect('fire');
+        if (lowerText.includes('party') || lowerText.includes('celebrate') || lowerText.includes('cheers')) setScreenEffect('party');
       }
+
       await ChatService.sendMessage({
-        roomId: 'general',
-        roomType: 'public',
+        roomId: activeRoomId,
+        roomType: currentRoom.type || 'public',
         senderId: user?.uid,
         senderName: memberName,
         senderRole: memberRole,
         text,
-        replyTo: replyTarget,
+        replyTo: payload.replyTo,
         mentions,
+        attachments: payload.attachments,
         members,
       });
+
       setOptimisticMessages(prev => prev.filter(m => m.id !== payload.id));
-      ChatService.setTypingStatus('general', user.uid, memberName, false);
+      if (user?.uid) {
+        ChatService.setTypingStatus(activeRoomId, user.uid, memberName, false);
+      }
     } catch (err) {
       console.error('Channel message send failed:', err);
       const message_text = (err?.message || '').toLowerCase();
@@ -376,14 +393,45 @@ const ChatPage = React.memo(function ChatPage() {
         setError('You do not have permission to send messages. Join as an approved Member to unlock full chat features.');
         setOptimisticMessages(prev => prev.filter(m => m.id !== payload.id));
       } else {
-        setOfflineQueue(prev => {
-          const next = [...prev, payload];
-          localStorage.setItem('beastbuck-chat-offline-queue', JSON.stringify(next));
-          return next;
-        });
         setOptimisticMessages(prev => prev.map(m => m.id === payload.id ? { ...m, deliveryStatus: 'queued' } : m));
-        setError('Message queued. Will send when back online.');
+        setError('Message queued. Will retry when connected.');
       }
+    }
+  };
+
+  const handleCreateChannel = async ({ name, description, type }) => {
+    try {
+      const newRoomId = await ChatService.createChannel({
+        name,
+        description: description || '',
+        type: type || 'public',
+        createdBy: user?.uid || 'system',
+      });
+      setActiveRoomId(newRoomId);
+      addNotification({
+        type: 'system',
+        title: 'Channel Created!',
+        message: `#${newRoomId} is now ready for discussions.`,
+      });
+    } catch (err) {
+      console.error('Channel creation failed:', err);
+      setError(err?.message || 'Failed to create channel.');
+    }
+  };
+
+  const handleArchiveChannel = async (roomId) => {
+    try {
+      await ChatService.archiveChannel(roomId);
+      if (activeRoomId === roomId) {
+        setActiveRoomId('general');
+      }
+      addNotification({
+        type: 'system',
+        title: 'Channel Archived',
+        message: `#${roomId} has been archived.`,
+      });
+    } catch (err) {
+      console.error('Failed to archive channel:', err);
     }
   };
 
@@ -403,55 +451,61 @@ const ChatPage = React.memo(function ChatPage() {
   const handleJoinVoiceRoom = useCallback(async () => {
     if (!user?.uid) return;
     try {
-      await ChatService.joinVoiceRoom('general', user.uid);
+      await ChatService.joinVoiceRoom(activeRoomId, user.uid, memberName);
       setInVoiceRoom(true);
+      addNotification({
+        type: 'system',
+        title: 'Voice Room Joined',
+        message: `You joined voice chat for #${currentRoom.name}.`,
+      });
     } catch (error) {
       console.error('Failed to join voice room:', error);
       setError('Failed to join voice room');
     }
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId, memberName, currentRoom.name, addNotification]);
 
   const handleLeaveVoiceRoom = useCallback(async () => {
     if (!user?.uid) return;
     try {
-      await ChatService.leaveVoiceRoom('general', user.uid);
+      await ChatService.leaveVoiceRoom(activeRoomId, user.uid);
       setInVoiceRoom(false);
       setVoiceParticipants({});
       setIsMuted(false);
     } catch (error) {
       console.error('Failed to leave voice room:', error);
     }
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId]);
 
   const handleToggleMute = useCallback(() => {
-    setIsMuted(prev => !prev);
-  }, []);
+    setIsMuted(prev => {
+      const next = !prev;
+      if (user?.uid) {
+        ChatService.toggleVoiceMute(activeRoomId, user.uid, next);
+      }
+      return next;
+    });
+  }, [user?.uid, activeRoomId]);
 
   const handleTyping = useCallback((isTyping) => {
     if (!user?.uid || !memberName) return;
     try {
-      ChatService.setTypingStatus('general', user.uid, memberName, isTyping);
-    } catch (error) {
+      ChatService.setTypingStatus(activeRoomId, user.uid, memberName, isTyping);
+    } catch {
       // Ignore typing indicator errors
     }
-  }, [user?.uid, memberName]);
+  }, [user?.uid, memberName, activeRoomId]);
 
   const handleFileSelect = useCallback((files) => {
-    // Files are already processed in MessageInput; parent can inspect or upload here
     if (!files?.length) return;
-  }, []);
-
-  const handleVoiceRecord = useCallback(() => {
-    // Placeholder for future voice recording implementation
   }, []);
 
   const handleReply = useCallback((message) => {
     setReplyTarget(message);
+    document.getElementById('global-chat-message')?.focus();
   }, []);
 
-  const handleCloseReplyPanel = useCallback(() => {
-    setShowReplyPanel(false);
-    setReplyTarget(null);
+  const handleOpenThread = useCallback((message) => {
+    setActiveThreadMessage(message);
   }, []);
 
   const handleToggleReaction = useCallback(async (messageTarget, reactionKey, isUserActive) => {
@@ -460,7 +514,7 @@ const ChatPage = React.memo(function ChatPage() {
     if (!msgId) return;
     try {
       await ChatService.toggleReaction({
-        roomId: 'general',
+        roomId: activeRoomId,
         messageId: msgId,
         reactionKey,
         userId: user.uid,
@@ -469,7 +523,7 @@ const ChatPage = React.memo(function ChatPage() {
     } catch (error) {
       console.error('Failed to toggle reaction:', error);
     }
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId]);
 
   const handleTogglePin = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
@@ -477,46 +531,51 @@ const ChatPage = React.memo(function ChatPage() {
     const isPinned = typeof messageTarget === 'object' ? !messageTarget?.pinned : true;
     if (!msgId) return;
     try {
-      await ChatService.pinMessage('general', msgId, isPinned);
+      await ChatService.pinMessage(activeRoomId, msgId, isPinned);
+      addNotification({
+        type: 'system',
+        title: isPinned ? 'Message Pinned' : 'Message Unpinned',
+        message: isPinned ? 'Pinned message to channel header.' : 'Removed pin.',
+      });
     } catch (error) {
       console.error('Failed to toggle pin:', error);
     }
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId, addNotification]);
 
   const handleArchiveAnnouncement = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId) return;
     try {
-      await ChatService.updateAnnouncement({ roomId: 'general', messageId: msgId, archived: true });
+      await ChatService.updateAnnouncement({ roomId: activeRoomId, messageId: msgId, archived: true });
     } catch (error) {
       console.error('Failed to archive announcement:', error);
     }
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId]);
 
   const handleEdit = useCallback(async (messageTarget, newText) => {
     if (!user?.uid) return;
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId || !newText?.trim()) return;
     try {
-      await ChatService.editMessage('general', msgId, newText.trim());
+      await ChatService.editMessage(activeRoomId, msgId, newText.trim());
     } catch (error) {
       console.error('Failed to edit message:', error);
       setError('Failed to edit message');
     }
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId]);
 
   const handleDelete = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId) return;
     try {
-      await ChatService.deleteMessage('general', msgId);
+      await ChatService.deleteMessage(activeRoomId, msgId);
     } catch (error) {
       console.error('Failed to delete message:', error);
       setError('Failed to delete message');
     }
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId]);
 
   const handleBookmark = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
@@ -524,48 +583,81 @@ const ChatPage = React.memo(function ChatPage() {
     const isBookmarked = typeof messageTarget === 'object' ? !messageTarget?.bookmarked : true;
     if (!msgId) return;
     try {
-      await ChatService.bookmarkMessage('general', msgId, isBookmarked);
+      await ChatService.bookmarkMessage(activeRoomId, msgId, isBookmarked);
+      addNotification({
+        type: 'system',
+        title: isBookmarked ? 'Message Bookmarked' : 'Bookmark Removed',
+        message: isBookmarked ? 'Saved to your bookmarks.' : 'Removed from bookmarks.',
+      });
     } catch (error) {
       console.error('Failed to bookmark message:', error);
     }
-  }, [user?.uid]);
+  }, [user?.uid, activeRoomId, addNotification]);
 
-  const handleReport = useCallback(async (messageTarget, reason) => {
-    if (!user?.uid) return;
-    const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
-    if (!msgId) return;
+  const handleReportPrompt = useCallback((messageTarget) => {
+    setReportMessage(messageTarget);
+    setReportReason('');
+    setShowReportModal(true);
+  }, []);
+
+  const handleReportSubmit = useCallback(async () => {
+    if (!user?.uid || !reportMessage) return;
     try {
-      // Log report cleanly
+      const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
+      const { db } = await import('@services/firebase/config');
+      await addDoc(collection(db, 'chatReports'), {
+        messageId: reportMessage.id,
+        messageText: reportMessage.text || '',
+        roomId: activeRoomId,
+        reportedBy: user.uid,
+        reporterName: memberName,
+        reason: reportReason.trim() || 'Flagged by user for moderation review',
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+      addNotification({
+        type: 'system',
+        title: 'Report Submitted',
+        message: 'Thank you. Our moderation team will review this message.',
+      });
+      setShowReportModal(false);
+      setReportMessage(null);
     } catch (error) {
       console.error('Failed to report message:', error);
-      setError('Failed to report message');
+      setShowReportModal(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, reportMessage, activeRoomId, memberName, reportReason, addNotification]);
 
   const handleAIAction = useCallback(async (message, actionId) => {
-    if (!user?.uid) return;
-    
-    const actions = {
-      rewrite: { prefix: 'Rewritten:', text: message.text.split(' ').reverse().join(' ') + ' (improved)' },
-      translate: { prefix: 'Translated:', text: `[Translated] ${message.text}` },
-      grammar: { prefix: 'Corrected:', text: message.text.replace(/[.,!?]$/g, match => match.toUpperCase()) },
-      summarize: { prefix: 'Summary:', text: message.text.split(' ').slice(0, 10).join(' ') + '...' },
-      reply: { prefix: 'Suggested Reply:', text: 'Thanks for sharing! This is a helpful AI-generated response.' },
-      explain: { prefix: 'Explanation:', text: `This message says: "${message.text}". It appears to be a regular chat message.` },
-      brainstorm: { prefix: 'Ideas:', text: 'Here are some creative ideas based on your message: 1) Expand on the topic 2) Add examples 3) Include references' },
-      enhance: { prefix: 'Enhanced:', text: message.text + ' [AI-enhanced with better structure and clarity]' },
-    };
+    if (!user?.uid || !message?.text) return;
+    try {
+      const prompts = {
+        explain: `Explain this message in clear, concise terms for a team member:\n\n"${message.text}"`,
+        summarize: `Summarize the following chat message in 1-2 clear bullet points:\n\n"${message.text}"`,
+        rewrite: `Rewrite the following message with professional clarity and friendly tone:\n\n"${message.text}"`,
+        reply: `Suggest a thoughtful, constructive reply to this message:\n\n"${message.text}"`,
+        translate: `Translate this message to English (or if already English, provide Spanish & French translations):\n\n"${message.text}"`,
+        brainstorm: `Brainstorm 3 creative ideas or action steps inspired by this message:\n\n"${message.text}"`,
+        enhance: `Enhance this message with better structure, engaging formatting, and relevant emojis:\n\n"${message.text}"`,
+      };
+      const prompt = prompts[actionId] || `Help with this message:\n\n"${message.text}"`;
+      const aiResponse = await AIService.chat({
+        mode: 'general',
+        messages: [{ role: 'user', content: prompt }]
+      });
 
-    const action = actions[actionId];
-    if (!action) return { error: 'Unknown action' };
+      addNotification({
+        type: 'ai',
+        title: `AI ${actionId.charAt(0).toUpperCase() + actionId.slice(1)}`,
+        message: aiResponse.slice(0, 180) + (aiResponse.length > 180 ? '...' : ''),
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
-    
-    return {
-      text: `${action.prefix}\n\n${action.text}`,
-      actionId,
-    };
-  }, [user?.uid]);
+      return aiResponse;
+    } catch (err) {
+      console.error('AI Action failed:', err);
+      return 'AI assistant is currently optimizing. Please try again shortly.';
+    }
+  }, [user?.uid, addNotification]);
 
   const handleMediaOpen = useCallback((url) => {
     setMediaViewerSrc(url);
@@ -577,6 +669,16 @@ const ChatPage = React.memo(function ChatPage() {
     setMediaViewerSrc(null);
   }, []);
 
+  const handleOpenSharedContent = useCallback((content) => {
+    if (content?.type === 'game') {
+      const sessId = content.sessionId || content.gameSessionId || null;
+      setJoinGameSessionId(sessId);
+      setShowGamesModal(true);
+    } else if (content?.url) {
+      handleMediaOpen(content.url);
+    }
+  }, [handleMediaOpen]);
+
   const voiceParticipantCount = Object.keys(voiceParticipants).length;
 
   const getFontSizeClass = () => {
@@ -587,18 +689,45 @@ const ChatPage = React.memo(function ChatPage() {
     }
   };
 
-  const getMessageStyle = () => {
-    const base = chatSettings.compactMode ? 'p-2 sm:p-3' : 'p-3 sm:p-4';
-    return base;
-  };
-
-  const currentRoom = useMemo(() => {
-    return rooms.find(r => r.id === activeRoomId) || rooms[0] || { name: activeRoomId, type: 'public' };
-  }, [rooms, activeRoomId]);
-
   return (
     <div className={`flex h-[calc(100dvh-4rem-5rem)] md:h-[calc(100dvh-4rem)] w-full flex-col p-0 md:p-2 overflow-hidden ${getFontSizeClass()} ${chatSettings.reducedMotion ? 'reduce-motion' : ''}`}>
-      <section className="mx-auto flex min-h-0 w-full max-w-[1200px] flex-1 flex-col overflow-hidden rounded-none md:rounded-2xl border-0 md:border border-white/15 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 shadow-2xl backdrop-blur-2xl">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden rounded-none md:rounded-2xl border-0 md:border border-white/15 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 shadow-2xl backdrop-blur-2xl">
+        
+        {/* Desktop Channel Sidebar */}
+        <div className="hidden md:flex h-full w-72 shrink-0 border-r border-white/10">
+          <ChannelSidebar
+            rooms={rooms}
+            activeRoomId={activeRoomId}
+            canManageChannels={canManageAnnouncements}
+            onSelectRoom={setActiveRoomId}
+            onCreateChannel={handleCreateChannel}
+            onArchiveChannel={handleArchiveChannel}
+            unreadCounts={{}}
+            memberPresence={memberPresence}
+          />
+        </div>
+
+        {/* Mobile Channel Sidebar Drawer Overlay */}
+        {mobileSidebarOpen && (
+          <div className="fixed inset-0 z-50 flex md:hidden animate-fade-in">
+            <div 
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setMobileSidebarOpen(false)} 
+            />
+            <div className="relative h-full w-4/5 max-w-xs bg-slate-950 shadow-2xl z-10 border-r border-white/15 animate-slide-in-right">
+              <ChannelSidebar
+                rooms={rooms}
+                activeRoomId={activeRoomId}
+                canManageChannels={canManageAnnouncements}
+                onSelectRoom={setActiveRoomId}
+                onCreateChannel={handleCreateChannel}
+                onArchiveChannel={handleArchiveChannel}
+                unreadCounts={{}}
+                memberPresence={memberPresence}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Main Conversation Area */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -607,7 +736,9 @@ const ChatPage = React.memo(function ChatPage() {
             memberName={memberName}
             memberRole={memberRole}
             canSend={canSendInRoom}
+            onToggleSidebar={() => setMobileSidebarOpen(prev => !prev)}
             onShowPinned={() => setShowPinnedModal(true)}
+            onShowMedia={() => setShowMediaHub(true)}
             onShowGames={() => setShowGamesModal(true)}
             onJoinVoice={handleJoinVoiceRoom}
             onLeaveVoice={handleLeaveVoiceRoom}
@@ -622,7 +753,10 @@ const ChatPage = React.memo(function ChatPage() {
             {error && (
               <div className="mx-2 mt-2 md:mx-3 flex items-start gap-2 rounded-xl border border-status-danger/20 bg-status-danger/10 px-3 py-2 text-xs sm:text-sm text-status-danger animate-fade-in-up">
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                <span>{error}</span>
+                <span className="flex-1">{error}</span>
+                <button onClick={() => setError(null)} className="p-0.5 text-status-danger hover:text-white">
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             )}
 
@@ -657,11 +791,12 @@ const ChatPage = React.memo(function ChatPage() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onBookmark={handleBookmark}
-              onReport={handleReport}
+              onReport={handleReportPrompt}
               onAIAction={handleAIAction}
               senderPresence={memberPresence}
               onShowProfile={(senderId, senderName) => setSelectedDrawerMember({ id: senderId, displayName: senderName, role: 'Member' })}
               onMediaOpen={handleMediaOpen}
+              onOpenSharedContent={handleOpenSharedContent}
               compact={chatSettings.compactMode}
               fontSize={chatSettings.fontSize}
               reducedMotion={chatSettings.reducedMotion}
@@ -685,7 +820,6 @@ const ChatPage = React.memo(function ChatPage() {
               onCancelReply={() => setReplyTarget(null)}
               members={members}
               onFileSelect={handleFileSelect}
-              onVoiceRecord={handleVoiceRecord}
               showSmartReplies={canSendInRoom}
               compact={chatSettings.compactMode}
               fontSize={chatSettings.fontSize}
@@ -715,7 +849,7 @@ const ChatPage = React.memo(function ChatPage() {
             )}
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Screen Effect Overlay */}
       {screenEffect && chatSettings.showCelebrations && (
@@ -726,21 +860,21 @@ const ChatPage = React.memo(function ChatPage() {
         </div>
       )}
 
-      {/* Full-screen Media Viewer */}
+      {/* Full-screen Media Viewer Lightbox */}
       {showMediaViewer && mediaViewerSrc && (
-        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center animate-fade-in" onClick={handleMediaClose}>
-          <button onClick={handleMediaClose} className="absolute top-4 right-4 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition z-50" aria-label="Close media">
-            <X className="h-5 w-5 text-white" />
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center animate-fade-in p-4" onClick={handleMediaClose}>
+          <button onClick={handleMediaClose} className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 transition z-50" aria-label="Close media">
+            <X className="h-6 w-6 text-white" />
           </button>
           {mediaViewerSrc.match(/\.(mp4|webm|mov)$/i) ? (
-            <video src={mediaViewerSrc} controls autoPlay className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl" onClick={(e) => e.stopPropagation()} />
+            <video src={mediaViewerSrc} controls autoPlay className="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
           ) : (
-            <img src={mediaViewerSrc} alt="Full screen media" className="max-h-[90vh] max-w-[90vw] object-contain" onClick={(e) => e.stopPropagation()} />
+            <img src={mediaViewerSrc} alt="Full screen preview" className="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl" onClick={(e) => e.stopPropagation()} />
           )}
         </div>
       )}
 
-      {/* Media Hub */}
+      {/* Media & Files Hub Modal */}
       {showMediaHub && (
         <MediaHub
           messages={allMessages}
@@ -752,7 +886,7 @@ const ChatPage = React.memo(function ChatPage() {
         />
       )}
 
-      {/* Notifications */}
+      {/* Notifications Center */}
       <ChatNotificationCenter
         notifications={notifications}
         onClose={(id) => dismissNotification(id)}
@@ -765,19 +899,18 @@ const ChatPage = React.memo(function ChatPage() {
       <CelebrationContainer
         celebrations={celebrations}
         onClose={(id) => dismissCelebration(id)}
-        onClaim={(celebration) => {
-        }}
+        onClaim={() => {}}
       />
 
       {/* Pinned Messages Modal */}
       {showPinnedModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setShowPinnedModal(false)}>
-          <Card className="max-w-2xl w-full max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Pinned messages">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowPinnedModal(false)}>
+          <Card className="max-w-2xl w-full max-h-[80vh] overflow-hidden rounded-2xl border-white/15 bg-slate-950 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Pinned messages">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between text-white">
                 <div className="flex items-center gap-2">
-                  <Pin className="h-5 w-5 text-accent" />
-                  Pinned Messages
+                  <Pin className="h-5 w-5 text-amber-400" />
+                  <span>Pinned Messages in #{currentRoom.name}</span>
                 </div>
                 <button onClick={() => setShowPinnedModal(false)} className="p-1 rounded-lg hover:bg-white/10 transition active:scale-95" aria-label="Close pinned messages">
                   <X className="h-5 w-5" />
@@ -787,19 +920,19 @@ const ChatPage = React.memo(function ChatPage() {
             <CardContent className="overflow-y-auto max-h-[60vh] space-y-3 custom-scrollbar">
               {pinnedMessages.length === 0 ? (
                 <div className="py-12 text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-white/5">
-                    <Pin className="h-6 w-6 text-text-muted" />
+                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                    <Pin className="h-6 w-6 text-white/40" />
                   </div>
-                  <p className="text-sm text-text-muted">No pinned messages in this channel yet</p>
+                  <p className="text-sm text-white/60">No pinned messages in this channel yet</p>
                 </div>
               ) : (
                 pinnedMessages.map((msg) => (
-                  <div key={msg.id} className="p-3 rounded-lg bg-white/5 border border-white/10 hover:border-border transition">
+                  <div key={msg.id} className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/40 transition">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-accent text-sm">{msg.senderName}</span>
-                      <span className="text-xs text-text-muted">{msg.createdAt?.toDate?.()?.toLocaleString() || 'Unknown'}</span>
+                      <span className="font-bold text-indigo-400 text-sm">{msg.senderName}</span>
+                      <span className="text-xs text-white/40">{msg.createdAt?.toDate?.()?.toLocaleString() || 'Recent'}</span>
                     </div>
-                    <p className="text-sm text-white">{msg.text}</p>
+                    <p className="text-sm text-white leading-relaxed">{msg.text}</p>
                   </div>
                 ))
               )}
@@ -808,40 +941,28 @@ const ChatPage = React.memo(function ChatPage() {
         </div>
       )}
 
-      {/* Reply Thread Slide-out Panel */}
-      {showReplyPanel && (
-        <div className="fixed right-0 top-0 h-full w-full max-w-md z-50 bg-surface border-l border-border shadow-2xl animate-slide-in">
-          <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h3 className="font-bold text-white">Thread</h3>
-              <button onClick={handleCloseReplyPanel} className="p-1 rounded-lg hover:bg-white/10 transition active:scale-95" aria-label="Close thread">
-                <X className="h-5 w-5 text-text-muted" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="text-center py-12 text-text-muted">
-                <MessageSquareReply className="mx-auto mb-3 h-10 w-10 text-text-muted/50" />
-                <p className="text-sm font-medium">Thread replies will appear here</p>
-                <p className="text-xs mt-2 text-text-muted/70">Replies are being loaded...</p>
-              </div>
-            </div>
-            <div className="border-t border-border p-4">
-              <MessageInput
-                disabled={!user}
-                placeholder="Reply to thread..."
-                onSend={handleSend}
-                onTyping={handleTyping}
-                replyTo={replyTarget}
-                onCancelReply={() => { setReplyTarget(null); handleCloseReplyPanel(); }}
-                members={members}
-              />
-            </div>
-          </div>
-        </div>
+      {/* Thread Drawer */}
+      {activeThreadMessage && (
+        <ThreadDrawer
+          message={activeThreadMessage}
+          onClose={() => setActiveThreadMessage(null)}
+          onReply={(msg, replyText) => {
+            handleSend(replyText, [], []);
+          }}
+          currentUserId={user?.uid}
+        />
       )}
 
       {/* Voice Call Overlay */}
-      {inVoiceRoom && <VoiceCallOverlay roomName="general" participants={voiceParticipants} isMuted={isMuted} onToggleMute={handleToggleMute} onLeave={handleLeaveVoiceRoom} />}
+      {inVoiceRoom && (
+        <VoiceCallOverlay 
+          roomName={currentRoom.name} 
+          participants={voiceParticipants} 
+          isMuted={isMuted} 
+          onToggleMute={handleToggleMute} 
+          onLeave={handleLeaveVoiceRoom} 
+        />
+      )}
 
       {/* Member List Modal */}
       {showMemberList && <MemberListModal members={members} onClose={() => setShowMemberList(false)} />}
@@ -852,7 +973,7 @@ const ChatPage = React.memo(function ChatPage() {
           member={showAvatarProfile || selectedDrawerMember}
           currentUserId={user?.uid}
           onClose={() => { setShowAvatarProfile(null); setSelectedDrawerMember(null); }}
-          onMessage={(m) => { setReplyTarget(null); document.getElementById('global-chat-message')?.focus(); }}
+          onMessage={() => { setReplyTarget(null); document.getElementById('global-chat-message')?.focus(); }}
           onMention={(name) => {
             const input = document.getElementById('global-chat-message');
             if (input) {
@@ -866,14 +987,19 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Chat Games Modal */}
       {showGamesModal && (
         <ChatGamesModal
-          onClose={() => setShowGamesModal(false)}
+          onClose={() => {
+            setShowGamesModal(false);
+            setJoinGameSessionId(null);
+          }}
           members={members}
           currentUser={user}
+          activeRoomId={activeRoomId}
+          joinSessionId={joinGameSessionId}
           onSendGameCard={async (gameCardData) => {
             try {
               await ChatService.sendMessage({
                 roomId: activeRoomId,
-                roomType: currentRoom.type,
+                roomType: currentRoom.type || 'public',
                 senderId: user?.uid,
                 senderName: memberName,
                 senderRole: memberRole,
@@ -883,6 +1009,7 @@ const ChatPage = React.memo(function ChatPage() {
                   title: gameCardData.title,
                   description: gameCardData.description,
                   gameId: gameCardData.gameId,
+                  sessionId: gameCardData.sessionId,
                   author: memberName,
                   icon: '🎮',
                 }
@@ -896,12 +1023,12 @@ const ChatPage = React.memo(function ChatPage() {
 
       {/* Personalization Modal */}
       {showPersonalization && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setShowPersonalization(false)}>
-          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Chat settings">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowPersonalization(false)}>
+          <Card className="w-full max-w-sm rounded-2xl border-white/15 bg-slate-950 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Chat settings">
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
+              <CardTitle className="flex items-center justify-between text-white">
                 <div className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-accent" />
+                  <Settings className="h-5 w-5 text-indigo-400" />
                   Chat Settings
                 </div>
                 <button onClick={() => setShowPersonalization(false)} className="p-1 rounded-lg hover:bg-white/10 transition" aria-label="Close settings">
@@ -955,8 +1082,8 @@ const ChatPage = React.memo(function ChatPage() {
                       onClick={() => updateChatSettings({ fontSize: size })}
                       className={`flex-1 py-2 rounded-lg border text-xs font-bold transition ${
                         chatSettings.fontSize === size
-                          ? 'border-accent/50 bg-accent/15 text-white'
-                          : 'border-border bg-white/5 text-text-muted hover:text-white'
+                          ? 'border-indigo-500 bg-indigo-500/20 text-white'
+                          : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
                       }`}
                     >
                       {size === 'small' ? 'A-' : size === 'large' ? 'A+' : 'A'}
@@ -964,7 +1091,7 @@ const ChatPage = React.memo(function ChatPage() {
                   ))}
                 </div>
               </div>
-              <p className="text-[10px] text-text-muted text-center pt-2">Preferences are stored in Firestore.</p>
+              <p className="text-[10px] text-white/40 text-center pt-2">Preferences synced with your BeastBuck profile.</p>
             </CardContent>
           </Card>
         </div>
@@ -972,24 +1099,30 @@ const ChatPage = React.memo(function ChatPage() {
 
       {/* Report Modal */}
       {showReportModal && reportMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in" onClick={() => setShowReportModal(false)}>
-          <Card className="w-full max-w-sm" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report message">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={() => setShowReportModal(false)}>
+          <Card className="w-full max-w-sm rounded-2xl border-white/15 bg-slate-950 shadow-2xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report message">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Flag className="h-5 w-5 text-status-warning" />
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Flag className="h-5 w-5 text-amber-400" />
                 Report Message
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-text-muted">Report this message to moderators for review.</p>
+              <p className="text-xs text-white/70">Report this message to BeastBuck moderators for review.</p>
               <textarea
-                placeholder="Describe the issue..."
-                className="w-full rounded-xl border border-border bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-accent/60"
+                value={reportReason}
+                onChange={(e) => setReportReason(e.target.value)}
+                placeholder="Describe the issue or violation..."
+                className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs sm:text-sm text-white outline-none focus:border-indigo-500/60"
                 rows={3}
               />
               <div className="flex gap-2">
-                <Button onClick={() => setShowReportModal(false)} className="flex-1 bg-status-danger hover:bg-status-danger/90">Report</Button>
-                <Button onClick={() => setShowReportModal(false)} variant="outline" className="flex-1">Cancel</Button>
+                <Button onClick={handleReportSubmit} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold text-xs">
+                  Submit Report
+                </Button>
+                <Button onClick={() => setShowReportModal(false)} variant="outline" className="flex-1 border-white/20 text-xs">
+                  Cancel
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -997,31 +1130,31 @@ const ChatPage = React.memo(function ChatPage() {
       )}
 
       <style>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
         }
-        .animate-slide-in {
-          animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
+        .animate-slide-in-right {
+          animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
         }
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
         .animate-fade-in {
-          animation: fadeIn 0.4s ease-out both;
+          animation: fadeIn 0.3s ease-out both;
         }
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px) scale(0.95); }
+          from { opacity: 0; transform: translateY(20px) scale(0.97); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .animate-fade-in-up {
-          animation: fadeInUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+          animation: fadeInUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
         }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 10px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); }
         .chat-toggle-switch {
           position: relative;
           width: 44px;
@@ -1034,9 +1167,9 @@ const ChatPage = React.memo(function ChatPage() {
           padding: 0;
         }
         .chat-toggle-switch.active {
-          background: linear-gradient(135deg, #8338ec, #ff006e);
-          box-shadow: 0 0 15px rgba(255, 0, 110, 0.4);
-          border-color: rgba(255, 0, 110, 0.5);
+          background: linear-gradient(135deg, #6366f1, #a855f7);
+          box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+          border-color: rgba(99, 102, 241, 0.5);
         }
         .chat-toggle-thumb {
           position: absolute;
@@ -1050,7 +1183,7 @@ const ChatPage = React.memo(function ChatPage() {
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
         .chat-toggle-switch.active .chat-toggle-thumb {
-          left: 24px;
+          left: 22px;
         }
         .reduce-motion *,
         .reduce-motion *::before,
@@ -1058,192 +1191,6 @@ const ChatPage = React.memo(function ChatPage() {
           animation-duration: 0.01ms !important;
           animation-iteration-count: 1 !important;
           transition-duration: 0.01ms !important;
-        }
-
-        /* Modern Glassmorphism & Effects */
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-        @keyframes slideInRight {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-        @keyframes slideInUp {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.9); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        @keyframes pulse-ring {
-          0% { transform: scale(0.8); opacity: 0.5; }
-          100% { transform: scale(1.2); opacity: 0; }
-        }
-        @keyframes gradient-shift {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        @keyframes message-in {
-          from { opacity: 0; transform: translateY(20px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes typing-dot {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-          30% { transform: translateY(-4px); opacity: 1; }
-        }
-
-        .animate-slide-in-right {
-          animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
-        }
-        .animate-slide-in-up {
-          animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-        }
-        .animate-scale-in {
-          animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-        }
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
-        }
-        .animate-pulse-ring {
-          animation: pulse-ring 2s ease-out infinite;
-        }
-        .animate-message-in {
-          animation: message-in 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-        }
-        .animate-gradient {
-          background-size: 200% 200%;
-          animation: gradient-shift 3s ease infinite;
-        }
-        .animate-typing-dot {
-          animation: typing-dot 1.4s ease-in-out infinite;
-        }
-
-        /* Skeleton Shimmer */
-        .skeleton-shimmer {
-          background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-        }
-
-        /* Custom Scrollbar */
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
-
-        /* Toggle Switch */
-        .chat-toggle-switch {
-          position: relative;
-          width: 44px;
-          height: 24px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          cursor: pointer;
-          padding: 0;
-        }
-        .chat-toggle-switch.active {
-          background: linear-gradient(135deg, #8338ec, #ff006e);
-          box-shadow: 0 0 20px rgba(255, 0, 110, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
-          border-color: rgba(255, 0, 110, 0.5);
-        }
-        .chat-toggle-thumb {
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          width: 18px;
-          height: 18px;
-          background: white;
-          border-radius: 50%;
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(255,255,255,0.1);
-        }
-        .chat-toggle-switch.active .chat-toggle-thumb {
-          left: 24px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 2px rgba(255,255,255,0.2);
-        }
-
-        /* Glassmorphism */
-        .glass {
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .glass-strong {
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(30px);
-          -webkit-backdrop-filter: blur(30px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        /* Message Bubble Enhancements */
-        .message-bubble {
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .message-bubble:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        /* Button Ripple Effect */
-        .btn-ripple {
-          position: relative;
-          overflow: hidden;
-        }
-        .btn-ripple::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
-          opacity: 0;
-          transform: scale(0);
-          transition: transform 0.5s, opacity 0.3s;
-        }
-        .btn-ripple:active::after {
-          transform: scale(2);
-          opacity: 1;
-          transition: transform 0s, opacity 0s;
-        }
-
-        /* Typing Indicator */
-        .typing-indicator {
-          display: flex;
-          gap: 4px;
-          align-items: center;
-        }
-        .typing-indicator span {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.4);
-          animation: typing-dot 1.4s ease-in-out infinite;
-        }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-        /* Reduced Motion */
-        .reduce-motion *,
-        .reduce-motion *::before,
-        .reduce-motion *::after {
-          animation-duration: 0.01ms !important;
-          animation-iteration-count: 1 !important;
-          transition-duration: 0.01ms !important;
-        }
-
-        /* Notification Progress Bar */
-        @keyframes shrink {
-          from { width: 100%; }
-          to { width: 0%; }
         }
       `}</style>
     </div>

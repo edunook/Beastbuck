@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   MoreVertical, MessageSquareReply, Pin, Trash2, Bookmark, BookmarkCheck, 
-  Edit3, Check, X, Paperclip, Flag
+  Edit3, Check, X, Paperclip, Flag, Play, Pause, Wand2, Sparkles, Volume2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SUPPORTED_REACTIONS } from '@services/firestore/chat';
@@ -61,6 +61,93 @@ function renderTextWithMentions(text, mentions) {
   });
 }
 
+function AudioVoicePlayer({ src, name, size, isOwnMessage }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef(null);
+
+  const togglePlay = (e) => {
+    e.stopPropagation();
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(err => {
+        console.warn('Audio play error:', err);
+      });
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) setDuration(audioRef.current.duration);
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+  };
+
+  const formatSeconds = (s) => {
+    if (!s || isNaN(s) || s === Infinity) return '0:00';
+    const mins = Math.floor(s / 60);
+    const secs = Math.floor(s % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  return (
+    <div className={`mt-2 flex items-center gap-3 rounded-2xl p-2.5 sm:p-3 border backdrop-blur-xl max-w-xs transition-all ${
+      isOwnMessage 
+        ? 'bg-white/15 border-white/20 text-white shadow-lg' 
+        : 'bg-black/50 border-white/15 text-white shadow-md'
+    }`}>
+      <audio 
+        ref={audioRef} 
+        src={src} 
+        onTimeUpdate={handleTimeUpdate} 
+        onLoadedMetadata={handleLoadedMetadata} 
+        onEnded={handleEnded} 
+        preload="metadata"
+      />
+      <button
+        type="button"
+        onClick={togglePlay}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg transition-transform hover:scale-110 active:scale-95 border border-white/20"
+        aria-label={isPlaying ? 'Pause voice note' : 'Play voice note'}
+      >
+        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1 h-5 mb-1">
+          {[35, 70, 50, 95, 60, 85, 40, 100, 75, 45, 90, 65, 80, 50, 70, 35].map((h, i) => {
+            const progress = duration > 0 ? (currentTime / duration) * 16 : 0;
+            const isActive = i <= progress;
+            return (
+              <div
+                key={i}
+                className={`w-1 rounded-full transition-all duration-150 ${
+                  isActive ? 'bg-cyan-400' : 'bg-white/30'
+                } ${isPlaying && isActive ? 'animate-pulse' : ''}`}
+                style={{ height: `${h}%` }}
+              />
+            );
+          })}
+        </div>
+        <div className="flex items-center justify-between text-[10px] text-white/60">
+          <span>{isPlaying ? formatSeconds(currentTime) : (formatSeconds(duration) || name || 'Voice Note')}</span>
+          <span>{size ? `${(size / 1024).toFixed(0)} KB` : ''}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const MessageItem = memo(function MessageItem({
   message,
   isOwnMessage,
@@ -75,7 +162,9 @@ export const MessageItem = memo(function MessageItem({
   onShare,
   onShowProfile,
   onMediaOpen,
+  onAIAction,
   onReport,
+  onOpenSharedContent,
   showAvatar = true,
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -105,8 +194,8 @@ export const MessageItem = memo(function MessageItem({
     if (!showMenu && menuButtonRef.current) {
       const rect = menuButtonRef.current.getBoundingClientRect();
       setMenuPosition({
-        top: rect.bottom + 4,
-        left: isOwnMessage ? rect.right - 192 : rect.left
+        top: Math.min(rect.bottom + 4, window.innerHeight - 320),
+        left: isOwnMessage ? Math.max(10, rect.right - 220) : Math.min(window.innerWidth - 230, rect.left)
       });
     }
     setShowMenu(prev => !prev);
@@ -137,6 +226,8 @@ export const MessageItem = memo(function MessageItem({
     return files.map((file, idx) => {
       const isImage = file.type?.startsWith('image/');
       const isVideo = file.type?.startsWith('video/');
+      const isAudio = file.type?.startsWith('audio/') || file.isVoiceNote;
+
       if (isImage && file.url) {
         return (
           <button key={idx} onClick={() => onMediaOpen?.(file.url)} className="mt-2 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition block max-w-xs">
@@ -149,6 +240,17 @@ export const MessageItem = memo(function MessageItem({
           <button key={idx} onClick={() => onMediaOpen?.(file.url)} className="mt-2 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition block max-w-xs">
             <video src={file.url} className="max-h-56 w-full object-cover rounded-xl" />
           </button>
+        );
+      }
+      if (isAudio && file.url) {
+        return (
+          <AudioVoicePlayer
+            key={idx}
+            src={file.url}
+            name={file.name}
+            size={file.size}
+            isOwnMessage={isOwnMessage}
+          />
         );
       }
       return (
@@ -169,7 +271,7 @@ export const MessageItem = memo(function MessageItem({
         <button
           type="button"
           onClick={() => onShowProfile?.(message.senderId, message.senderName)}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 border border-white/15 text-sm transition hover:scale-105"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-800 border border-white/15 text-sm transition hover:scale-105 shadow-md"
           aria-label={`Open ${message.senderName || 'Member'}'s profile`}
         >
           {avatar}
@@ -177,7 +279,7 @@ export const MessageItem = memo(function MessageItem({
       )}
 
       {/* Message Bubble Container */}
-      <div className={`relative max-w-[85%] sm:max-w-[75%] flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+      <div className={`relative max-w-[88%] sm:max-w-[78%] flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         
         {/* Main Bubble */}
         <div 
@@ -187,7 +289,7 @@ export const MessageItem = memo(function MessageItem({
               : 'bg-slate-900 border border-white/10 text-slate-100 rounded-bl-xs backdrop-blur-xl shadow-black/50'
           }`}
         >
-          {/* Header Row: Name, Time & ALWAYS VISIBLE 3-Dots Button */}
+          {/* Header Row: Name, Time & 3-Dots Button */}
           <div className="flex items-center justify-between gap-3 mb-1 text-[11px] font-medium leading-none">
             <div className="flex items-center gap-1.5 min-w-0">
               <span 
@@ -223,7 +325,7 @@ export const MessageItem = memo(function MessageItem({
             createPortal(
               <div
                 ref={menuRef}
-                className="fixed z-[9999] w-48 rounded-xl border border-white/15 bg-slate-950 shadow-2xl p-1.5 backdrop-blur-2xl animate-fade-in-up"
+                className="fixed z-[9999] w-52 rounded-xl border border-white/15 bg-slate-950 shadow-2xl p-1.5 backdrop-blur-2xl animate-fade-in-up"
                 style={{
                   top: `${menuPosition.top}px`,
                   left: `${menuPosition.left}px`
@@ -254,16 +356,37 @@ export const MessageItem = memo(function MessageItem({
                 <button
                   type="button"
                   onClick={() => { onReply?.(message); setShowMenu(false); }}
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 >
                   <MessageSquareReply className="h-3.5 w-3.5 text-blue-400" />
-                  <span>Reply</span>
+                  <span>Reply in Thread</span>
                 </button>
+
+                {onAIAction && message.text && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { onAIAction?.(message, 'explain'); setShowMenu(false); }}
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-purple-300 hover:text-white hover:bg-purple-500/20 rounded-lg transition"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                      <span>AI Explain</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { onAIAction?.(message, 'summarize'); setShowMenu(false); }}
+                      className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-cyan-300 hover:text-white hover:bg-cyan-500/20 rounded-lg transition"
+                    >
+                      <Wand2 className="h-3.5 w-3.5 text-cyan-400" />
+                      <span>AI Summarize</span>
+                    </button>
+                  </>
+                )}
 
                 <button
                   type="button"
                   onClick={() => { onBookmark?.(message); setShowMenu(false); }}
-                  className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                 >
                   <Bookmark className="h-3.5 w-3.5 text-amber-400" />
                   <span>{message.bookmarked ? 'Unbookmark' : 'Bookmark'}</span>
@@ -273,10 +396,10 @@ export const MessageItem = memo(function MessageItem({
                   <button
                     type="button"
                     onClick={() => { onTogglePin?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                   >
                     <Pin className="h-3.5 w-3.5 text-yellow-400" />
-                    <span>{message.pinned ? 'Unpin' : 'Pin'}</span>
+                    <span>{message.pinned ? 'Unpin Message' : 'Pin Message'}</span>
                   </button>
                 )}
 
@@ -284,7 +407,7 @@ export const MessageItem = memo(function MessageItem({
                   <button
                     type="button"
                     onClick={() => { setIsEditing(true); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
                   >
                     <Edit3 className="h-3.5 w-3.5 text-emerald-400" />
                     <span>Edit</span>
@@ -295,7 +418,7 @@ export const MessageItem = memo(function MessageItem({
                   <button
                     type="button"
                     onClick={() => { onDelete?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
                   >
                     <Trash2 className="h-3.5 w-3.5 text-rose-400" />
                     <span>Delete</span>
@@ -306,7 +429,7 @@ export const MessageItem = memo(function MessageItem({
                   <button
                     type="button"
                     onClick={() => { onReport?.(message); setShowMenu(false); }}
-                    className="flex w-full items-center gap-2 px-2.5 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                    className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/10 rounded-lg transition"
                   >
                     <Flag className="h-3.5 w-3.5 text-red-400" />
                     <span>Report</span>
@@ -358,7 +481,7 @@ export const MessageItem = memo(function MessageItem({
               {message.sharedContent && (
                 <RichCardRenderer
                   content={message.sharedContent}
-                  onOpen={onShare ? () => onShare(message) : undefined}
+                  onOpen={onOpenSharedContent ? () => onOpenSharedContent(message.sharedContent) : (onShare ? () => onShare(message) : undefined)}
                   onShare={onShare ? () => onShare(message) : undefined}
                   onBookmark={onBookmark ? () => onBookmark(message) : undefined}
                   isBookmarked={message.bookmarked}

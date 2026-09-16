@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { SendHorizonal, X, Smile, Paperclip, Mic, Image, FileText, Film, Music, Archive, Forward, Bookmark, Search, Phone, Video, Wand2, Loader2, GripVertical, MessageSquareReply } from 'lucide-react';
+import { 
+  SendHorizonal, X, Smile, Paperclip, Mic, Image, FileText, Film, Music, 
+  Archive, Forward, Bookmark, Search, Phone, Video, Wand2, Loader2, 
+  MessageSquareReply, Square, Radio, Trash2, Check
+} from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 
 const QUICK_EMOJIS = [
@@ -82,6 +86,15 @@ export function MessageInput({
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [showSmartRepliesPanel, setShowSmartRepliesPanel] = useState(false);
   const [attachments, setAttachments] = useState([]);
+  
+  // Audio Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingTimerRef = useRef(null);
+  const audioStreamRef = useRef(null);
+
   const mentionQuery = getMentionQuery(text);
   const mentionOptions = mentionQuery === null
     ? []
@@ -115,6 +128,16 @@ export function MessageInput({
     return () => clearTimeout(debounceTimer);
   }, [text, attachments.length, onTyping]);
 
+  // Clean up recording on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const handleEmojiClick = useCallback((emoji) => {
     setText(current => current + emoji);
     textareaRef.current?.focus();
@@ -146,8 +169,98 @@ export function MessageInput({
     textareaRef.current?.focus();
   }, [setShowSmartRepliesPanel, setText]);
 
+  // Start Voice Recording
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.start(100);
+      setIsRecording(true);
+      setRecordingDuration(0);
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Microphone access denied or error:', err);
+      alert('Could not access microphone. Please allow microphone permissions in your browser.');
+    }
+  };
+
+  // Stop & Save Voice Recording
+  const stopVoiceRecording = (sendImmediately = true) => {
+    if (!mediaRecorderRef.current || !isRecording) return;
+    
+    clearInterval(recordingTimerRef.current);
+    const recorder = mediaRecorderRef.current;
+    
+    recorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      const audioFile = new File([audioBlob], `voice-note-${Date.now()}.webm`, { type: 'audio/webm' });
+      const voiceAttachment = {
+        id: Date.now() + Math.random(),
+        file: audioFile,
+        name: `Voice Note (${Math.floor(recordingDuration / 60)}:${(recordingDuration % 60).toString().padStart(2, '0')})`,
+        size: audioBlob.size,
+        type: 'audio/webm',
+        url: URL.createObjectURL(audioBlob),
+        isVoiceNote: true,
+      };
+
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+        audioStreamRef.current = null;
+      }
+
+      setIsRecording(false);
+      setRecordingDuration(0);
+
+      if (sendImmediately) {
+        setSending(true);
+        try {
+          await onSend('', [], [voiceAttachment]);
+        } finally {
+          setSending(false);
+        }
+      } else {
+        setAttachments(prev => [...prev, voiceAttachment]);
+      }
+    };
+
+    recorder.stop();
+  };
+
+  // Cancel Voice Recording
+  const cancelVoiceRecording = () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+      audioStreamRef.current = null;
+    }
+    audioChunksRef.current = [];
+    setIsRecording(false);
+    setRecordingDuration(0);
+  };
+
   const submit = async (event) => {
     event.preventDefault();
+    if (isRecording) {
+      stopVoiceRecording(true);
+      return;
+    }
     const cleanText = text.trim();
     if (!cleanText && attachments.length === 0) return;
     if (disabled || readOnlyReason || sending) return;
@@ -169,15 +282,17 @@ export function MessageInput({
     setText(current => current.replace(/(^|\s)@([a-z0-9_]*)$/i, `@${username} `));
   };
 
-  const handleVoiceRecord = () => {
-    onVoiceRecord?.();
+  const formatSeconds = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   return (
     <form onSubmit={submit} className="shrink-0 w-full border-t border-white/10 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl shadow-2xl z-10">
       {/* Reply Preview */}
       {replyTo && (
-        <div className="mx-4 mt-3 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/20 via-accent/15 to-accent/5 px-3 py-2.5 animate-fade-in-up shadow-xl shadow-accent/30 backdrop-blur-xl">
+        <div className="mx-3 mt-2.5 sm:mx-4 sm:mt-3 flex items-start gap-2.5 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/20 via-accent/15 to-accent/5 px-3 py-2 animate-fade-in-up shadow-xl shadow-accent/30 backdrop-blur-xl">
           <div className="min-w-0 flex-1">
             <div className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-accent flex items-center gap-1.5">
               <MessageSquareReply className="h-3 w-3" />
@@ -193,12 +308,12 @@ export function MessageInput({
 
       {/* Attachments Preview */}
       {attachments.length > 0 && (
-        <div className="mx-4 mt-3 flex flex-wrap gap-2 animate-fade-in-up">
+        <div className="mx-3 mt-2 sm:mx-4 sm:mt-3 flex flex-wrap gap-2 animate-fade-in-up">
           {attachments.map(att => (
-            <div key={att.id} className="flex items-center gap-2 rounded-xl border border-white/15 bg-gradient-to-br from-white/15 via-white/10 to-white/5 px-3 py-2 shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-105 backdrop-blur-xl">
-              {att.type.startsWith('image/') ? <Image className="h-4 w-4 text-accent" /> : 
-               att.type.startsWith('video/') ? <Film className="h-4 w-4 text-pink-400" /> :
-               att.type.startsWith('audio/') ? <Music className="h-4 w-4 text-purple-400" /> :
+            <div key={att.id} className="flex items-center gap-2 rounded-xl border border-white/15 bg-gradient-to-br from-white/15 via-white/10 to-white/5 px-3 py-1.5 shadow-xl hover:shadow-2xl transition-all duration-200 hover:scale-105 backdrop-blur-xl">
+              {att.type?.startsWith('image/') ? <Image className="h-4 w-4 text-accent" /> : 
+               att.type?.startsWith('video/') ? <Film className="h-4 w-4 text-pink-400" /> :
+               att.type?.startsWith('audio/') ? <Music className="h-4 w-4 text-purple-400" /> :
                <FileText className="h-4 w-4 text-blue-400" />}
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] sm:text-xs font-bold text-white truncate max-w-[120px] sm:max-w-[180px]">{att.name}</p>
@@ -214,7 +329,7 @@ export function MessageInput({
 
       {/* Mentions Dropdown */}
       {mentionOptions.length > 0 && (
-        <div className="mx-4 mb-2.5 max-h-48 overflow-y-auto rounded-xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl p-2 shadow-2xl custom-scrollbar animate-fade-in-up">
+        <div className="mx-3 mb-2 sm:mx-4 sm:mb-2.5 max-h-48 overflow-y-auto rounded-xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl p-2 shadow-2xl custom-scrollbar animate-fade-in-up">
           {mentionOptions.map(member => (
             <button key={member.id} type="button" onClick={() => insertMention(member)} className="flex w-full items-center justify-between gap-2 sm:gap-3 rounded-lg px-2.5 py-2 sm:px-3 sm:py-2.5 text-left transition-all duration-200 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-white/10">
               <span className="min-w-0">
@@ -229,7 +344,7 @@ export function MessageInput({
 
       {/* Smart Replies */}
       {showSmartRepliesPanel && smartReplies.length > 0 && (
-        <div className="mx-4 mb-2.5 flex flex-wrap gap-2 animate-fade-in-up">
+        <div className="mx-3 mb-2 sm:mx-4 sm:mb-2.5 flex flex-wrap gap-2 animate-fade-in-up">
           {smartReplies.map((reply, i) => (
             <button
               key={i}
@@ -243,100 +358,138 @@ export function MessageInput({
         </div>
       )}
 
-      {/* Main Input Area */}
-      <div className="relative flex items-end gap-1 sm:gap-2 p-1.5 sm:p-2.5 md:p-3">
-        <div className="flex items-center gap-0.5">
-          {/* Emoji Picker */}
-          <div className="relative">
-            <button type="button" onClick={() => setShowEmojiPicker(s => !s)} className="rounded-xl p-1.5 sm:p-2 text-white/60 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 border border-transparent" aria-label="Open emoji picker">
-              <Smile className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
-            </button>
-            {showEmojiPicker && (
-              <div ref={emojiPickerRef} className="absolute bottom-full left-0 mb-2 w-[300px] max-w-[90vw] rounded-2xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl p-3 z-50 animate-fade-in-up shadow-2xl">
-                <div className="grid grid-cols-8 gap-1.5">
-                  {QUICK_EMOJIS.map(emoji => (
-                    <button key={emoji} type="button" onClick={() => handleEmojiClick(emoji)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-all duration-200 hover:scale-125 hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 active:scale-95 border border-transparent hover:border-white/10">
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
+      {/* Live Voice Recording UI Banner */}
+      {isRecording ? (
+        <div className="flex items-center justify-between gap-3 p-2 sm:p-3 bg-red-950/40 border-t border-red-500/30 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/50">
+              <Radio className="h-5 w-5 animate-spin" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                <span className="text-xs font-bold text-red-400 uppercase tracking-widest">Recording Voice Note</span>
               </div>
-            )}
+              <span className="font-mono text-sm font-bold text-white">{formatSeconds(recordingDuration)}</span>
+            </div>
           </div>
 
-          {/* File Menu */}
-          <div className="relative file-menu">
-            <button type="button" onClick={() => setShowFileMenu(s => !s)} className="rounded-xl p-1.5 sm:p-2 text-white/60 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 border border-transparent" aria-label="Attach file">
-              <Paperclip className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={cancelVoiceRecording}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition text-xs font-semibold"
+            >
+              <Trash2 className="h-4 w-4 text-red-400" />
+              <span className="hidden sm:inline">Cancel</span>
             </button>
-            {showFileMenu && (
-              <div className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl shadow-2xl overflow-hidden z-50 animate-fade-in-up">
-                <button type="button" onClick={() => { fileInputRef.current?.click(); setShowFileMenu(false); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-xs font-bold text-white transition-all duration-200 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-white/10">
-                  <FileText className="h-3.5 w-3.5 text-white/60" />
-                  <span>Document / File</span>
-                </button>
-                <button type="button" onClick={() => { fileInputRef.current?.click(); setShowFileMenu(false); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-xs font-bold text-white transition-all duration-200 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-white/10">
-                  <Image className="h-3.5 w-3.5 text-white/60" />
-                  <span>Image / Video</span>
-                </button>
-                <button type="button" onClick={handleVoiceRecord} className="flex w-full items-center gap-2.5 px-4 py-3 text-xs font-bold text-white transition-all duration-200 hover:bg-white/10 hover:scale-[1.02] active:scale-[0.98] border border-transparent hover:border-white/10">
-                  <Mic className="h-3.5 w-3.5 text-white/60" />
-                  <span>Voice Message</span>
-                </button>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => stopVoiceRecording(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-red-500 to-pink-600 text-white font-bold text-xs shadow-lg shadow-red-500/30 hover:scale-105 transition active:scale-95"
+            >
+              <SendHorizonal className="h-4 w-4" />
+              <span>Send Note</span>
+            </button>
           </div>
-
-          <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.csv,.json,.md,.txt,.js,.py,.java,.cpp,.c,.h" />
-          
-          {/* Smart Replies Toggle */}
-          <button type="button" onClick={() => setShowSmartRepliesPanel(s => !s)} className={`rounded-xl p-1.5 sm:p-2 transition-all duration-200 hover:scale-110 active:scale-95 border ${showSmartRepliesPanel ? 'bg-gradient-to-br from-accent/25 to-accent/15 text-accent shadow-xl shadow-accent/30 border-accent/40' : 'text-white/60 hover:bg-white/10 hover:text-white border-transparent'}`} aria-label="Smart replies">
-            <Wand2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
-          </button>
         </div>
+      ) : (
+        /* Main Text Input Area */
+        <div className="relative flex items-end gap-1 sm:gap-2 p-1.5 sm:p-2.5 md:p-3">
+          <div className="flex items-center gap-0.5">
+            {/* Emoji Picker */}
+            <div className="relative">
+              <button type="button" onClick={() => setShowEmojiPicker(s => !s)} className="rounded-xl p-1.5 sm:p-2 text-white/60 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 border border-transparent" aria-label="Open emoji picker">
+                <Smile className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+              </button>
+              {showEmojiPicker && (
+                <div ref={emojiPickerRef} className="absolute bottom-full left-0 mb-2 w-[300px] max-w-[90vw] rounded-2xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl p-3 z-50 animate-fade-in-up shadow-2xl">
+                  <div className="grid grid-cols-8 gap-1.5">
+                    {QUICK_EMOJIS.map(emoji => (
+                      <button key={emoji} type="button" onClick={() => handleEmojiClick(emoji)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg transition-all duration-200 hover:scale-125 hover:bg-white/10 hover:shadow-lg hover:shadow-white/20 active:scale-95 border border-transparent hover:border-white/10">
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
-        {/* Text Input */}
-        <label className="sr-only" htmlFor="global-chat-message">Message</label>
-         <textarea
-           id="global-chat-message"
-           value={text}
-           onChange={(event) => setText(event.target.value)}
-           onKeyDown={(event) => {
-             if (event.key === 'Enter' && !event.shiftKey) {
-               event.preventDefault();
-               event.currentTarget.form?.requestSubmit();
-             }
-           }}
-           placeholder={readOnlyReason || placeholder}
-           rows={1}
-           maxLength={4000}
-           disabled={disabled || !!readOnlyReason || sending}
-           className="min-h-[38px] sm:min-h-[44px] max-h-28 flex-1 resize-none rounded-xl border border-white/15 bg-gradient-to-br from-white/15 via-white/10 to-white/5 px-3 py-2 text-xs sm:text-sm text-white placeholder:text-white/40 outline-none transition-all duration-200 focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 focus:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 backdrop-blur-xl hover:border-white/20"
-         />
-        
-        {/* Send / Voice Button */}
-        {(text.trim() || attachments.length > 0) ? (
-          <Button 
-            type="submit" 
-            size="md" 
-            disabled={disabled || !!readOnlyReason || sending} 
-            className="h-8 sm:h-10 shrink-0 px-2.5 sm:px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-xl shadow-indigo-600/30 active:scale-95 transition-all duration-200 disabled:opacity-50 border border-indigo-400/40"
-            aria-label="Send message"
-          >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <SendHorizonal className="h-4 w-4 text-white" />}
-          </Button>
-        ) : (
-          <button 
-            type="button" 
-            onClick={handleVoiceRecord} 
-            className="h-8 sm:h-10 w-8 sm:w-10 flex items-center justify-center shrink-0 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 transition active:scale-95" 
-            aria-label="Record voice note"
-            title="Voice note"
-          >
-            <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
-        )}
-      </div>
+            {/* File Menu */}
+            <div className="relative file-menu">
+              <button type="button" onClick={() => setShowFileMenu(s => !s)} className="rounded-xl p-1.5 sm:p-2 text-white/60 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-95 border border-transparent" aria-label="Attach file">
+                <Paperclip className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+              </button>
+              {showFileMenu && (
+                <div className="absolute bottom-full left-0 mb-2 w-52 rounded-2xl border border-white/15 bg-gradient-to-b from-slate-900/98 to-slate-950/98 backdrop-blur-2xl shadow-2xl overflow-hidden z-50 animate-fade-in-up p-1">
+                  <button type="button" onClick={() => { fileInputRef.current?.click(); setShowFileMenu(false); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 rounded-lg">
+                    <FileText className="h-3.5 w-3.5 text-blue-400" />
+                    <span>Document / File</span>
+                  </button>
+                  <button type="button" onClick={() => { fileInputRef.current?.click(); setShowFileMenu(false); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 rounded-lg">
+                    <Image className="h-3.5 w-3.5 text-pink-400" />
+                    <span>Image / Video</span>
+                  </button>
+                  <button type="button" onClick={() => { setShowFileMenu(false); startVoiceRecording(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 rounded-lg">
+                    <Mic className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Record Voice Note</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} className="hidden" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.csv,.json,.md,.txt,.js,.py,.java,.cpp,.c,.h" />
+            
+            {/* Smart Replies Toggle */}
+            <button type="button" onClick={() => setShowSmartRepliesPanel(s => !s)} className={`rounded-xl p-1.5 sm:p-2 transition-all duration-200 hover:scale-110 active:scale-95 border ${showSmartRepliesPanel ? 'bg-gradient-to-br from-accent/25 to-accent/15 text-accent shadow-xl shadow-accent/30 border-accent/40' : 'text-white/60 hover:bg-white/10 hover:text-white border-transparent'}`} aria-label="Smart replies">
+              <Wand2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" />
+            </button>
+          </div>
+
+          {/* Text Input */}
+          <label className="sr-only" htmlFor="global-chat-message">Message</label>
+          <textarea
+            id="global-chat-message"
+            ref={textareaRef}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+            placeholder={readOnlyReason || placeholder}
+            rows={1}
+            maxLength={4000}
+            disabled={disabled || !!readOnlyReason || sending}
+            className="min-h-[38px] sm:min-h-[44px] max-h-28 flex-1 resize-none rounded-xl border border-white/15 bg-gradient-to-br from-white/15 via-white/10 to-white/5 px-3 py-2 text-xs sm:text-sm text-white placeholder:text-white/40 outline-none transition-all duration-200 focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 focus:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 backdrop-blur-xl hover:border-white/20"
+          />
+          
+          {/* Send / Voice Button */}
+          {(text.trim() || attachments.length > 0) ? (
+            <Button 
+              type="submit" 
+              size="md" 
+              disabled={disabled || !!readOnlyReason || sending} 
+              className="h-8 sm:h-10 shrink-0 px-2.5 sm:px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 shadow-xl shadow-indigo-600/30 active:scale-95 transition-all duration-200 disabled:opacity-50 border border-indigo-400/40"
+              aria-label="Send message"
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <SendHorizonal className="h-4 w-4 text-white" />}
+            </Button>
+          ) : (
+            <button 
+              type="button" 
+              onClick={startVoiceRecording} 
+              className="h-8 sm:h-10 w-8 sm:w-10 flex items-center justify-center shrink-0 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/30 transition active:scale-95" 
+              aria-label="Record voice note"
+              title="Record Voice Note"
+            >
+              <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+          )}
+        </div>
+      )}
       
       {/* Footer (hidden on small screens unless attachments exist) */}
       {attachments.length > 0 && (
