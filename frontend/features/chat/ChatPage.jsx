@@ -381,10 +381,10 @@ const ChatPage = React.memo(function ChatPage() {
   }, [handleMediaOpen]);
 
   return (
-    <div className="flex h-[calc(100dvh-4rem-5rem)] md:h-[calc(100dvh-4.5rem)] w-full flex-col p-0 md:p-3 overflow-hidden select-none">
+    <div className="flex h-[calc(100dvh-4rem-4.5rem)] sm:h-[calc(100dvh-4.5rem)] w-full flex-col p-0 sm:p-2 md:p-3 overflow-hidden select-none">
       
       {/* Outer Shell Glass Container */}
-      <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden rounded-none md:rounded-3xl border-0 md:border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-3xl">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden rounded-none sm:rounded-2xl md:rounded-3xl border-0 sm:border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-3xl">
         
         {/* Main Conversation Area */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950">
@@ -394,6 +394,12 @@ const ChatPage = React.memo(function ChatPage() {
             memberName={memberName}
             memberRole={memberRole}
             canSend={!!user}
+            pinnedCount={currentPinnedMessages.length}
+            memberCount={members.length}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            showSearch={showSearch}
+            onToggleSearch={() => setShowSearch(s => !s)}
             onShowGames={() => setShowGamesModal(true)}
             onShowPinned={() => setShowPinnedModal(true)}
             onShowMedia={() => setShowMediaHub(true)}
@@ -619,13 +625,16 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Chat Settings Modal */}
       {showSettings && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in" 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-md p-0 sm:p-4 animate-fade-in" 
           onClick={() => setShowSettings(false)}
         >
           <Card 
-            className="w-full max-w-sm rounded-2xl border-white/15 bg-slate-950 shadow-2xl p-5" 
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-white/15 bg-slate-950/98 shadow-2xl p-5 animate-slide-up" 
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="w-12 h-1 rounded-full bg-white/20 mx-auto mb-3 sm:hidden" />
+
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-indigo-400" />
@@ -675,13 +684,16 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Report Modal */}
       {showReportModal && reportMessage && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in" 
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-md p-0 sm:p-4 animate-fade-in" 
           onClick={() => setShowReportModal(false)}
         >
           <Card 
-            className="w-full max-w-sm rounded-2xl border-white/15 bg-slate-950 shadow-2xl p-5" 
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-white/15 bg-slate-950/98 shadow-2xl p-5 animate-slide-up" 
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="w-12 h-1 rounded-full bg-white/20 mx-auto mb-3 sm:hidden" />
+
             <div className="flex items-center gap-2 text-white mb-3">
               <Flag className="h-4 w-4 text-amber-400" />
               <h3 className="text-sm font-bold">Report Message</h3>

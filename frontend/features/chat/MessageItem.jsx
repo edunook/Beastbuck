@@ -219,7 +219,7 @@ export const MessageItem = memo(function MessageItem({
 
   useEffect(() => {
     function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+      if (menuRef.current && !menuRef.current.contains(e.target) && !menuButtonRef.current?.contains(e.target)) {
         setShowMenu(false);
       }
       if (editRef.current && !editRef.current.contains(e.target)) {
@@ -228,17 +228,26 @@ export const MessageItem = memo(function MessageItem({
     }
     if (showMenu || isEditing) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside, { passive: true });
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
     }
   }, [showMenu, isEditing]);
 
-  const handleMenuToggle = () => {
+  const handleMenuToggle = (e) => {
+    e?.stopPropagation();
     if (!showMenu && menuButtonRef.current) {
       const rect = menuButtonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: Math.min(rect.bottom + 4, window.innerHeight - 280),
-        left: isOwnMessage ? Math.max(10, rect.right - 200) : Math.min(window.innerWidth - 210, rect.left)
-      });
+      const menuWidth = 196;
+      let left = isOwnMessage ? rect.right - menuWidth : rect.left;
+      left = Math.max(12, Math.min(window.innerWidth - menuWidth - 12, left));
+      let top = rect.bottom + 6;
+      if (top + 260 > window.innerHeight) {
+        top = Math.max(60, rect.top - 260);
+      }
+      setMenuPosition({ top, left });
     }
     setShowMenu(prev => !prev);
   };

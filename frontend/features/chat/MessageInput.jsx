@@ -293,7 +293,7 @@ export function MessageInput({
   };
 
   return (
-    <form onSubmit={submit} className="shrink-0 w-full border-t border-white/10 bg-slate-950/95 backdrop-blur-2xl px-3 sm:px-4 py-2.5 sm:py-3 z-20">
+    <form onSubmit={submit} className="shrink-0 w-full border-t border-white/10 bg-slate-950/95 backdrop-blur-2xl px-2.5 sm:px-4 py-2 sm:py-3 z-20 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
       
       {/* Reply Preview Banner */}
       {replyTo && (
@@ -318,19 +318,19 @@ export function MessageInput({
 
       {/* Attachments Preview Grid */}
       {attachments.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2 animate-fade-in">
+        <div className="mb-2 flex flex-wrap gap-2 animate-fade-in max-h-28 overflow-y-auto custom-scrollbar">
           {attachments.map(att => (
-            <div key={att.id} className="relative group flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 p-1.5 pr-3 shadow-md backdrop-blur-md">
+            <div key={att.id} className="relative group flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 p-1.5 pr-2.5 shadow-md backdrop-blur-md">
               {att.type?.startsWith('image/') ? (
-                <img src={att.url} alt={att.name} className="h-10 w-10 rounded-lg object-cover" />
+                <img src={att.url} alt={att.name} className="h-9 w-9 rounded-lg object-cover" />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
-                  <FileText className="h-5 w-5" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300">
+                  <FileText className="h-4 w-4" />
                 </div>
               )}
-              <div className="min-w-0 max-w-[120px] sm:max-w-[180px]">
+              <div className="min-w-0 max-w-[100px] sm:max-w-[160px]">
                 <p className="text-xs font-semibold text-white truncate">{att.name}</p>
-                <p className="text-[10px] text-white/50">{(att.size / 1024).toFixed(0)} KB</p>
+                <p className="text-[9px] text-white/50">{(att.size / 1024).toFixed(0)} KB</p>
               </div>
               <button
                 type="button"
@@ -347,13 +347,13 @@ export function MessageInput({
 
       {/* Mentions Auto-Suggest Dropdown */}
       {mentionOptions.length > 0 && (
-        <div className="mb-2 max-h-40 overflow-y-auto rounded-xl border border-white/15 bg-slate-900 shadow-2xl p-1.5 custom-scrollbar animate-fade-in">
+        <div className="mb-2 max-h-40 overflow-y-auto rounded-2xl border border-white/15 bg-slate-950/98 shadow-2xl p-1.5 custom-scrollbar animate-fade-in backdrop-blur-2xl">
           {mentionOptions.map(member => (
             <button
               key={member.id}
               type="button"
               onClick={() => insertMention(member)}
-              className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs text-white hover:bg-white/10 transition"
+              className="flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs text-white hover:bg-white/10 transition"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-6 w-6 rounded-full bg-indigo-600/30 text-indigo-300 flex items-center justify-center font-bold text-[10px]">
@@ -369,33 +369,33 @@ export function MessageInput({
 
       {/* Live Voice Recording UI Bar */}
       {isRecording ? (
-        <div className="flex items-center justify-between gap-3 p-2 rounded-xl bg-red-950/50 border border-red-500/40 animate-fade-in">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white animate-pulse">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 p-2 rounded-2xl bg-red-950/50 border border-red-500/40 animate-fade-in backdrop-blur-xl">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-white animate-pulse">
               <Radio className="h-4 w-4 animate-spin" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-                <span className="text-xs font-bold text-red-400">Recording Voice Note</span>
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping shrink-0" />
+                <span className="text-xs font-bold text-red-400 truncate">Recording Voice Note</span>
               </div>
               <span className="font-mono text-xs font-bold text-white">{formatSeconds(recordingDuration)}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={cancelVoiceRecording}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition text-xs font-semibold"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition text-xs font-semibold"
             >
               <Trash2 className="h-3.5 w-3.5 text-red-400" />
-              <span>Cancel</span>
+              <span className="hidden xs:inline">Cancel</span>
             </button>
             <button
               type="button"
               onClick={stopVoiceRecording}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold text-xs shadow-md shadow-red-600/30 hover:scale-105 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold text-xs shadow-md shadow-red-600/30 hover:scale-105 transition"
             >
               <SendHorizonal className="h-3.5 w-3.5" />
               <span>Send</span>
@@ -407,13 +407,13 @@ export function MessageInput({
         <div className="relative flex items-end gap-1.5 sm:gap-2">
           
           {/* Action Buttons: Emoji & Attachment */}
-          <div className="flex items-center gap-0.5 pb-1">
+          <div className="flex items-center gap-0.5 pb-0.5 sm:pb-1">
             {/* Emoji Trigger */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setShowEmojiPicker(s => !s)}
-                className={`p-2 rounded-xl border transition ${
+                className={`h-9 w-9 flex items-center justify-center rounded-xl border transition ${
                   showEmojiPicker
                     ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
                     : 'border-transparent text-white/60 hover:text-white hover:bg-white/10'
@@ -428,7 +428,7 @@ export function MessageInput({
               {showEmojiPicker && (
                 <div
                   ref={emojiPickerRef}
-                  className="absolute bottom-full left-0 mb-2 w-72 rounded-2xl border border-white/15 bg-slate-950 shadow-2xl p-3 z-50 animate-fade-in"
+                  className="absolute bottom-full left-0 mb-2 w-72 max-w-[calc(100vw-20px)] rounded-2xl border border-white/15 bg-slate-950/98 shadow-2xl p-3 z-50 animate-fade-in backdrop-blur-2xl"
                 >
                   <div className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-2">Quick Emojis</div>
                   <div className="grid grid-cols-8 gap-1">
@@ -437,7 +437,7 @@ export function MessageInput({
                         key={emoji}
                         type="button"
                         onClick={() => handleEmojiClick(emoji)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-base hover:bg-white/15 hover:scale-125 transition active:scale-95"
+                        className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-sm sm:text-base hover:bg-white/15 hover:scale-125 transition active:scale-95"
                       >
                         {emoji}
                       </button>
@@ -451,7 +451,7 @@ export function MessageInput({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="p-2 rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition border border-transparent"
+              className="h-9 w-9 flex items-center justify-center rounded-xl text-white/60 hover:text-white hover:bg-white/10 transition border border-transparent"
               aria-label="Attach photo or file"
               title="Attach Image or File"
             >
@@ -471,7 +471,7 @@ export function MessageInput({
               <button
                 type="button"
                 onClick={onShowGames}
-                className="p-2 rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/15 transition border border-transparent"
+                className="hidden xs:flex h-9 w-9 items-center justify-center rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/15 transition border border-transparent"
                 aria-label="Start multiplayer game"
                 title="Play Multiplayer Games"
               >
@@ -497,17 +497,17 @@ export function MessageInput({
               rows={1}
               maxLength={4000}
               disabled={disabled || !!readOnlyReason || sending || isCompressing}
-              className="w-full min-h-[42px] max-h-32 resize-none rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-xs sm:text-sm text-white placeholder:text-white/40 outline-none transition focus:border-indigo-500/70 focus:bg-white/10 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
+              className="w-full min-h-[40px] max-h-32 resize-none rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs sm:text-sm text-white placeholder:text-white/40 outline-none transition focus:border-indigo-500/70 focus:bg-white/10 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
             />
           </div>
 
           {/* Send or Voice Note Button */}
-          <div className="pb-1">
+          <div className="pb-0.5 sm:pb-1">
             {text.trim() || attachments.length > 0 ? (
               <Button
                 type="submit"
                 disabled={disabled || !!readOnlyReason || sending || isCompressing}
-                className="h-[42px] px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition active:scale-95 border border-indigo-400/30"
+                className="h-[40px] px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition active:scale-95 border border-indigo-400/30"
                 aria-label="Send message"
               >
                 {sending || isCompressing ? (
@@ -520,7 +520,7 @@ export function MessageInput({
               <button
                 type="button"
                 onClick={startVoiceRecording}
-                className="h-[42px] w-[42px] flex items-center justify-center rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 transition active:scale-95"
+                className="h-[40px] w-[40px] flex items-center justify-center rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 transition active:scale-95"
                 aria-label="Record voice note"
                 title="Hold or Click to Record Voice Note"
               >

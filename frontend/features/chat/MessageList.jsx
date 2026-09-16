@@ -133,12 +133,12 @@ export const MessageList = memo(forwardRef(function MessageList({
         ) : (
           <>
             {/* Top Header Marker */}
-            <div className="px-4 pt-4 pb-6 text-left border-b border-white/5 mb-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 mb-2">
-                {isAnnouncement ? <Megaphone className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+            <div className="px-3 sm:px-4 pt-2 sm:pt-4 pb-4 sm:pb-6 text-left border-b border-white/5 mb-2 sm:mb-3">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 mb-2">
+                {isAnnouncement ? <Megaphone className="h-5 w-5 sm:h-6 sm:w-6" /> : <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-white">Welcome to Community Chat!</h2>
-              <p className="text-xs text-white/50">Connect, collaborate, and share with fellow BeastBuck creators.</p>
+              <h2 className="text-sm sm:text-lg font-bold text-white">Welcome to Community Chat!</h2>
+              <p className="text-[11px] sm:text-xs text-white/50">Connect, collaborate, and share with fellow BeastBuck creators.</p>
             </div>
 
             {/* Message Stream */}
@@ -179,13 +179,13 @@ export const MessageList = memo(forwardRef(function MessageList({
 
         {/* Typing Indicators */}
         {typingUsers.length > 0 && (
-          <div className="px-4 py-2 flex items-center gap-2 text-xs text-indigo-300 animate-fade-in">
+          <div className="px-3 sm:px-4 py-1.5 flex items-center gap-2 text-xs text-indigo-300 animate-fade-in">
             <span className="flex gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
               <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
             </span>
-            <span className="truncate">
+            <span className="truncate text-[11px]">
               {typingUsers.map(u => u.userName).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
             </span>
           </div>
@@ -199,9 +199,9 @@ export const MessageList = memo(forwardRef(function MessageList({
         <button
           type="button"
           onClick={scrollToBottom}
-          className="absolute bottom-4 right-6 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 hover:bg-indigo-500 transition active:scale-95 text-xs font-semibold animate-fade-in border border-indigo-400/40"
+          className="absolute bottom-3 right-3 sm:bottom-4 sm:right-6 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 hover:bg-indigo-500 transition active:scale-95 text-xs font-semibold animate-fade-in border border-indigo-400/40 backdrop-blur-md"
         >
-          <span>Scroll to latest</span>
+          <span>Latest</span>
           <ChevronDown className="h-3.5 w-3.5" />
         </button>
       )}
