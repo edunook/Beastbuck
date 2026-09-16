@@ -1,613 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Save, X, Plus, Trash2, User, MapPin, Globe, Briefcase, GraduationCap, Heart, Palette, Layout, Wand2, Upload, Lock, Globe as GlobeIcon, Star, Eye, EyeOff } from 'lucide-react';
+import { 
+  Save, X, Plus, Trash2, User, MapPin, Globe, Briefcase, GraduationCap, 
+  Heart, Palette, Layout, Wand2, Upload, Lock, Globe as GlobeIcon, 
+  Star, Eye, EyeOff, Sparkles, Sliders, Check, RefreshCw, Image as ImageIcon
+} from 'lucide-react';
 import { useAuth } from '@frontend/features/auth/AuthContext';
 import { UsersService } from '@services/firestore/users';
 import { ThemesService } from '@services/firestore/themes';
-import { uploadProfilePhoto, isIPFSConfigured } from '@services/storage/ipfs';
-import { normalizeMediaUrl } from '@services/storage/b2Client';
+import { uploadFile, uploadProfilePhoto, normalizeMediaUrl } from '@services/storage/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import { LoadingState } from '@frontend/components/ui/UIElements';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { groqProvider } from '@services/ai/providers/groq';
-
-
-// Theme Templates
-const THEME_TEMPLATES = [
-  {
-    id: 'default',
-    name: 'Default Dark',
-    description: 'Classic dark theme with cyan accents',
-    background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
-    textColor: '#ffffff',
-    accentColor: '#00d4ff',
-  },
-  {
-    id: 'ocean',
-    name: 'Ocean Blue',
-    description: 'Deep ocean gradients with blue accents',
-    background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-    textColor: '#e94560',
-    accentColor: '#00d4ff',
-  },
-  {
-    id: 'sunset',
-    name: 'Sunset Glow',
-    description: 'Warm sunset colors with purple accents',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    textColor: '#ffffff',
-    accentColor: '#f093fb',
-  },
-  {
-    id: 'forest',
-    name: 'Forest Green',
-    description: 'Natural green tones with earth accents',
-    background: 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)',
-    textColor: '#ffffff',
-    accentColor: '#a8e6cf',
-  },
-  {
-    id: 'midnight',
-    name: 'Midnight Purple',
-    description: 'Dark purple with neon accents',
-    background: 'linear-gradient(135deg, #2d1b4e 0%, #1a1a2e 100%)',
-    textColor: '#e94560',
-    accentColor: '#ff00ff',
-  },
-  {
-    id: 'cyberpunk',
-    name: 'Cyberpunk',
-    description: 'Neon cyberpunk aesthetic',
-    background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #2d1b4e 100%)',
-    textColor: '#00ff00',
-    accentColor: '#ff00ff',
-  },
-  {
-    id: 'minimal',
-    name: 'Minimal Light',
-    description: 'Clean minimal light theme',
-    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-    textColor: '#2d3748',
-    accentColor: '#4299e1',
-  },
-  {
-    id: 'royal',
-    name: 'Royal Gold',
-    description: 'Luxurious gold and dark theme',
-    background: 'linear-gradient(135deg, #1a1a2e 0%, #4a4a4a 50%, #ffd700 100%)',
-    textColor: '#ffffff',
-    accentColor: '#ffd700',
-  },
-  {
-    id: 'cosmic',
-    name: 'Cosmic Space',
-    description: 'Space theme with star effects',
-    background: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #2d1b4e 100%)',
-    textColor: '#e94560',
-    accentColor: '#00d4ff',
-  },
-  {
-    id: 'aurora',
-    name: 'Aurora Borealis',
-    description: 'Northern lights color scheme',
-    background: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
-    textColor: '#ffffff',
-    accentColor: '#00ff87',
-  },
-  {
-    id: 'fire',
-    name: 'Fire & Ember',
-    description: 'Warm fire colors with orange accents',
-    background: 'linear-gradient(135deg, #1a1a2e 0%, #4a1a1a 50%, #ff6b35 100%)',
-    textColor: '#ffffff',
-    accentColor: '#ff6b35',
-  },
-  {
-    id: 'ice',
-    name: 'Ice Crystal',
-    description: 'Cool ice blue theme',
-    background: 'linear-gradient(135deg, #e0f7fa 0%, #80deea 50%, #26c6da 100%)',
-    textColor: '#006064',
-    accentColor: '#00bcd4',
-  },
-  {
-    id: 'retro',
-    name: 'Retro Wave',
-    description: '80s retro synthwave style',
-    background: 'linear-gradient(135deg, #2d1b4e 0%, #ff00ff 50%, #00ffff 100%)',
-    textColor: '#ffffff',
-    accentColor: '#ff00ff',
-  },
-  {
-    id: 'nature',
-    name: 'Nature Earth',
-    description: 'Earth tones and natural colors',
-    background: 'linear-gradient(135deg, #5d4157 0%, #a8c0ff 100%)',
-    textColor: '#ffffff',
-    accentColor: '#ff6b6b',
-  },
-  {
-    id: 'matrix',
-    name: 'Matrix Code',
-    description: 'Matrix green code theme',
-    background: 'linear-gradient(135deg, #000000 0%, #0d0d0d 50%, #1a1a1a 100%)',
-    textColor: '#00ff00',
-    accentColor: '#00ff00',
-  },
-  {
-    id: 'sunset2',
-    name: 'California Sunset',
-    description: 'Warm California sunset colors',
-    background: 'linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%)',
-    textColor: '#ffffff',
-    accentColor: '#ffffff',
-  },
-  {
-    id: 'lavender',
-    name: 'Lavender Dreams',
-    description: 'Soft lavender purple theme',
-    background: 'linear-gradient(135deg, #e6e9f0 0%, #eef1f5 100%)',
-    textColor: '#6c5ce7',
-    accentColor: '#a29bfe',
-  },
-  {
-    id: 'cherry',
-    name: 'Cherry Blossom',
-    description: 'Pink cherry blossom theme',
-    background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)',
-    textColor: '#ffffff',
-    accentColor: '#ff6b9d',
-  },
-  {
-    id: 'neon',
-    name: 'Neon Nights',
-    description: 'Vibrant neon colors on dark',
-    background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2a2a5e 100%)',
-    textColor: '#00ffff',
-    accentColor: '#ff00ff',
-  },
-  {
-    id: 'volcanic',
-    name: 'Volcanic Ash',
-    description: 'Dark volcanic rock theme',
-    background: 'linear-gradient(135deg, #2c3e50 0%, #4a5568 50%, #718096 100%)',
-    textColor: '#f7fafc',
-    accentColor: '#fc8181',
-  },
-  {
-    id: 'emerald',
-    name: 'Emerald City',
-    description: 'Rich emerald green theme',
-    background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)',
-    textColor: '#ecfdf5',
-    accentColor: '#34d399',
-  },
-  {
-    id: 'sapphire',
-    name: 'Sapphire Blue',
-    description: 'Deep sapphire blue theme',
-    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
-    textColor: '#eff6ff',
-    accentColor: '#60a5fa',
-  },
-  {
-    id: 'ruby',
-    name: 'Ruby Red',
-    description: 'Rich ruby red theme',
-    background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%)',
-    textColor: '#fef2f2',
-    accentColor: '#f87171',
-  },
-  {
-    id: 'amethyst',
-    name: 'Amethyst Purple',
-    description: 'Beautiful amethyst purple',
-    background: 'linear-gradient(135deg, #581c87 0%, #6b21a8 50%, #7e22ce 100%)',
-    textColor: '#faf5ff',
-    accentColor: '#c084fc',
-  },
-  {
-    id: 'golden',
-    name: 'Golden Hour',
-    description: 'Golden hour sunset theme',
-    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
-    textColor: '#fffbeb',
-    accentColor: '#fbbf24',
-  },
-  {
-    id: 'silver',
-    name: 'Silver Moon',
-    description: 'Elegant silver moon theme',
-    background: 'linear-gradient(135deg, #374151 0%, #4b5563 50%, #6b7280 100%)',
-    textColor: '#f9fafb',
-    accentColor: '#d1d5db',
-  },
-  {
-    id: 'bronze',
-    name: 'Bronze Age',
-    description: 'Classic bronze metal theme',
-    background: 'linear-gradient(135deg, #78350f 0%, #92400e 50%, #b45309 100%)',
-    textColor: '#fff7ed',
-    accentColor: '#fbbf24',
-  },
-  {
-    id: 'platinum',
-    name: 'Platinum Elite',
-    description: 'Premium platinum theme',
-    background: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)',
-    textColor: '#f3f4f6',
-    accentColor: '#e5e7eb',
-  },
-  {
-    id: 'titanium',
-    name: 'Titanium Strong',
-    description: 'Strong titanium metal theme',
-    background: 'linear-gradient(135deg, #111827 0%, #1f2937 50%, #374151 100%)',
-    textColor: '#f9fafb',
-    accentColor: '#9ca3af',
-  },
-  {
-    id: 'obsidian',
-    name: 'Obsidian Dark',
-    description: 'Deep obsidian black theme',
-    background: 'linear-gradient(135deg, #030712 0%, #111827 50%, #1f2937 100%)',
-    textColor: '#f9fafb',
-    accentColor: '#6b7280',
-  },
-  {
-    id: 'pearl',
-    name: 'Pearl White',
-    description: 'Elegant pearl white theme',
-    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)',
-    textColor: '#1e293b',
-    accentColor: '#64748b',
-  },
-  {
-    id: 'jade',
-    name: 'Jade Stone',
-    description: 'Natural jade stone theme',
-    background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%)',
-    textColor: '#ecfdf5',
-    accentColor: '#6ee7b7',
-  },
-  {
-    id: 'topaz',
-    name: 'Topaz Gem',
-    description: 'Beautiful topaz gem theme',
-    background: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 50%, #0284c7 100%)',
-    textColor: '#f0f9ff',
-    accentColor: '#38bdf8',
-  },
-  {
-    id: 'garnet',
-    name: 'Garnet Red',
-    description: 'Deep garnet red theme',
-    background: 'linear-gradient(135deg, #881337 0%, #9f1239 50%, #be123c 100%)',
-    textColor: '#fff1f2',
-    accentColor: '#fb7185',
-  },
-  {
-    id: 'aquamarine',
-    name: 'Aquamarine Sea',
-    description: 'Clear aquamarine theme',
-    background: 'linear-gradient(135deg, #0e7490 0%, #0891b2 50%, #06b6d4 100%)',
-    textColor: '#ecfeff',
-    accentColor: '#67e8f9',
-  },
-  {
-    id: 'peridot',
-    name: 'Peridot Green',
-    description: 'Vibrant peridot green',
-    background: 'linear-gradient(135deg, #3f6212 0%, #4d7c0f 50%, #65a30d 100%)',
-    textColor: '#f7fee7',
-    accentColor: '#a3e635',
-  },
-  {
-    id: 'turquoise',
-    name: 'Turquoise Stone',
-    description: 'Natural turquoise theme',
-    background: 'linear-gradient(135deg, #0f766e 0%, #0d9488 50%, #14b8a6 100%)',
-    textColor: '#f0fdfa',
-    accentColor: '#5eead4',
-  },
-  {
-    id: 'amethyst2',
-    name: 'Amethyst Dream',
-    description: 'Dreamy amethyst purple',
-    background: 'linear-gradient(135deg, #6b21a8 0%, #7c3aed 50%, #8b5cf6 100%)',
-    textColor: '#faf5ff',
-    accentColor: '#d8b4fe',
-  },
-  {
-    id: 'citrine',
-    name: 'Citrine Yellow',
-    description: 'Bright citrine yellow',
-    background: 'linear-gradient(135deg, #ca8a04 0%, #eab308 50%, #facc15 100%)',
-    textColor: '#fefce8',
-    accentColor: '#fde047',
-  },
-  {
-    id: 'moonstone',
-    name: 'Moonstone Glow',
-    description: 'Mystical moonstone theme',
-    background: 'linear-gradient(135deg, #475569 0%, #64748b 50%, #94a3b8 100%)',
-    textColor: '#f8fafc',
-    accentColor: '#cbd5e1',
-  },
-  {
-    id: 'sunstone',
-    name: 'Sunstone Warm',
-    description: 'Warm sunstone theme',
-    background: 'linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)',
-    textColor: '#fff7ed',
-    accentColor: '#fdba74',
-  },
-  {
-    id: 'alexandrite',
-    name: 'Alexandrite Rare',
-    description: 'Rare alexandrite theme',
-    background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%)',
-    textColor: '#f5f3ff',
-    accentColor: '#a78bfa',
-  },
-  {
-    id: 'tanzanite',
-    name: 'Tanzanite Blue',
-    description: 'Rare tanzanite blue',
-    background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
-    textColor: '#eef2ff',
-    accentColor: '#818cf8',
-  },
-  {
-    id: 'morganite',
-    name: 'Morganite Pink',
-    description: 'Soft morganite pink',
-    background: 'linear-gradient(135deg, #9d174d 0%, #be185d 50%, #db2777 100%)',
-    textColor: '#fdf2f8',
-    accentColor: '#f472b6',
-  },
-  {
-    id: 'spinel',
-    name: 'Spinel Red',
-    description: 'Vibrant spinel red',
-    background: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 50%, #dc2626 100%)',
-    textColor: '#fef2f2',
-    accentColor: '#f87171',
-  },
-  {
-    id: 'zircon',
-    name: 'Zircon Blue',
-    description: 'Clear zircon blue',
-    background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%)',
-    textColor: '#eff6ff',
-    accentColor: '#93c5fd',
-  },
-  {
-    id: 'kunzite',
-    name: 'Kunzite Pink',
-    description: 'Delicate kunzite pink',
-    background: 'linear-gradient(135deg, #831843 0%, #9d174d 50%, #be185d 100%)',
-    textColor: '#fdf2f8',
-    accentColor: '#f9a8d4',
-  },
-  {
-    id: 'tourmaline',
-    name: 'Tourmaline Green',
-    description: 'Rich tourmaline green',
-    background: 'linear-gradient(135deg, #064e3b 0%, #059669 50%, #10b981 100%)',
-    textColor: '#ecfdf5',
-    accentColor: '#6ee7b7',
-  },
-  {
-    id: 'opal',
-    name: 'Opal Fire',
-    description: 'Fire opal theme',
-    background: 'linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #fb923c 100%)',
-    textColor: '#fff7ed',
-    accentColor: '#fdba74',
-  },
-  {
-    id: 'jasper',
-    name: 'Jasper Stone',
-    description: 'Natural jasper theme',
-    background: 'linear-gradient(135deg, #78350f 0%, #92400e 50%, #b45309 100%)',
-    textColor: '#fff7ed',
-    accentColor: '#fbbf24',
-  },
-  {
-    id: 'agate',
-    name: 'Agate Bands',
-    description: 'Banded agate theme',
-    background: 'linear-gradient(135deg, #374151 0%, #4b5563 50%, #6b7280 100%)',
-    textColor: '#f9fafb',
-    accentColor: '#d1d5db',
-  },
-  {
-    id: 'onyx',
-    name: 'Onyx Black',
-    description: 'Classic onyx black',
-    background: 'linear-gradient(135deg, #000000 0%, #111827 50%, #1f2937 100%)',
-    textColor: '#f9fafb',
-    accentColor: '#6b7280',
-  },
-  {
-    id: 'hematite',
-    name: 'Hematite Metallic',
-    description: 'Metallic hematite',
-    background: 'linear-gradient(135deg, #1f2937 0%, #374151 50%, #4b5563 100%)',
-    textColor: '#f9fafb',
-    accentColor: '#9ca3af',
-  },
-  {
-    id: 'malachite',
-    name: 'Malachite Green',
-    description: 'Vibrant malachite',
-    background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)',
-    textColor: '#ecfdf5',
-    accentColor: '#34d399',
-  },
-  {
-    id: 'lapis',
-    name: 'Lapis Lazuli',
-    description: 'Royal lapis lazuli',
-    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
-    textColor: '#eff6ff',
-    accentColor: '#60a5fa',
-  },
-  {
-    id: 'turquoise2',
-    name: 'Turquoise Classic',
-    description: 'Classic turquoise',
-    background: 'linear-gradient(135deg, #0e7490 0%, #0891b2 50%, #0284c7 100%)',
-    textColor: '#ecfeff',
-    accentColor: '#67e8f9',
-  },
-  {
-    id: 'coral',
-    name: 'Coral Reef',
-    description: 'Vibrant coral theme',
-    background: 'linear-gradient(135deg, #be123c 0%, #e11d48 50%, #f43f5e 100%)',
-    textColor: '#fff1f2',
-    accentColor: '#fb7185',
-  },
-  {
-    id: 'amber',
-    name: 'Amber Glow',
-    description: 'Warm amber theme',
-    background: 'linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%)',
-    textColor: '#fffbeb',
-    accentColor: '#fbbf24',
-  },
-  {
-    id: 'carnelian',
-    name: 'Carnelian Red',
-    description: 'Deep carnelian red',
-    background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%)',
-    textColor: '#fef2f2',
-    accentColor: '#f87171',
-  },
-  {
-    id: 'bloodstone',
-    name: 'Bloodstone Dark',
-    description: 'Dark bloodstone theme',
-    background: 'linear-gradient(135deg, #1c1917 0%, #292524 50%, #44403c 100%)',
-    textColor: '#fafaf9',
-    accentColor: '#a8a29e',
-  },
-  {
-    id: 'sodalite',
-    name: 'Sodalite Blue',
-    description: 'Deep sodalite blue',
-    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%)',
-    textColor: '#eff6ff',
-    accentColor: '#93c5fd',
-  },
-  {
-    id: 'charoite',
-    name: 'Charoite Purple',
-    description: 'Rare charoite purple',
-    background: 'linear-gradient(135deg, #581c87 0%, #6b21a8 50%, #7c3aed 100%)',
-    textColor: '#faf5ff',
-    accentColor: '#c084fc',
-  },
-  {
-    id: 'labradorite',
-    name: 'Labradorite Flash',
-    description: 'Flashing labradorite',
-    background: 'linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #7c3aed 100%)',
-    textColor: '#f5f3ff',
-    accentColor: '#a78bfa',
-  },
-  {
-    id: 'spectrolite',
-    name: 'Spectrolite Rainbow',
-    description: 'Rainbow spectrolite',
-    background: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 50%, #db2777 100%)',
-    textColor: '#fdf4ff',
-    accentColor: '#e879f9',
-  },
-  {
-    id: 'moonstone2',
-    name: 'Rainbow Moonstone',
-    description: 'Rainbow moonstone',
-    background: 'linear-gradient(135deg, #475569 0%, #64748b 50%, #8b5cf6 100%)',
-    textColor: '#f8fafc',
-    accentColor: '#c4b5fd',
-  },
-  {
-    id: 'sunstone2',
-    name: 'Oregon Sunstone',
-    description: 'Oregon sunstone',
-    background: 'linear-gradient(135deg, #c2410c 0%, #ea580c 50%, #f97316 100%)',
-    textColor: '#fff7ed',
-    accentColor: '#fdba74',
-  },
-  {
-    id: 'phenakite',
-    name: 'Phenakite Clear',
-    description: 'Clear phenakite',
-    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
-    textColor: '#0c4a6e',
-    accentColor: '#0ea5e9',
-  },
-  {
-    id: 'benitoite',
-    name: 'Benitoite Blue',
-    description: 'Rare benitoite blue',
-    background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%)',
-    textColor: '#eff6ff',
-    accentColor: '#60a5fa',
-  },
-  {
-    id: 'poudretteite',
-    name: 'Poudretteite Pink',
-    description: 'Rare poudretteite pink',
-    background: 'linear-gradient(135deg, #831843 0%, #9d174d 50%, #be185d 100%)',
-    textColor: '#fdf2f8',
-    accentColor: '#f9a8d4',
-  },
-  {
-    id: 'grandidierite',
-    name: 'Grandidierite Green',
-    description: 'Rare grandidierite green',
-    background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)',
-    textColor: '#ecfdf5',
-    accentColor: '#6ee7b7',
-  },
-  {
-    id: 'taaffeite',
-    name: 'Taaffeite Purple',
-    description: 'Rare taaffeite purple',
-    background: 'linear-gradient(135deg, #581c87 0%, #6b21a8 50%, #7c3aed 100%)',
-    textColor: '#faf5ff',
-    accentColor: '#c084fc',
-  },
-  {
-    id: 'musgravite',
-    name: 'Musgravite Dark',
-    description: 'Rare musgravite dark',
-    background: 'linear-gradient(135deg, #1c1917 0%, #292524 50%, #44403c 100%)',
-    textColor: '#fafaf9',
-    accentColor: '#a8a29e',
-  },
-  {
-    id: 'jeremejevite',
-    name: 'Jeremejevite Blue',
-    description: 'Rare jeremejevite blue',
-    background: 'linear-gradient(135deg, #0e7490 0%, #0891b2 50%, #06b6d4 100%)',
-    textColor: '#ecfeff',
-    accentColor: '#67e8f9',
-  },
-  {
-    id: 'painite',
-    name: 'Painite Red',
-    description: 'Rare painite red',
-    background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%)',
-    textColor: '#fef2f2',
-    accentColor: '#f87171',
-  },
-];
+import { 
+  THEME_TEMPLATES, 
+  GRADIENT_PRESETS, 
+  COLOR_SWATCHES, 
+  getThemeBackgroundStyle, 
+  resolveTheme 
+} from '@shared/constants/themes';
 
 export default function ProfileEdit() {
   const { uid } = useParams();
@@ -628,36 +41,68 @@ export default function ProfileEdit() {
   });
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [profilePhotoPreview, setProfilePhotoPreview] = useState(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState('default');
-  const [showAllThemes, setShowAllThemes] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState('');
   const [newSectionContent, setNewSectionContent] = useState('');
   const [generatingBio, setGeneratingBio] = useState(false);
   
-  // Custom theme upload state
-  const [showCustomThemeUpload, setShowCustomThemeUpload] = useState(false);
-  const [customThemeName, setCustomThemeName] = useState('');
-  const [customThemeDescription, setCustomThemeDescription] = useState('');
-  const [customThemeImage, setCustomThemeImage] = useState(null);
-  const [customThemeImagePreview, setCustomThemeImagePreview] = useState(null);
-  const [customThemeIsPublic, setCustomThemeIsPublic] = useState(false);
-  const [uploadingTheme, setUploadingTheme] = useState(false);
-  const [customThemes, setCustomThemes] = useState([]);
-  const [showThemePreview, setShowThemePreview] = useState(false);
-  const [showBioPreview, setShowBioPreview] = useState(false);
-  
-  // Theme customization state
-  const [customizingTheme, setCustomizingTheme] = useState(false);
-  const [customColors, setCustomColors] = useState({
+  // Custom theme studio state
+  const [activeThemeTab, setActiveThemeTab] = useState('presets'); // 'presets' | 'custom-studio'
+  const [customThemeConfig, setCustomThemeConfig] = useState({
+    name: 'My Custom Theme',
+    description: 'Personalized BeastBuck theme',
+    backgroundType: 'gradient', // 'gradient' | 'solid' | 'image'
+    gradientFrom: '#0f0c29',
+    gradientTo: '#24243e',
+    gradientAngle: '135deg',
+    solidColor: '#09090b',
+    imageUrl: '',
     textColor: '#ffffff',
     accentColor: '#00d4ff',
+    isPublic: false,
   });
+  const [customThemeImageFile, setCustomThemeImageFile] = useState(null);
+  const [customThemeImagePreview, setCustomThemeImagePreview] = useState(null);
+  const [uploadingTheme, setUploadingTheme] = useState(false);
+  const [customThemes, setCustomThemes] = useState([]);
+  const [showThemePreview, setShowThemePreview] = useState(true);
+  const [showBioPreview, setShowBioPreview] = useState(false);
   
   // Theme filter state
   const [themeSearch, setThemeSearch] = useState('');
   const [themeCategory, setThemeCategory] = useState('all');
   const [favoriteThemes, setFavoriteThemes] = useState([]);
+
+  // Compute live custom theme background string
+  const computedCustomBackground = useMemo(() => {
+    if (customThemeConfig.backgroundType === 'solid') {
+      return customThemeConfig.solidColor || '#09090b';
+    }
+    if (customThemeConfig.backgroundType === 'image') {
+      return customThemeImagePreview || customThemeConfig.imageUrl || 'linear-gradient(135deg, #09090b 0%, #111116 100%)';
+    }
+    return `linear-gradient(${customThemeConfig.gradientAngle || '135deg'}, ${customThemeConfig.gradientFrom || '#0f0c29'} 0%, ${customThemeConfig.gradientTo || '#24243e'} 100%)`;
+  }, [
+    customThemeConfig.backgroundType,
+    customThemeConfig.solidColor,
+    customThemeConfig.imageUrl,
+    customThemeImagePreview,
+    customThemeConfig.gradientAngle,
+    customThemeConfig.gradientFrom,
+    customThemeConfig.gradientTo,
+  ]);
+
+  // Current active custom theme object
+  const activeCustomThemeObject = useMemo(() => ({
+    id: 'custom',
+    name: customThemeConfig.name || 'Custom Theme',
+    description: customThemeConfig.description || 'Personalized custom theme',
+    background: computedCustomBackground,
+    textColor: customThemeConfig.textColor || '#ffffff',
+    accentColor: customThemeConfig.accentColor || '#00d4ff',
+    cardBg: 'rgba(255, 255, 255, 0.05)',
+    isCustom: true,
+  }), [customThemeConfig, computedCustomBackground]);
 
   // Initialize TipTap editor for bio
   const editor = useEditor({
@@ -683,7 +128,7 @@ export default function ProfileEdit() {
       if (formData.bio !== undefined && formData.bio !== currentHTML) {
         editor.commands.setContent(formData.bio || '');
       }
-    } catch (err) {
+    } catch {
       // TipTap editor not fully initialized yet
     }
   }, [formData.bio, editor]);
@@ -691,8 +136,6 @@ export default function ProfileEdit() {
   useEffect(() => {
     if (!user?.uid) return;
 
-    // Security check: Users can only edit their own profile
-    // CEO and Co-CEO can edit any profile
     const userRole = roleData?.role?.toLowerCase().trim() || '';
     const isCEO = userRole === 'main ceo' || userRole === 'ceo';
     const isCoCEO = userRole === 'co-ceo' || userRole === 'co ceo';
@@ -700,7 +143,6 @@ export default function ProfileEdit() {
 
     const profileUid = uid || user.uid;
 
-    // If uid is provided and it's not the user's own profile, check permissions
     if (uid && uid !== user.uid && !isExecutive) {
       console.error('Security: Attempting to edit another user\'s profile without permission');
       navigate(`/profile/${user.uid}`);
@@ -720,7 +162,31 @@ export default function ProfileEdit() {
           interests: nextProfile?.interests || '',
           customSections: nextProfile?.customSections || []
         });
-        setSelectedTheme(nextProfile?.theme || 'default');
+        
+        const initialTheme = nextProfile?.theme || 'default';
+        setSelectedTheme(initialTheme);
+
+        // If user already has a custom theme saved on profile, hydrate custom theme builder
+        if (nextProfile?.customTheme) {
+          const ct = nextProfile.customTheme;
+          setCustomThemeConfig(prev => ({
+            ...prev,
+            name: ct.name || prev.name,
+            description: ct.description || prev.description,
+            textColor: ct.textColor || prev.textColor,
+            accentColor: ct.accentColor || prev.accentColor,
+            backgroundType: ct.background?.startsWith('http') || ct.background?.startsWith('data:image') ? 'image' : 'gradient',
+            imageUrl: ct.background?.startsWith('http') ? ct.background : '',
+          }));
+          if (ct.background?.startsWith('http') || ct.background?.startsWith('data:image')) {
+            setCustomThemeImagePreview(ct.background);
+          }
+          setCustomThemes(prev => {
+            const filtered = prev.filter(t => t.id !== 'custom');
+            return [{ ...ct, id: 'custom', isCustom: true }, ...filtered];
+          });
+        }
+
         setProfilePhotoPreview(normalizeMediaUrl(nextProfile?.photoURL) || null);
         setLoading(false);
       },
@@ -734,7 +200,6 @@ export default function ProfileEdit() {
     ThemesService.getPublicThemes()
       .then(themes => {
         setCustomThemes(prev => {
-          // Remove duplicates by ID
           const existingIds = new Set(prev.map(t => t.id));
           const newThemes = themes.filter(t => !existingIds.has(t.id));
           return [...prev, ...newThemes];
@@ -742,7 +207,6 @@ export default function ProfileEdit() {
       })
       .catch(err => {
         console.error('Failed to load public themes:', err);
-        // Silently fail - themes won't be available without proper Firestore rules
       });
 
     // Fetch user's private themes from Firestore
@@ -750,7 +214,6 @@ export default function ProfileEdit() {
       ThemesService.getUserThemes(user.uid)
         .then(themes => {
           setCustomThemes(prev => {
-            // Remove duplicates by ID
             const existingIds = new Set(prev.map(t => t.id));
             const newThemes = themes.filter(t => !existingIds.has(t.id));
             return [...prev, ...newThemes];
@@ -758,12 +221,11 @@ export default function ProfileEdit() {
         })
         .catch(err => {
           console.error('Failed to load user themes:', err);
-          // Silently fail - themes won't be available without proper Firestore rules
         });
     }
 
     return () => unsubscribe();
-  }, [user?.uid, uid]);
+  }, [user?.uid, uid, navigate, roleData?.role]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -816,22 +278,36 @@ export default function ProfileEdit() {
   };
 
   const handleCustomThemeImageChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
-      setCustomThemeImage(file);
-      setCustomThemeImagePreview(URL.createObjectURL(file));
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+      setCustomThemeImageFile(file);
+      const previewUrl = URL.createObjectURL(file);
+      setCustomThemeImagePreview(previewUrl);
+      setCustomThemeConfig(prev => ({ ...prev, backgroundType: 'image', imageUrl: previewUrl }));
     }
   };
 
-  // Get the current theme object
+  // Get current active theme object
   const getCurrentTheme = () => {
+    if (selectedTheme === 'custom') {
+      return activeCustomThemeObject;
+    }
     const allThemes = [...THEME_TEMPLATES, ...customThemes];
-    return allThemes.find(t => t.id === selectedTheme) || THEME_TEMPLATES[0];
+    const found = allThemes.find(t => t.id === selectedTheme);
+    if (found) return found;
+    if (profile?.customTheme && selectedTheme === profile.customTheme.id) {
+      return profile.customTheme;
+    }
+    return resolveTheme(selectedTheme, profile?.customTheme);
   };
 
   // Filter themes based on search and category
   const getFilteredThemes = () => {
-    const allThemes = [...THEME_TEMPLATES, ...customThemes];
+    const allThemes = [...THEME_TEMPLATES, ...customThemes.filter(ct => ct.id !== 'custom')];
     
     let filtered = allThemes;
     
@@ -839,13 +315,13 @@ export default function ProfileEdit() {
     if (themeCategory !== 'all') {
       filtered = filtered.filter(theme => {
         if (themeCategory === 'dark') {
-          return theme.textColor === '#ffffff' || theme.textColor === '#f9fafb';
+          return theme.category === 'dark' || theme.textColor === '#ffffff' || theme.textColor === '#fafafa';
+        } else if (themeCategory === 'vibrant') {
+          return theme.category === 'vibrant';
         } else if (themeCategory === 'light') {
-          return theme.textColor !== '#ffffff' && theme.textColor !== '#f9fafb';
+          return theme.category === 'light' || (theme.textColor !== '#ffffff' && !theme.textColor?.toLowerCase().includes('fff'));
         } else if (themeCategory === 'custom') {
           return theme.isCustom;
-        } else if (themeCategory === 'popular') {
-          return THEME_TEMPLATES.slice(0, 12).some(t => t.id === theme.id);
         } else if (themeCategory === 'favorites') {
           return favoriteThemes.includes(theme.id);
         }
@@ -854,11 +330,11 @@ export default function ProfileEdit() {
     }
     
     // Filter by search
-    if (themeSearch) {
-      const searchLower = themeSearch.toLowerCase();
+    if (themeSearch.trim()) {
+      const searchLower = themeSearch.toLowerCase().trim();
       filtered = filtered.filter(theme =>
         theme.name.toLowerCase().includes(searchLower) ||
-        theme.description.toLowerCase().includes(searchLower)
+        theme.description?.toLowerCase().includes(searchLower)
       );
     }
     
@@ -875,62 +351,63 @@ export default function ProfileEdit() {
     });
   };
 
-  const handleUploadCustomTheme = async () => {
-    if (!customThemeName || !customThemeImage) {
-      alert('Please provide a theme name and upload an image');
+  // Apply custom theme studio config directly to active profile
+  const handleApplyCustomTheme = () => {
+    setSelectedTheme('custom');
+    setActiveThemeTab('presets');
+  };
+
+  // Save custom theme to Firestore collection (optional sharing / library saving)
+  const handleSaveThemeToLibrary = async () => {
+    if (!customThemeConfig.name.trim()) {
+      alert('Please provide a name for your custom theme');
       return;
     }
 
     setUploadingTheme(true);
     try {
-      let imageUrl = customThemeImagePreview;
+      let finalBackground = computedCustomBackground;
 
-      // Upload image to Cloudinary if configured
-      if (isCloudinaryConfigured) {
+      // If user uploaded a physical file, upload to storage
+      if (customThemeImageFile) {
         try {
-          const uploadResult = await uploadProofFile(customThemeImage, { folder: 'beastbuck/themes' });
-          imageUrl = uploadResult.url;
-        } catch (uploadError) {
-          console.error('Image upload failed, using local preview:', uploadError);
-          // Fall back to local preview if upload fails
+          const uploadRes = await uploadFile(customThemeImageFile, { folder: 'themes' });
+          if (uploadRes?.url) {
+            finalBackground = normalizeMediaUrl(uploadRes.url);
+          }
+        } catch (uploadErr) {
+          console.warn('Storage upload error, using local data URL:', uploadErr);
         }
       }
 
-      // Create theme data for Firestore
       const themeData = {
-        name: customThemeName,
-        description: customThemeDescription,
-        background: imageUrl,
-        textColor: '#ffffff',
-        accentColor: '#00d4ff',
+        name: customThemeConfig.name.trim(),
+        description: customThemeConfig.description || 'Personalized custom theme',
+        background: finalBackground,
+        textColor: customThemeConfig.textColor,
+        accentColor: customThemeConfig.accentColor,
+        cardBg: 'rgba(255, 255, 255, 0.05)',
         isCustom: true,
-        isPublic: customThemeIsPublic,
+        isPublic: !!customThemeConfig.isPublic,
         createdBy: user.uid,
       };
 
-      // Save to Firestore
       try {
         const newTheme = await ThemesService.createTheme(themeData);
-        setCustomThemes(prev => [...prev, newTheme]);
+        setCustomThemes(prev => [newTheme, ...prev]);
         setSelectedTheme(newTheme.id);
-      } catch (firestoreError) {
-        console.error('Firestore save failed:', firestoreError);
-        alert('Failed to save theme to Firestore. Please check your Firestore security rules.');
-        return;
+        alert('Custom theme saved to your library!');
+        setActiveThemeTab('presets');
+      } catch (firestoreErr) {
+        console.warn('Firestore theme save warning, activating theme locally:', firestoreErr);
+        setSelectedTheme('custom');
+        alert('Custom theme applied to your profile!');
+        setActiveThemeTab('presets');
       }
-      
-      // Reset form
-      setCustomThemeName('');
-      setCustomThemeDescription('');
-      setCustomThemeImage(null);
-      setCustomThemeImagePreview(null);
-      setCustomThemeIsPublic(false);
-      setShowCustomThemeUpload(false);
-      
-      alert('Custom theme uploaded successfully!');
     } catch (error) {
-      console.error('Theme upload failed:', error);
-      alert('Failed to upload theme. Please try again.');
+      console.error('Custom theme creation error:', error);
+      alert('Failed to save theme. Applying locally instead.');
+      setSelectedTheme('custom');
     } finally {
       setUploadingTheme(false);
     }
@@ -939,8 +416,6 @@ export default function ProfileEdit() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Security check: Users can only edit their own profile
-      // CEO and Co-CEO can edit any profile
       const userRole = roleData?.role?.toLowerCase().trim() || '';
       const isCEO = userRole === 'main ceo' || userRole === 'ceo';
       const isCoCEO = userRole === 'co-ceo' || userRole === 'co ceo';
@@ -948,9 +423,7 @@ export default function ProfileEdit() {
 
       const profileUid = uid || user?.uid;
 
-      // If uid is provided and it's not the user's own profile, check permissions
       if (uid && uid !== user?.uid && !isExecutive) {
-        console.error('Security: Attempting to save another user\'s profile without permission');
         alert('You do not have permission to edit this profile.');
         setSaving(false);
         return;
@@ -968,7 +441,38 @@ export default function ProfileEdit() {
         theme: selectedTheme
       };
 
-      // If there's a new profile photo, upload it first using B2 storage
+      // If custom theme is chosen or custom config is active, save full customTheme object
+      if (selectedTheme === 'custom') {
+        let finalBg = computedCustomBackground;
+        if (customThemeImageFile) {
+          try {
+            const uploadRes = await uploadFile(customThemeImageFile, { folder: 'themes' });
+            if (uploadRes?.url) {
+              finalBg = normalizeMediaUrl(uploadRes.url);
+            }
+          } catch (uploadErr) {
+            console.warn('Custom theme image upload failed, using background string:', uploadErr);
+          }
+        }
+        updateData.customTheme = {
+          id: 'custom',
+          name: customThemeConfig.name || 'Custom Theme',
+          description: customThemeConfig.description || '',
+          background: finalBg,
+          textColor: customThemeConfig.textColor || '#ffffff',
+          accentColor: customThemeConfig.accentColor || '#00d4ff',
+          cardBg: 'rgba(255, 255, 255, 0.05)',
+          isCustom: true,
+          updatedAt: new Date().toISOString()
+        };
+      } else {
+        const foundCustom = customThemes.find(t => t.id === selectedTheme);
+        if (foundCustom) {
+          updateData.customTheme = foundCustom;
+        }
+      }
+
+      // If there is a new profile photo, upload it
       if (profilePhoto) {
         const photoResult = await uploadProfilePhoto(profilePhoto);
         updateData.photoURL = normalizeMediaUrl(photoResult.url);
@@ -986,14 +490,12 @@ export default function ProfileEdit() {
   };
 
   const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         alert('Please select an image file');
         return;
       }
-      // Validate file size (max 10MB for IPFS)
       if (file.size > 10 * 1024 * 1024) {
         alert('Image size must be less than 10MB');
         return;
@@ -1012,15 +514,17 @@ export default function ProfileEdit() {
     return <LoadingState text="Loading profile..." />;
   }
 
+  const currentTheme = getCurrentTheme();
+
   return (
     <main className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
       <div className="flex flex-col gap-2">
         <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">Profile Editor</p>
         <h1 className="font-heading text-2xl font-bold text-white md:text-3xl">Edit Your Profile</h1>
-        <p className="text-sm text-text-muted">Customize your profile with themes, sections, and AI-generated content.</p>
+        <p className="text-sm text-text-muted">Customize your profile with eye-catching themes, sections, and AI-generated bio.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)]">
         {/* Main Editor */}
         <div className="space-y-6">
           {/* Basic Information */}
@@ -1077,7 +581,7 @@ export default function ProfileEdit() {
                         Remove Photo
                       </button>
                     )}
-                    <p className="text-xs text-text-muted">Max size: 10MB. JPG, PNG, GIF, WebP, SVG</p>
+                    <p className="text-xs text-text-muted">Max size: 10MB. JPG, PNG, GIF, WebP</p>
                   </div>
                 </div>
               </div>
@@ -1129,33 +633,36 @@ export default function ProfileEdit() {
                   </button>
                 </label>
                 
-                {/* Split-screen Bio Editor */}
-                <div className="grid gap-4 md:grid-cols-2">
-                  {/* Editor Panel */}
+                {/* Bio Editor */}
+                <div className="grid gap-4">
                   {!showBioPreview && (
-                    <div className="md:col-span-2">
+                    <div>
                       {editor && (
                         <div className="rounded-xl border border-border bg-surface overflow-hidden">
                           <div className="flex items-center gap-2 border-b border-border bg-white/5 p-2">
                             <button
+                              type="button"
                               onClick={() => editor.chain().focus().toggleBold().run()}
                               className={`rounded px-2 py-1 text-sm font-bold ${editor.isActive('bold') ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
                             >
                               B
                             </button>
                             <button
+                              type="button"
                               onClick={() => editor.chain().focus().toggleItalic().run()}
                               className={`rounded px-2 py-1 text-sm italic ${editor.isActive('italic') ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
                             >
                               I
                             </button>
                             <button
+                              type="button"
                               onClick={() => editor.chain().focus().toggleBulletList().run()}
                               className={`rounded px-2 py-1 text-sm ${editor.isActive('bulletList') ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
                             >
                               • List
                             </button>
                             <button
+                              type="button"
                               onClick={() => editor.chain().focus().toggleCodeBlock().run()}
                               className={`rounded px-2 py-1 text-sm font-mono ${editor.isActive('codeBlock') ? 'bg-accent text-black' : 'text-white hover:bg-white/10'}`}
                             >
@@ -1168,12 +675,9 @@ export default function ProfileEdit() {
                     </div>
                   )}
                   
-                  {/* Preview Panel */}
                   {showBioPreview && (
-                    <div className="md:col-span-2">
-                      <div className="rounded-xl border border-border bg-surface p-4 prose prose-invert max-w-none">
-                        <div dangerouslySetInnerHTML={{ __html: formData.bio }} />
-                      </div>
+                    <div className="rounded-xl border border-border bg-surface p-4 prose prose-invert max-w-none">
+                      <div dangerouslySetInnerHTML={{ __html: formData.bio || '<em>No bio entered yet.</em>' }} />
                     </div>
                   )}
                 </div>
@@ -1318,357 +822,608 @@ export default function ProfileEdit() {
           </Card>
         </div>
 
-        {/* Theme Selection */}
+        {/* Theme Selection & Custom Theme Studio */}
         <div className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-accent" />
-                Theme Selection
-              </CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-accent" />
+                  Theme Studio
+                </CardTitle>
+                <button
+                  type="button"
+                  onClick={() => setShowThemePreview(!showThemePreview)}
+                  className="text-xs font-bold text-accent hover:text-cyan-400 flex items-center gap-1"
+                >
+                  {showThemePreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  {showThemePreview ? 'Hide Preview' : 'Live Preview'}
+                </button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-text-muted">Choose from {THEME_TEMPLATES.length} professional themes</p>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowThemePreview(!showThemePreview)}
-                    className="text-sm font-bold text-accent hover:text-cyan-400"
-                  >
-                    {showThemePreview ? 'Hide Preview' : 'Live Preview'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAllThemes(!showAllThemes)}
-                    className="text-sm font-bold text-accent hover:text-cyan-400"
-                  >
-                    {showAllThemes ? 'Show Popular' : 'Show All'}
-                  </button>
-                </div>
+              {/* Theme Tab Navigation: Presets vs Custom Studio */}
+              <div className="flex rounded-xl bg-surface border border-border p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveThemeTab('presets')}
+                  className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                    activeThemeTab === 'presets'
+                      ? 'bg-accent text-background shadow-md'
+                      : 'text-text-muted hover:text-white'
+                  }`}
+                >
+                  <Palette className="h-4 w-4" />
+                  Curated Themes ({THEME_TEMPLATES.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveThemeTab('custom-studio')}
+                  className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                    activeThemeTab === 'custom-studio'
+                      ? 'bg-accent text-background shadow-md'
+                      : 'text-text-muted hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Custom Theme Studio
+                </button>
               </div>
 
-              {/* Theme Search */}
-              <div>
-                <input
-                  type="text"
-                  value={themeSearch}
-                  onChange={(e) => setThemeSearch(e.target.value)}
-                  placeholder="Search themes..."
-                  className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-white placeholder:text-text-muted focus:border-accent focus:outline-none"
-                />
-              </div>
-
-              {/* Theme Categories */}
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: 'all', label: 'All' },
-                  { id: 'favorites', label: 'Favorites', icon: Star },
-                  { id: 'popular', label: 'Popular' },
-                  { id: 'dark', label: 'Dark' },
-                  { id: 'light', label: 'Light' },
-                  { id: 'custom', label: 'Custom' },
-                ].map(category => (
-                  <button
-                    key={category.id}
-                    type="button"
-                    onClick={() => setThemeCategory(category.id)}
-                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                      themeCategory === category.id
-                        ? 'bg-accent text-background'
-                        : 'bg-surface text-text-muted hover:bg-white/5'
-                    }`}
-                  >
-                    {category.icon && <category.icon className="h-3 w-3" />}
-                    {category.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Live Theme Preview */}
+              {/* Real-time Theme Preview Card */}
               {showThemePreview && (
-                <div className="rounded-xl border border-border overflow-hidden">
+                <div className="rounded-2xl border-2 overflow-hidden shadow-xl transition-all" style={{ borderColor: currentTheme.accentColor }}>
                   <div
-                    className="p-6"
+                    className="p-5 relative transition-all duration-300"
                     style={{
-                      background: getCurrentTheme().background,
-                      color: getCurrentTheme().textColor,
+                      ...getThemeBackgroundStyle(currentTheme.background),
+                      color: currentTheme.textColor,
                     }}
                   >
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="h-16 w-16 rounded-full bg-white/20 flex items-center justify-center">
-                        <User className="h-8 w-8" style={{ color: getCurrentTheme().textColor }} />
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="h-12 w-12 rounded-xl border-2 flex items-center justify-center font-bold text-lg" style={{ borderColor: currentTheme.accentColor, background: `${currentTheme.accentColor}20` }}>
+                        {formData.displayName?.[0] || 'U'}
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold" style={{ color: getCurrentTheme().textColor }}>
-                          {formData.displayName || 'Your Name'}
-                        </h3>
-                        <p className="text-sm opacity-80" style={{ color: getCurrentTheme().textColor }}>
-                          @{profile?.username || 'username'}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="text-sm mb-4 opacity-90" style={{ color: getCurrentTheme().textColor }}>
-                      {formData.bio || 'Your bio will appear here...'}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        className="px-4 py-2 rounded-lg text-sm font-bold"
-                        style={{
-                          background: getCurrentTheme().accentColor,
-                          color: '#ffffff',
-                        }}
-                      >
-                        Follow
-                      </button>
-                      <button
-                        className="px-4 py-2 rounded-lg text-sm font-bold border-2"
-                        style={{
-                          borderColor: getCurrentTheme().accentColor,
-                          color: getCurrentTheme().accentColor,
-                        }}
-                      >
-                        Message
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Custom Theme Upload Button */}
-              <button
-                type="button"
-                onClick={() => setShowCustomThemeUpload(!showCustomThemeUpload)}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-accent/50 bg-accent/5 px-4 py-3 text-sm font-bold text-accent hover:bg-accent/10 transition-all"
-              >
-                <Upload className="h-4 w-4" />
-                {showCustomThemeUpload ? 'Cancel Upload' : 'Upload Custom Theme'}
-              </button>
-
-              {/* Theme Color Customization */}
-              <button
-                type="button"
-                onClick={() => setCustomizingTheme(!customizingTheme)}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm font-bold text-white hover:bg-white/5 transition-all"
-              >
-                <Palette className="h-4 w-4 text-accent" />
-                {customizingTheme ? 'Cancel Customization' : 'Customize Colors'}
-              </button>
-
-              {customizingTheme && (
-                <div className="space-y-4 rounded-xl border border-border bg-surface p-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-white">Text Color</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="color"
-                        value={customColors.textColor}
-                        onChange={(e) => setCustomColors(prev => ({ ...prev, textColor: e.target.value }))}
-                        className="h-10 w-10 rounded cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={customColors.textColor}
-                        onChange={(e) => setCustomColors(prev => ({ ...prev, textColor: e.target.value }))}
-                        className="flex-1 rounded-xl border border-border bg-surface px-4 py-2 text-white focus:border-accent focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-white">Accent Color</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="color"
-                        value={customColors.accentColor}
-                        onChange={(e) => setCustomColors(prev => ({ ...prev, accentColor: e.target.value }))}
-                        className="h-10 w-10 rounded cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={customColors.accentColor}
-                        onChange={(e) => setCustomColors(prev => ({ ...prev, accentColor: e.target.value }))}
-                        className="flex-1 rounded-xl border border-border bg-surface px-4 py-2 text-white focus:border-accent focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomColors({ textColor: '#ffffff', accentColor: '#00d4ff' });
-                        const currentTheme = getCurrentTheme();
-                        if (currentTheme) {
-                          setSelectedTheme(currentTheme.id);
-                        }
-                      }}
-                      className="flex-1 rounded-lg bg-surface px-4 py-2 text-sm font-bold text-text-muted hover:bg-white/5"
-                    >
-                      Reset
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const currentTheme = getCurrentTheme();
-                        if (currentTheme) {
-                          const customizedTheme = {
-                            ...currentTheme,
-                            id: `${currentTheme.id}-custom`,
-                            textColor: customColors.textColor,
-                            accentColor: customColors.accentColor,
-                            isCustom: true,
-                            isLocal: true,
-                          };
-                          setCustomThemes(prev => [...prev, customizedTheme]);
-                          setSelectedTheme(customizedTheme.id);
-                        }
-                      }}
-                      className="flex-1 rounded-lg bg-accent px-4 py-2 text-sm font-bold text-background hover:bg-cyan-400"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Custom Theme Upload Form */}
-              {showCustomThemeUpload && (
-                <div className="space-y-4 rounded-xl border border-border bg-surface p-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-white">Theme Name</label>
-                    <input
-                      type="text"
-                      value={customThemeName}
-                      onChange={(e) => setCustomThemeName(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-white placeholder:text-text-muted focus:border-accent focus:outline-none"
-                      placeholder="My Custom Theme"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-white">Description</label>
-                    <input
-                      type="text"
-                      value={customThemeDescription}
-                      onChange={(e) => setCustomThemeDescription(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-white placeholder:text-text-muted focus:border-accent focus:outline-none"
-                      placeholder="A beautiful custom theme"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-white">Theme Image</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleCustomThemeImageChange}
-                      className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-white file:mr-4 file:rounded-lg file:border-0 file:bg-accent/20 file:text-accent file:py-2 file:px-4 focus:border-accent focus:outline-none"
-                    />
-                    {customThemeImagePreview && (
-                      <div className="mt-2">
-                        <img 
-                          src={customThemeImagePreview} 
-                          alt="Theme preview" 
-                          className="h-32 w-full rounded-xl object-cover"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setCustomThemeIsPublic(!customThemeIsPublic)}
-                      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-                        customThemeIsPublic 
-                          ? 'bg-accent/20 text-accent' 
-                          : 'bg-surface text-text-muted'
-                      }`}
-                    >
-                      {customThemeIsPublic ? <GlobeIcon className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                      {customThemeIsPublic ? 'Public' : 'Private'}
-                    </button>
-                    <p className="text-xs text-text-muted">
-                      {customThemeIsPublic ? 'Everyone can see and use this theme' : 'Only you can use this theme'}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleUploadCustomTheme}
-                    disabled={uploadingTheme || !customThemeName || !customThemeImage}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-cyan-500 px-6 py-3 text-sm font-bold text-background hover:from-cyan-400 hover:to-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Upload className="h-4 w-4" />
-                    {uploadingTheme ? 'Uploading...' : 'Upload Theme'}
-                  </button>
-                </div>
-              )}
-
-              <div className="grid gap-3 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                {getFilteredThemes().length === 0 && (
-                  <div className="text-center py-8 text-text-muted">
-                    No themes found for this category
-                  </div>
-                )}
-                {getFilteredThemes().map(theme => (
-                  <div
-                    key={theme.id}
-                    onClick={() => setSelectedTheme(theme.id)}
-                    className={`relative overflow-hidden rounded-xl border-2 p-4 text-left transition-all cursor-pointer ${
-                      selectedTheme === theme.id
-                        ? 'border-accent bg-accent/10'
-                        : 'border-border hover:border-accent/50'
-                    }`}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div
-                      className="absolute inset-0 opacity-20"
-                      style={{ background: theme.background }}
-                    />
-                    <div className="relative">
-                      <div className="flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-bold text-white">{theme.name}</h4>
-                          {theme.isCustom && (
-                            <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent">
+                          <h4 className="font-bold text-base truncate" style={{ color: currentTheme.textColor }}>
+                            {formData.displayName || 'Your Profile'}
+                          </h4>
+                          {selectedTheme === 'custom' && (
+                            <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ background: `${currentTheme.accentColor}30`, color: currentTheme.accentColor }}>
                               Custom
                             </span>
                           )}
-                          {theme.isPublic && (
-                            <GlobeIcon className="h-3 w-3 text-accent" />
-                          )}
                         </div>
+                        <p className="text-xs opacity-75 truncate" style={{ color: currentTheme.textColor }}>
+                          @{profile?.username || 'username'} · {currentTheme.name}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <p className="text-xs mb-3 line-clamp-2 opacity-85" style={{ color: currentTheme.textColor }}>
+                      {formData.bio?.replace(/<[^>]*>?/gm, '') || 'Live preview of your profile theme styling and accent colors.'}
+                    </p>
+
+                    <div className="flex gap-2">
+                      <div
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-background flex items-center justify-center"
+                        style={{ background: currentTheme.accentColor }}
+                      >
+                        Active Accent
+                      </div>
+                      <div
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold border"
+                        style={{
+                          borderColor: currentTheme.accentColor,
+                          color: currentTheme.accentColor,
+                          background: `${currentTheme.accentColor}15`
+                        }}
+                      >
+                        Border Accent
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ================= TAB 1: CURATED PRESETS ================= */}
+              {activeThemeTab === 'presets' && (
+                <div className="space-y-4">
+                  {/* Theme Search */}
+                  <div>
+                    <input
+                      type="text"
+                      value={themeSearch}
+                      onChange={(e) => setThemeSearch(e.target.value)}
+                      placeholder="Search themes by name or vibe..."
+                      className="w-full rounded-xl border border-border bg-surface px-4 py-2.5 text-sm text-white placeholder:text-text-muted focus:border-accent focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Theme Categories */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { id: 'all', label: 'All' },
+                      { id: 'favorites', label: 'Starred', icon: Star },
+                      { id: 'dark', label: 'Dark' },
+                      { id: 'vibrant', label: 'Vibrant' },
+                      { id: 'light', label: 'Light' },
+                      { id: 'custom', label: 'My Library' },
+                    ].map(category => (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => setThemeCategory(category.id)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          themeCategory === category.id
+                            ? 'bg-accent text-background'
+                            : 'bg-surface text-text-muted hover:bg-white/5'
+                        }`}
+                      >
+                        {category.icon && <category.icon className="h-3 w-3" />}
+                        {category.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Dedicated Custom Theme Selector Card */}
+                  <div
+                    onClick={() => {
+                      setSelectedTheme('custom');
+                    }}
+                    className={`relative overflow-hidden rounded-xl border-2 p-3.5 transition-all cursor-pointer ${
+                      selectedTheme === 'custom'
+                        ? 'border-accent bg-accent/15 shadow-lg ring-1 ring-accent/40'
+                        : 'border-dashed border-accent/40 bg-accent/5 hover:bg-accent/10'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-accent/20 text-accent">
+                          <Sliders className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-sm text-white">{customThemeConfig.name || 'Custom Theme'}</h4>
+                            <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent">
+                              Live Builder
+                            </span>
+                          </div>
+                          <p className="text-xs text-text-muted">Click to select or customize colors/background</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            toggleFavoriteTheme(theme.id);
+                            setSelectedTheme('custom');
+                            setActiveThemeTab('custom-studio');
                           }}
-                          className="p-1 rounded-full hover:bg-white/10 transition-colors"
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-accent/20 text-accent hover:bg-accent hover:text-background transition-all"
                         >
-                          <Star 
-                            className={`h-4 w-4 transition-colors ${
-                              favoriteThemes.includes(theme.id) 
-                                ? 'fill-yellow-400 text-yellow-400' 
-                                : 'text-text-muted'
-                            }`} 
-                          />
+                          Edit Studio
                         </button>
+                        {selectedTheme === 'custom' && (
+                          <div className="h-6 w-6 rounded-full bg-accent text-background flex items-center justify-center font-bold">
+                            <Check className="h-3.5 w-3.5" />
+                          </div>
+                        )}
                       </div>
-                      <p className="mt-1 text-xs text-text-muted">{theme.description}</p>
-                      <div className="mt-2 flex gap-2">
-                        <div
-                          className="h-4 w-4 rounded-full border border-white/20"
-                          style={{ background: theme.accentColor }}
+                    </div>
+                  </div>
+
+                  {/* Themes List (10-15 Curated Themes) */}
+                  <div className="grid gap-2.5 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+                    {getFilteredThemes().length === 0 ? (
+                      <div className="text-center py-6 text-text-muted text-sm border border-dashed border-border rounded-xl">
+                        No themes matching your search or filter
+                      </div>
+                    ) : (
+                      getFilteredThemes().map(theme => {
+                        const isSelected = selectedTheme === theme.id;
+                        return (
+                          <div
+                            key={theme.id}
+                            onClick={() => setSelectedTheme(theme.id)}
+                            className={`group relative overflow-hidden rounded-xl border-2 p-3.5 text-left transition-all cursor-pointer ${
+                              isSelected
+                                ? 'border-accent bg-accent/10 shadow-lg ring-1 ring-accent/30'
+                                : 'border-border hover:border-accent/40 bg-surface/60'
+                            }`}
+                            role="button"
+                            tabIndex={0}
+                          >
+                            <div
+                              className="absolute inset-0 opacity-25 group-hover:opacity-40 transition-opacity"
+                              style={{ ...getThemeBackgroundStyle(theme.background) }}
+                            />
+                            <div className="relative flex items-center justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-bold text-sm text-white truncate">{theme.name}</h4>
+                                  {theme.isCustom && (
+                                    <span className="rounded-full bg-purple-500/20 px-2 py-0.2 text-[9px] font-bold text-purple-400">
+                                      Custom
+                                    </span>
+                                  )}
+                                  {theme.isPublic && (
+                                    <GlobeIcon className="h-3 w-3 text-accent" />
+                                  )}
+                                </div>
+                                <p className="mt-0.5 text-xs text-text-muted line-clamp-1">{theme.description}</p>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <div
+                                  className="h-5 w-5 rounded-full border border-white/30 shadow-sm"
+                                  style={{ background: theme.accentColor }}
+                                  title={`Accent: ${theme.accentColor}`}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleFavoriteTheme(theme.id);
+                                  }}
+                                  className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                                  title="Favorite theme"
+                                >
+                                  <Star 
+                                    className={`h-4 w-4 transition-colors ${
+                                      favoriteThemes.includes(theme.id) 
+                                        ? 'fill-yellow-400 text-yellow-400' 
+                                        : 'text-text-muted hover:text-white'
+                                    }`} 
+                                  />
+                                </button>
+                                {isSelected && (
+                                  <div className="h-5 w-5 rounded-full bg-accent text-background flex items-center justify-center font-bold">
+                                    <Check className="h-3 w-3" />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ================= TAB 2: CUSTOM THEME STUDIO ================= */}
+              {activeThemeTab === 'custom-studio' && (
+                <div className="space-y-4 rounded-xl border border-border bg-surface/80 p-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-accent" />
+                      Design Custom Theme
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomThemeConfig({
+                          name: 'My Custom Theme',
+                          description: 'Personalized BeastBuck theme',
+                          backgroundType: 'gradient',
+                          gradientFrom: '#0f0c29',
+                          gradientTo: '#24243e',
+                          gradientAngle: '135deg',
+                          solidColor: '#09090b',
+                          imageUrl: '',
+                          textColor: '#ffffff',
+                          accentColor: '#00d4ff',
+                          isPublic: false,
+                        });
+                        setCustomThemeImageFile(null);
+                        setCustomThemeImagePreview(null);
+                      }}
+                      className="text-xs text-text-muted hover:text-white flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Reset
+                    </button>
+                  </div>
+
+                  {/* Theme Name */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-white">Theme Name</label>
+                    <input
+                      type="text"
+                      value={customThemeConfig.name}
+                      onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full rounded-xl border border-border bg-black/40 px-3.5 py-2.5 text-sm text-white placeholder:text-text-muted focus:border-accent focus:outline-none"
+                      placeholder="e.g., Cyberpunk Matrix"
+                    />
+                  </div>
+
+                  {/* Background Type Selector */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-white">Background Mode</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'gradient', label: 'Gradient' },
+                        { id: 'solid', label: 'Solid Color' },
+                        { id: 'image', label: 'Image' },
+                      ].map(type => (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => setCustomThemeConfig(prev => ({ ...prev, backgroundType: type.id }))}
+                          className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                            customThemeConfig.backgroundType === type.id
+                              ? 'bg-accent text-background'
+                              : 'bg-black/30 border border-border text-text-muted hover:bg-white/5'
+                          }`}
+                        >
+                          {type.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Gradient Background Builder */}
+                  {customThemeConfig.backgroundType === 'gradient' && (
+                    <div className="space-y-3 rounded-xl border border-border/70 bg-black/30 p-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="mb-1 block text-[11px] font-bold text-text-muted">Color 1 (Start)</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={customThemeConfig.gradientFrom}
+                              onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, gradientFrom: e.target.value }))}
+                              className="h-8 w-8 rounded-lg cursor-pointer bg-transparent border-0"
+                            />
+                            <input
+                              type="text"
+                              value={customThemeConfig.gradientFrom}
+                              onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, gradientFrom: e.target.value }))}
+                              className="w-full rounded-lg border border-border bg-black/50 px-2.5 py-1.5 text-xs text-white font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-[11px] font-bold text-text-muted">Color 2 (End)</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={customThemeConfig.gradientTo}
+                              onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, gradientTo: e.target.value }))}
+                              className="h-8 w-8 rounded-lg cursor-pointer bg-transparent border-0"
+                            />
+                            <input
+                              type="text"
+                              value={customThemeConfig.gradientTo}
+                              onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, gradientTo: e.target.value }))}
+                              className="w-full rounded-lg border border-border bg-black/50 px-2.5 py-1.5 text-xs text-white font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Gradient Angle */}
+                      <div>
+                        <label className="mb-1 block text-[11px] font-bold text-text-muted">Direction</label>
+                        <div className="flex gap-2">
+                          {['135deg', '90deg', '180deg', '45deg'].map(angle => (
+                            <button
+                              key={angle}
+                              type="button"
+                              onClick={() => setCustomThemeConfig(prev => ({ ...prev, gradientAngle: angle }))}
+                              className={`flex-1 py-1 rounded text-[11px] font-bold transition-all ${
+                                customThemeConfig.gradientAngle === angle
+                                  ? 'bg-accent/30 text-accent border border-accent/50'
+                                  : 'bg-white/5 text-text-muted hover:bg-white/10'
+                              }`}
+                            >
+                              {angle}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Quick Gradient Palettes */}
+                      <div>
+                        <label className="mb-1.5 block text-[11px] font-bold text-text-muted">Quick Gradient Presets</label>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {GRADIENT_PRESETS.map((preset, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setCustomThemeConfig(prev => ({
+                                  ...prev,
+                                  gradientFrom: preset.from,
+                                  gradientTo: preset.to,
+                                  gradientAngle: preset.angle || '135deg'
+                                }));
+                              }}
+                              className="h-7 rounded-lg border border-white/20 transition-all hover:scale-105"
+                              style={{ background: `linear-gradient(135deg, ${preset.from}, ${preset.to})` }}
+                              title={preset.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Solid Background Builder */}
+                  {customThemeConfig.backgroundType === 'solid' && (
+                    <div className="space-y-2 rounded-xl border border-border/70 bg-black/30 p-3">
+                      <label className="mb-1 block text-[11px] font-bold text-text-muted">Solid Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customThemeConfig.solidColor}
+                          onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, solidColor: e.target.value }))}
+                          className="h-9 w-9 rounded-lg cursor-pointer bg-transparent border-0"
+                        />
+                        <input
+                          type="text"
+                          value={customThemeConfig.solidColor}
+                          onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, solidColor: e.target.value }))}
+                          className="w-full rounded-lg border border-border bg-black/50 px-3 py-2 text-xs text-white font-mono"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Image Background Builder */}
+                  {customThemeConfig.backgroundType === 'image' && (
+                    <div className="space-y-3 rounded-xl border border-border/70 bg-black/30 p-3">
+                      <div>
+                        <label className="mb-1.5 block text-[11px] font-bold text-text-muted">Upload Background Image</label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCustomThemeImageChange}
+                          className="w-full text-xs text-text-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-accent/20 file:text-accent hover:file:bg-accent/30 cursor-pointer"
+                        />
+                      </div>
+
+                      <div className="relative flex items-center">
+                        <div className="flex-grow border-t border-border/50"></div>
+                        <span className="flex-shrink mx-2 text-[10px] uppercase text-text-muted">Or Image URL</span>
+                        <div className="flex-grow border-t border-border/50"></div>
+                      </div>
+
+                      <input
+                        type="url"
+                        value={customThemeConfig.imageUrl}
+                        onChange={(e) => {
+                          setCustomThemeConfig(prev => ({ ...prev, imageUrl: e.target.value }));
+                          setCustomThemeImagePreview(e.target.value);
+                        }}
+                        placeholder="https://images.unsplash.com/..."
+                        className="w-full rounded-lg border border-border bg-black/50 px-3 py-2 text-xs text-white placeholder:text-text-muted focus:border-accent focus:outline-none"
+                      />
+
+                      {(customThemeImagePreview || customThemeConfig.imageUrl) && (
+                        <div className="relative h-20 w-full rounded-lg overflow-hidden border border-border">
+                          <img
+                            src={customThemeImagePreview || customThemeConfig.imageUrl}
+                            alt="Background preview"
+                            className="h-full w-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomThemeImageFile(null);
+                              setCustomThemeImagePreview(null);
+                              setCustomThemeConfig(prev => ({ ...prev, imageUrl: '' }));
+                            }}
+                            className="absolute top-1 right-1 p-1 bg-black/70 text-white rounded-md hover:bg-red-500 transition-colors"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Colors: Text and Accent */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-white">Text Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customThemeConfig.textColor}
+                          onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, textColor: e.target.value }))}
+                          className="h-8 w-8 rounded-lg cursor-pointer bg-transparent border-0"
+                        />
+                        <input
+                          type="text"
+                          value={customThemeConfig.textColor}
+                          onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, textColor: e.target.value }))}
+                          className="w-full rounded-lg border border-border bg-black/40 px-2.5 py-1.5 text-xs text-white font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-bold text-white">Accent Glow</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={customThemeConfig.accentColor}
+                          onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, accentColor: e.target.value }))}
+                          className="h-8 w-8 rounded-lg cursor-pointer bg-transparent border-0"
+                        />
+                        <input
+                          type="text"
+                          value={customThemeConfig.accentColor}
+                          onChange={(e) => setCustomThemeConfig(prev => ({ ...prev, accentColor: e.target.value }))}
+                          className="w-full rounded-lg border border-border bg-black/40 px-2.5 py-1.5 text-xs text-white font-mono"
                         />
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Accent Swatches */}
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-bold text-text-muted">Popular Accent Swatches</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {COLOR_SWATCHES.map((color, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setCustomThemeConfig(prev => ({ ...prev, accentColor: color }))}
+                          className="h-6 w-6 rounded-full border border-white/30 transition-all hover:scale-110"
+                          style={{ background: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Public / Private Toggle */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCustomThemeConfig(prev => ({ ...prev, isPublic: !prev.isPublic }))}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                          customThemeConfig.isPublic 
+                            ? 'bg-accent/20 text-accent border border-accent/40' 
+                            : 'bg-white/5 text-text-muted'
+                        }`}
+                      >
+                        {customThemeConfig.isPublic ? <GlobeIcon className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                        {customThemeConfig.isPublic ? 'Public Theme' : 'Private'}
+                      </button>
+                    </div>
+                    <span className="text-[11px] text-text-muted">
+                      {customThemeConfig.isPublic ? 'Visible in community library' : 'Only for your profile'}
+                    </span>
+                  </div>
+
+                  {/* Custom Theme Studio Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleApplyCustomTheme}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-xs sm:text-sm font-bold text-background hover:bg-cyan-300 transition-all shadow-md"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      Apply Custom Theme
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveThemeToLibrary}
+                      disabled={uploadingTheme}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-white/5 px-4 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-white/10 transition-all disabled:opacity-50"
+                    >
+                      <Save className="h-4 w-4 text-accent" />
+                      {uploadingTheme ? 'Saving...' : 'Save to Library'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1679,7 +1434,7 @@ export default function ProfileEdit() {
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-cyan-500 px-6 py-3 text-sm font-bold text-background hover:from-cyan-400 hover:to-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-accent to-cyan-500 px-6 py-3.5 text-sm font-bold text-background hover:from-cyan-400 hover:to-accent disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-accent/20 cursor-pointer"
               >
                 <Save className="h-4 w-4" />
                 {saving ? 'Saving...' : 'Save Changes'}
@@ -1690,7 +1445,7 @@ export default function ProfileEdit() {
               >
                 <button
                   type="button"
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-6 py-3 text-sm font-bold text-text-soft hover:bg-white/5"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-6 py-3 text-sm font-bold text-text-soft hover:bg-white/5 cursor-pointer"
                 >
                   <X className="h-4 w-4" />
                   Cancel
