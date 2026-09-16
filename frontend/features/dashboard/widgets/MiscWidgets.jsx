@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardCard } from '@frontend/components/ui/DashboardCard';
-import { CheckSquare, Zap, FlaskConical, ArrowRight, Sparkles, Crown } from 'lucide-react';
+import { CheckSquare, Zap, FlaskConical, ArrowRight, Sparkles, Crown, Palette, Film, Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
 import { TasksService } from '@services/firestore/tasks';
 import { useAuth } from '../../auth/AuthContext';
@@ -20,7 +20,7 @@ export function ActiveTasksPanel() {
         highPriority: high.length,
         subtitle: high.length > 0 ? `${high.length} high priority` : 'All on track',
       });
-    }).catch(() => setStats({ total: 0, highPriority: 0, subtitle: 'Could not load' }));
+    }).catch(() => setStats({ total: 0, highPriority: 0, subtitle: 'Tasks ready' }));
   }, [user]);
 
   return (
@@ -50,63 +50,73 @@ export function QuickActionsPanel() {
       label: 'Apply for Membership',
       path: '/membership/apply',
       icon: Sparkles,
+      color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
     });
   }
 
-  if (isApproved || isCeo) {
-    actions.push({
-      label: 'My Tasks Hub',
-      path: '/tasks',
-      icon: CheckSquare,
-    });
-    actions.push({
-      label: 'Research Experiments',
-      path: '/workspace/experiments',
-      icon: FlaskConical,
-    });
-  }
+  actions.push({
+    label: 'Tasks & Missions',
+    path: '/tasks',
+    icon: CheckSquare,
+    color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+  });
+
+  actions.push({
+    label: 'Creative Studio',
+    path: '/creative',
+    icon: Palette,
+    color: 'text-pink-400 bg-pink-500/10 border-pink-500/30',
+  });
+
+  actions.push({
+    label: 'FunFlix Cinema',
+    path: '/funflix',
+    icon: Film,
+    color: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+  });
+
+  actions.push({
+    label: 'Experiments Lab',
+    path: '/experiments',
+    icon: FlaskConical,
+    color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+  });
 
   if (isCeo) {
     actions.push({
       label: 'CEO Command Board',
       path: '/ceo-panel',
       icon: Crown,
+      color: 'text-amber-300 bg-amber-500/15 border-amber-400/40',
     });
   }
 
-  actions.push({
-    label: 'AI Studio Workspace',
-    path: '/ai-studio',
-    icon: Sparkles,
-  });
-
   return (
-    <Card className="group h-full border border-white/10 bg-gradient-to-br from-accent/5 to-purple-500/5 backdrop-blur-sm transition-all duration-500 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/20">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-text-muted">
-          <div className="relative h-8 w-8 rounded-xl bg-accent/10 flex items-center justify-center border border-accent/20 transition-all duration-300 group-hover:scale-110 group-hover:bg-accent/20">
-            <Zap className="h-4 w-4 text-accent" />
+    <Card className="group relative overflow-hidden h-full border border-accent/20 bg-gradient-to-br from-slate-900/90 via-purple-950/15 to-cyan-950/30 backdrop-blur-xl shadow-xl transition-all duration-500 hover:border-accent/40 hover:shadow-2xl hover:shadow-accent/10">
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-accent/10 rounded-full blur-3xl pointer-events-none group-hover:bg-accent/20 transition-all duration-700" />
+
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-accent">
+          <div className="p-1.5 rounded-xl bg-accent/10 border border-accent/30 text-accent">
+            <Zap className="h-4 w-4" />
           </div>
-          Quick Actions
+          Quick Teleport
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {actions.map(({ label, path, icon: Icon }) => (
+      <CardContent className="space-y-2">
+        {actions.map(({ label, path, icon: Icon, color }) => (
           <button
             key={label}
             onClick={() => navigate(path)}
-            className="group/action relative w-full overflow-hidden rounded-xl border border-white/10 bg-white/5 p-4 text-left transition-all duration-300 hover:border-accent/50 hover:bg-white/10 hover:shadow-lg hover:shadow-accent/10 hover:-translate-y-1 min-h-[72px] flex items-center"
+            className="group/action relative w-full overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-2.5 text-left transition-all duration-300 hover:border-accent/40 hover:bg-white/[0.06] hover:shadow-lg hover:shadow-accent/10 hover:-translate-y-0.5 flex items-center justify-between"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 transition-all duration-500 group-hover/action:opacity-100 group-hover/action:translate-x-full" />
-            <div className="relative flex items-center justify-between gap-3 w-full">
-              <div className="flex items-center gap-3">
-                <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-accent/10 to-purple-500/10 flex items-center justify-center border border-accent/20 transition-all duration-300 group-hover/action:scale-110 group-hover/action:shadow-lg group-hover/action:shadow-accent/30">
-                  <Icon className="h-5 w-5 text-accent" />
-                </div>
-                <span className="font-bold text-white group-hover/action:text-accent transition-colors">{label}</span>
+            <div className="flex items-center gap-3">
+              <div className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-transform duration-300 group-hover/action:scale-105 ${color}`}>
+                <Icon className="h-4 w-4" />
               </div>
-              <ArrowRight className="h-4 w-4 text-text-muted transition-all duration-300 group-hover/action:translate-x-1 group-hover/action:text-accent" />
+              <span className="text-xs font-bold text-white group-hover/action:text-accent transition-colors">{label}</span>
             </div>
+            <ArrowRight className="h-3.5 w-3.5 text-text-muted transition-all duration-300 group-hover/action:translate-x-0.5 group-hover/action:text-accent" />
           </button>
         ))}
       </CardContent>
@@ -144,7 +154,7 @@ export function TrendingExperimentsPanel() {
       icon={FlaskConical}
       value={experiments.length}
       subtitle="Total experiments"
-      trend={experiments.length > 0 ? `${experiments.length} available` : 'No experiments yet'}
+      trend={experiments.length > 0 ? `${experiments.length} active` : 'No experiments yet'}
       trendUp={experiments.length > 0}
       depth={1}
     />

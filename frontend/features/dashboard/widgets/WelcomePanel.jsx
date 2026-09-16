@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { GamificationService, getLevelProgress } from '@services/firestore/gamification';
-import { Sparkles, Crown, Shield, Users, TrendingUp, Target, Flame, Star, Trophy } from 'lucide-react';
+import { Sparkles, Crown, Shield, Users, TrendingUp, Target, Flame, Star, Trophy, ArrowRight, Zap } from 'lucide-react';
 import './WelcomePanel.css';
 
 const EMOJIS = ['🚀', '⭐', '🎮', '🎯', '💎', '🔥', '✨', '🎨', '💡', '🧪'];
 const MOTIVATIONS = [
-  "Ready for an epic adventure?",
-  "Your next achievement is waiting!",
-  "Your squad has been active!",
-  "Something amazing happened!",
-  "Let's make today legendary!",
-  "Your creativity shines!",
+  "Ready to create something legendary today?",
+  "Your next breakthrough is one mission away!",
+  "The squad is active — lead the frontier!",
+  "Unleash your creativity and conquer today's goals!",
+  "Earn XP, rise through ranks, and leave your mark!",
 ];
 
 function cn(...classes) {
@@ -19,6 +19,7 @@ function cn(...classes) {
 }
 
 export function WelcomePanel() {
+  const navigate = useNavigate();
   const { user, roleData } = useAuth();
   const [motivationalMessage, setMotivationalMessage] = useState('');
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -27,7 +28,8 @@ export function WelcomePanel() {
   const [missions, setMissions] = useState([]);
   const [loadingMissions, setLoadingMissions] = useState(true);
 
-  const progress = getLevelProgress(roleData?.xp || 0);
+  const rawXP = Number(roleData?.xp || 0);
+  const progress = getLevelProgress(rawXP);
   const greeting = getTimeGreeting();
 
   useEffect(() => {
@@ -38,12 +40,12 @@ export function WelcomePanel() {
         const newEmoji = {
           id: Date.now(),
           emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
-          left: Math.random() * 100,
+          left: Math.random() * 95,
           duration: 3 + Math.random() * 2,
         };
-        return [...prev, newEmoji];
+        return [...prev.slice(-6), newEmoji];
       });
-    }, 2000);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, []);
@@ -51,31 +53,34 @@ export function WelcomePanel() {
   useEffect(() => {
     if (!user?.uid) return;
 
+    let cancelled = false;
     const loadDashboardData = async () => {
       try {
         const stats = await GamificationService.getUserStats(user.uid);
+        if (cancelled) return;
         setCurrentStreak(stats?.streak || 0);
 
-        const targetXP = stats?.xp || 0;
-        const totalSteps = 40;
+        const targetXP = stats?.xp || rawXP || 0;
+        const totalSteps = 30;
         let step = 0;
-        const increment = Math.max(1, Math.ceil(targetXP / totalSteps));
 
         const timer = setInterval(() => {
           step++;
           const current = Math.min(targetXP, Math.round((step / totalSteps) * targetXP));
-          setDisplayedXP(current);
+          if (!cancelled) setDisplayedXP(current);
           if (step >= totalSteps) {
-            setDisplayedXP(targetXP);
+            if (!cancelled) setDisplayedXP(targetXP);
             clearInterval(timer);
           }
-        }, 30);
+        }, 25);
       } catch (err) {
+        console.warn('WelcomePanel stats error:', err);
       }
     };
 
     loadDashboardData();
-  }, [user?.uid]);
+    return () => { cancelled = true; };
+  }, [user?.uid, rawXP]);
 
   useEffect(() => {
     if (!user?.uid) {
@@ -83,29 +88,38 @@ export function WelcomePanel() {
       return;
     }
 
+    let cancelled = false;
     const loadMissions = async () => {
       try {
         const userMissions = await GamificationService.getUserDailyMissions(user.uid);
-        setMissions(userMissions || []);
+        if (!cancelled) {
+          setMissions(userMissions || []);
+        }
       } catch (err) {
+        console.warn('WelcomePanel missions error:', err);
       } finally {
-        setLoadingMissions(false);
+        if (!cancelled) {
+          setLoadingMissions(false);
+        }
       }
     };
 
     loadMissions();
+    return () => { cancelled = true; };
   }, [user?.uid]);
 
   const getRoleIcon = (role) => {
     const roleIcons = {
-      'Main CEO': <Crown className="h-6 w-6" />,
-      'Co-CEO': <Crown className="h-6 w-6" />,
-      'Leader': <Shield className="h-6 w-6" />,
+      'Main CEO': <Crown className="h-5 w-5 text-amber-300 animate-bounce" />,
+      'Co-CEO': <Crown className="h-5 w-5 text-amber-300 animate-bounce" />,
+      'Leader': <Shield className="h-5 w-5 text-purple-300" />,
+      'Admin': <Shield className="h-5 w-5 text-cyan-300" />,
     };
-    return roleIcons[role] || <Users className="h-6 w-6" />;
+    return roleIcons[role] || <Sparkles className="h-5 w-5 text-accent" />;
   };
 
-  const missionPreviews = missions.length > 0 ? missions.slice(0, 3) : [];
+  const displayName = roleData?.displayName || roleData?.username || user?.displayName || 'Explorer';
+  const roleName = roleData?.role || 'Explorer';
 
   return (
     <div className="welcome-panel">
@@ -117,7 +131,6 @@ export function WelcomePanel() {
             style={{
               left: `${emoji.left}%`,
               animationDuration: `${emoji.duration}s`,
-              animationDelay: '0s'
             }}
           >
             {emoji.emoji}
@@ -125,109 +138,124 @@ export function WelcomePanel() {
         ))}
       </div>
 
-      <div className="welcome-card">
-        <div className="absolute inset-0 overflow-hidden rounded-3xl">
+      <div className="welcome-card group">
+        <div className="absolute inset-0 overflow-hidden rounded-[32px] pointer-events-none">
           <div className="shape shape-1"></div>
           <div className="shape shape-2"></div>
           <div className="shape shape-3"></div>
           <div className="shape shape-4"></div>
         </div>
 
-        <div className="relative z-10 p-8 md:p-12">
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <div className="role-badge">
-              <Sparkles className="h-5 w-5" />
-              {getRoleIcon(roleData?.role)}
-              <span className="badge-text">{roleData?.role || 'Explorer'}</span>
+        <div className="relative z-10 p-6 md:p-10">
+          {/* Top badges bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="role-badge">
+                {getRoleIcon(roleName)}
+                <span className="badge-text">{roleName}</span>
+              </div>
+
+              {currentStreak > 0 ? (
+                <div className="streak-badge">
+                  <Flame className="h-4 w-4 text-orange-400 animate-pulse" />
+                  <span className="streak-text">{currentStreak} Day Streak!</span>
+                </div>
+              ) : (
+                <div className="streak-badge opacity-80">
+                  <Sparkles className="h-4 w-4 text-cyan-400" />
+                  <span className="streak-text">Active Explorer</span>
+                </div>
+              )}
             </div>
 
-            {currentStreak > 0 && (
-              <div className="streak-badge">
-                <Flame className="h-5 w-5 animate-pulse" />
-                <span className="streak-text">{currentStreak} Day Streak!</span>
-              </div>
-            )}
+            <Link
+              to="/leaderboards"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold text-white transition-all duration-300 hover:scale-105"
+            >
+              <Trophy className="h-3.5 w-3.5 text-yellow-400" />
+              <span>Rankings</span>
+              <ArrowRight className="h-3 w-3 text-text-muted" />
+            </Link>
           </div>
 
+          {/* Hero Greeting text */}
           <div className="mb-8">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl mb-4">
-              <span className="greeting-emoji">{greeting.emoji}</span>
-              <span className={cn("greeting-text bg-clip-text text-transparent bg-gradient-to-r", greeting.color)}>
-                {greeting.text}
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-3xl md:text-4xl">{greeting.emoji}</span>
+              <span className={cn("text-2xl md:text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r tracking-tight", greeting.color)}>
+                {greeting.text}, {displayName}!
               </span>
-            </h1>
-            <p className="text-xl md:text-2xl font-bold text-white mb-2">
-              {roleData?.displayName || roleData?.username || 'Explorer'}
-            </p>
-            <p className="text-base text-text-muted font-medium">
+            </div>
+            <p className="text-sm md:text-base text-slate-300 font-medium max-w-2xl leading-relaxed">
               {motivationalMessage}
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            <div className="stat-card level-card">
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-3 gap-3 md:gap-5 mb-8">
+            <Link
+              to="/leaderboards"
+              className="stat-card level-card group/stat cursor-pointer hover:border-cyan-400/50 transition-all duration-300"
+            >
               <div className="stat-icon">
-                <Star className="h-6 w-6" />
+                <Star className="h-5 w-5 text-cyan-400" />
               </div>
               <div className="stat-content">
-                <div className="stat-value">{progress.level}</div>
-                <div className="stat-label">Level</div>
+                <div className="stat-value text-cyan-300">Lvl {progress.level}</div>
+                <div className="stat-label">Current Tier</div>
               </div>
               <div className="stat-glow"></div>
-            </div>
+            </Link>
 
-            <div className="stat-card xp-card">
+            <Link
+              to="/leaderboards"
+              className="stat-card xp-card group/stat cursor-pointer hover:border-yellow-400/50 transition-all duration-300"
+            >
               <div className="stat-icon">
-                <Trophy className="h-6 w-6" />
+                <Trophy className="h-5 w-5 text-yellow-400" />
               </div>
               <div className="stat-content">
-                <div className="stat-value">{displayedXP.toLocaleString()}</div>
-                <div className="stat-label">Total XP</div>
+                <div className="stat-value text-yellow-300">{displayedXP.toLocaleString()}</div>
+                <div className="stat-label">Total BeastXP</div>
               </div>
               <div className="stat-glow"></div>
-            </div>
+            </Link>
 
-            <div className="stat-card progress-card">
+            <Link
+              to="/tasks"
+              className="stat-card progress-card group/stat cursor-pointer hover:border-purple-400/50 transition-all duration-300"
+            >
               <div className="stat-icon">
-                <TrendingUp className="h-6 w-6" />
+                <TrendingUp className="h-5 w-5 text-purple-400" />
               </div>
               <div className="stat-content">
-                <div className="stat-value">{Math.round(progress.percent)}%</div>
-                <div className="stat-label">Progress</div>
+                <div className="stat-value text-purple-300">{Math.round(progress.percent)}%</div>
+                <div className="stat-label">Tier Progress</div>
               </div>
               <div className="stat-glow"></div>
-            </div>
+            </Link>
           </div>
 
-          <div className="progress-section mb-8">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-bold text-text-muted">Level {progress.level}</span>
-              <span className="text-sm font-bold text-accent">{progress.remainingXP} XP to Level {progress.level + 1}</span>
+          {/* Level Progress Bar */}
+          <div className="progress-section">
+            <div className="flex justify-between items-center mb-2.5">
+              <span className="text-xs md:text-sm font-bold text-slate-300 flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-accent" />
+                Level {progress.level} Evolution
+              </span>
+              <span className="text-xs md:text-sm font-bold text-accent font-mono">
+                {progress.remainingXP} XP to Level {progress.level + 1}
+              </span>
             </div>
             <div className="progress-bar-container">
               <div
                 className="progress-bar-fill"
-                style={{ width: `${progress.percent}%` }}
+                style={{ width: `${Math.max(5, progress.percent)}%` }}
               >
                 <div className="progress-bar-shimmer"></div>
               </div>
             </div>
           </div>
-
-          {!loadingMissions && missionPreviews.length > 0 && (
-            <div className="grid grid-cols-3 gap-3">
-              {missionPreviews.map((mission, idx) => {
-                const Icon = mission.icon || Target;
-                return (
-                  <div key={mission.id || idx} className="mission-preview-card">
-                    <Icon className="h-6 w-6 mb-2" />
-                    <p className="text-xs font-bold text-white">{mission.label}</p>
-                    <p className="text-xs text-text-muted">{mission.xp || 0} XP</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -236,7 +264,7 @@ export function WelcomePanel() {
 
 function getTimeGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return { text: 'Good Morning', emoji: '🌞', color: 'from-yellow-400 to-orange-500' };
-  if (hour < 18) return { text: 'Good Afternoon', emoji: '🌤️', color: 'from-cyan-400 to-blue-500' };
-  return { text: 'Good Evening', emoji: '🌙', color: 'from-purple-500 to-indigo-600' };
+  if (hour < 12) return { text: 'Good Morning', emoji: '🌅', color: 'from-amber-300 via-yellow-400 to-orange-500' };
+  if (hour < 18) return { text: 'Good Afternoon', emoji: '⚡', color: 'from-cyan-300 via-blue-400 to-indigo-500' };
+  return { text: 'Good Evening', emoji: '🌌', color: 'from-purple-300 via-pink-400 to-indigo-500' };
 }

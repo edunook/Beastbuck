@@ -8,7 +8,7 @@ import { useAuth } from '@frontend/features/auth/AuthContext';
 import { MembershipService } from '@services/firestore/membership';
 import { ROLES } from '@shared/constants/roles';
 import { PERMISSIONS } from '@shared/permissions/permissions';
-import { Sparkles, ArrowRight, X, Sliders, Gift, Zap } from 'lucide-react';
+import { Sparkles, ArrowRight, X, Sliders, Gift, Zap, Crown, Shield, Users } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
 import { CelebrationOverlay } from './CelebrationOverlay';
@@ -25,23 +25,27 @@ const MembershipBanner = () => {
   useEffect(() => {
     if (!user) return;
 
+    let cancelled = false;
     const checkMembership = async () => {
       try {
         const isMember = await MembershipService.isApprovedMember(user.uid);
-        if (!isMember) {
+        if (!isMember && !cancelled) {
           try {
             const app = await MembershipService.getUserApplication(user.uid);
-            setApplication(app);
+            if (!cancelled) setApplication(app);
           } catch (appErr) {
+            // Ignored
           }
         }
       } catch (err) {
+        // Ignored
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     checkMembership();
+    return () => { cancelled = true; };
   }, [user]);
 
   if (loading || dismissed) return null;
@@ -50,39 +54,42 @@ const MembershipBanner = () => {
   return (
     <div className="membership-banner animate-slide-up">
       <div className="banner-bg"></div>
-      <div className="relative z-10 flex items-center justify-between gap-4">
+      <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="banner-icon">
-            <Sparkles className="h-7 w-7" />
+          <div className="banner-icon shrink-0">
+            <Sparkles className="h-7 w-7 text-white" />
           </div>
           <div>
-            <h3 className="font-heading text-xl font-black text-white mb-1">Apply for Membership</h3>
-            <p className="text-sm text-text-muted">
+            <h3 className="font-heading text-lg sm:text-xl font-black text-white mb-1">
+              Apply for Full Membership
+            </h3>
+            <p className="text-xs sm:text-sm text-text-muted">
               {application?.status === 'pending'
-                ? 'Your application is under review'
-                : 'Unlock internal collaboration, projects, and research labs'}
+                ? 'Your application is actively under review by leadership.'
+                : 'Unlock inner research labs, collaborative creative studios, and leader ranks.'}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto">
           {application?.status === 'pending' ? (
-            <span className="px-5 py-2.5 rounded-xl bg-yellow-500/10 text-yellow-400 text-sm font-bold uppercase tracking-wider border border-yellow-500/30">
+            <span className="px-4 py-2 rounded-xl bg-yellow-500/15 text-yellow-300 text-xs font-black uppercase tracking-wider border border-yellow-500/30">
               Pending Review
             </span>
           ) : (
             <Link
               to="/membership/apply"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent to-cyan-500 text-background font-black hover:shadow-lg hover:shadow-accent/50 transition-all duration-300 hover:-translate-y-1 hover:scale-105"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-accent to-purple-600 text-slate-950 font-black text-xs hover:shadow-lg hover:shadow-accent/40 transition-all duration-300 hover:-translate-y-0.5"
             >
               Apply Now
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           )}
           <button
             onClick={() => setDismissed(true)}
-            className="p-2.5 text-text-muted hover:text-white transition-all duration-200 rounded-xl hover:bg-white/10 hover:scale-110"
+            className="p-2 text-text-muted hover:text-white transition-all duration-200 rounded-xl hover:bg-white/10"
+            aria-label="Dismiss banner"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -98,16 +105,19 @@ const DailyLoginReward = ({ onClaimSuccess }) => {
   useEffect(() => {
     if (!user?.uid) return;
 
+    let cancelled = false;
     const checkReward = async () => {
       try {
         const { GamificationService } = await import('@services/firestore/gamification');
         const canClaimReward = await GamificationService.canClaimDailyReward(user.uid);
-        setCanClaim(canClaimReward);
+        if (!cancelled) setCanClaim(canClaimReward);
       } catch (err) {
+        // Ignored
       }
     };
 
     checkReward();
+    return () => { cancelled = true; };
   }, [user?.uid]);
 
   const handleClaim = async () => {
@@ -120,6 +130,7 @@ const DailyLoginReward = ({ onClaimSuccess }) => {
       setCanClaim(false);
       onClaimSuccess?.();
     } catch (err) {
+      console.warn('Claim error:', err);
     } finally {
       setClaiming(false);
     }
@@ -130,51 +141,33 @@ const DailyLoginReward = ({ onClaimSuccess }) => {
   return (
     <div className="daily-reward animate-bounce-in">
       <div className="reward-bg"></div>
-      <div className="relative z-10 flex items-center gap-4">
-        <div className="reward-icon">
-          <Gift className="h-7 w-7" />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-heading text-lg font-black text-white mb-1">Daily Reward Available!</h3>
-          <p className="text-sm text-text-muted">Claim your daily login bonus for XP, coins, and surprises.</p>
+      <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="reward-icon shrink-0">
+            <Gift className="h-7 w-7 text-amber-300" />
+          </div>
+          <div>
+            <h3 className="font-heading text-lg sm:text-xl font-black text-white mb-0.5">Daily Login Bonus Ready!</h3>
+            <p className="text-xs sm:text-sm text-text-muted">Claim your daily streak bonus for XP boost and mystery gifts.</p>
+          </div>
         </div>
         <button
           onClick={handleClaim}
           disabled={claiming}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-background font-black hover:shadow-lg hover:shadow-yellow-400/50 transition-all duration-300 hover:-translate-y-1 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="self-end sm:self-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-xs hover:shadow-lg hover:shadow-yellow-400/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50"
         >
-          {claiming ? (
-            <span className="flex items-center gap-2">
-              <span className="reward-spinner"></span>
-              Claiming...
-            </span>
-          ) : (
-            <>
-              Claim Now
-              <Zap className="h-4 w-4 ml-1" />
-            </>
-          )}
+          {claiming ? 'Claiming...' : 'Claim Daily Bonus +XP'}
         </button>
       </div>
     </div>
   );
 };
 
-const WIDGET_FALLBACK = (
-  <div className="h-full min-h-[100px] animate-pulse rounded-xl bg-white/5 border border-white/10" />
-);
-
-const WIDGET_ERROR = (
-  <div className="h-full min-h-[100px] rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
-    <p className="text-[10px] font-bold text-text-muted">Widget unavailable</p>
-  </div>
-);
-
 function safeModule(module, name) {
   const Component = module[name];
   if (!Component) {
     console.error(`Widget ${name} not found in module`);
-    return () => WIDGET_ERROR;
+    return () => null;
   }
   return Component;
 }
@@ -209,31 +202,29 @@ const Dashboard = React.memo(function Dashboard() {
   const { user, roleData } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState({
-    streak: true,
     mission: true,
     continue: true,
-    discovery: true,
-    achievements: true,
-    friends: true,
-    trending: true,
-    events: true,
+    funflix: true,
     spotlight: true,
     leaderboard: true,
+    events: true,
+    achievements: true,
     goals: true,
-    funflix: true,
     quickActions: true,
+    projects: true,
+    experiments: true,
+    notifications: true,
     announcements: true,
     activity: true,
-    experiments: true,
     highlights: true,
-    notifications: true,
-    projects: true,
     surpriseBox: true,
-    learningJourney: true,
-    squad: true,
+    friends: true,
+    trending: true,
+    energyCrystal: true,
     growthTree: true,
     achievementGalaxy: true,
-    energyCrystal: true,
+    learningJourney: true,
+    squad: true,
   });
   const [particles, setParticles] = useState([]);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
@@ -252,12 +243,12 @@ const Dashboard = React.memo(function Dashboard() {
   }, [roleData?.profileCustomization]);
 
   useEffect(() => {
-    const newParticles = Array.from({ length: 20 }).map((_, i) => ({
+    const newParticles = Array.from({ length: 16 }).map((_, i) => ({
       id: i,
       left: Math.random() * 100,
       delay: Math.random() * 5,
-      duration: 3 + Math.random() * 2,
-      size: 2 + Math.random() * 4,
+      duration: 4 + Math.random() * 3,
+      size: 2 + Math.random() * 3,
     }));
     setParticles(newParticles);
   }, []);
@@ -301,14 +292,9 @@ const Dashboard = React.memo(function Dashboard() {
     };
   }, [showSettings]);
 
-  const renderWidget = (Widget, key) => {
-    if (!visibleWidgets[key]) return null;
-    return <Widget key={key} />;
-  };
-
   return (
     <PageContainer>
-      {/* Animated Background Particles */}
+      {/* Dynamic Animated Particles */}
       <div className="particles-container scrollbar-hide">
         {particles.map(particle => (
           <div
@@ -325,7 +311,8 @@ const Dashboard = React.memo(function Dashboard() {
         ))}
       </div>
 
-      <div className="flex items-center justify-between gap-4 mb-8 animate-fade-in" style={{ animationDelay: '0ms' }}>
+      {/* Header bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 animate-fade-in">
         <PageHeader
           title="Command Center"
           description="Your personal headquarters in the BeastBuck ecosystem."
@@ -333,11 +320,10 @@ const Dashboard = React.memo(function Dashboard() {
         />
         <button
           onClick={() => setShowSettings(true)}
-          className="settings-btn"
+          className="settings-btn self-start sm:self-center"
         >
-          <Sliders className="h-5 w-5" />
-          <span className="hidden sm:inline">Personalize</span>
-          <Zap className="h-4 w-4 ml-1 text-accent" />
+          <Sliders className="h-4 w-4 text-accent" />
+          <span>Personalize View</span>
         </button>
       </div>
 
@@ -345,217 +331,169 @@ const Dashboard = React.memo(function Dashboard() {
       <DailyLoginReward onClaimSuccess={handleCelebration} />
       <CelebrationOverlay
         trigger={celebrationTrigger}
-        message="+50 XP!"
+        message="+50 XP Earned!"
         duration={3500}
       />
 
       <SectionWrapper>
-        <div className="grid gap-6 md:gap-8">
+        <div className="space-y-6 md:space-y-8">
           {/* Hero Welcome Section */}
-          <div className="animate-fade-in-up hero-section" style={{ animationDelay: '0ms' }}>
+          <div className="animate-fade-in-up hero-section">
             <SafeWelcomePanel />
           </div>
 
-          {/* Today's Adventure */}
-          {visibleWidgets.mission && (
-            <div className="animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-              <div className="widget-glow">
-                <SafeDailyMissionWidget />
-              </div>
-            </div>
-          )}
-
-          {/* Continue Journey & Discovery Feed */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            {visibleWidgets.continue && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '200ms' }}>
+          {/* Core Row 1: Daily Missions & Continue Journey */}
+          {(visibleWidgets.mission || visibleWidgets.continue) && (
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              {visibleWidgets.mission && (
+                <div className="widget-glow">
+                  <SafeDailyMissionWidget />
+                </div>
+              )}
+              {visibleWidgets.continue && (
                 <div className="widget-glow">
                   <SafeContinueJourneyWidget />
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Achievements Galaxy */}
-          {visibleWidgets.achievementGalaxy && (
-            <div className="animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-              <div className="widget-glow">
-                <SafeAchievementGalaxyWidget />
-              </div>
+              )}
             </div>
           )}
 
-          {/* Achievements & Creative Spotlight */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            {visibleWidgets.achievements && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '350ms' }}>
-                <div className="widget-glow">
-                  <SafeRecentAchievementsWidget />
-                </div>
-              </div>
-            )}
-            {visibleWidgets.spotlight && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '400ms' }}>
-                <div className="widget-glow">
-                  <SafeCreativeSpotlightWidget />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Community Activity */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            {visibleWidgets.friends && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '450ms' }}>
-                <div className="widget-glow">
-                  <SafeFriendsActivityWidget />
-                </div>
-              </div>
-            )}
-            {visibleWidgets.trending && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '500ms' }}>
-                <div className="widget-glow">
-                  <SafeTrendingWidget />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Creative Energy Crystal & Personal Growth Tree */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            {visibleWidgets.energyCrystal && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '550ms' }}>
-                <div className="widget-glow">
-                  <SafeCreativeEnergyCrystalWidget />
-                </div>
-              </div>
-            )}
-            {visibleWidgets.growthTree && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '600ms' }}>
-                <div className="widget-glow">
-                  <SafePersonalGrowthTreeWidget />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Events & Leaderboard */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            {visibleWidgets.events && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '650ms' }}>
-                <div className="widget-glow">
-                  <SafeEventsWidget />
-                </div>
-              </div>
-            )}
-            {visibleWidgets.leaderboard && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '700ms' }}>
-                <div className="widget-glow">
-                  <SafeLeaderboardPreviewWidget />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Goals & FunFlix */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            {visibleWidgets.goals && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '750ms' }}>
-                <div className="widget-glow">
-                  <SafePersonalGoalsWidget />
-                </div>
-              </div>
-            )}
-            {visibleWidgets.funflix && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '800ms' }}>
+          {/* Core Row 2: FunFlix & Creative Spotlight */}
+          {(visibleWidgets.funflix || visibleWidgets.spotlight) && (
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              {visibleWidgets.funflix && (
                 <div className="widget-glow">
                   <SafeFunFlixWidget />
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+              {visibleWidgets.spotlight && (
+                <div className="widget-glow">
+                  <SafeCreativeSpotlightWidget />
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Quick Access Row */}
+          {/* Core Row 3: Leaderboard & Events */}
+          {(visibleWidgets.leaderboard || visibleWidgets.events) && (
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              {visibleWidgets.leaderboard && (
+                <div className="widget-glow">
+                  <SafeLeaderboardPreviewWidget />
+                </div>
+              )}
+              {visibleWidgets.events && (
+                <div className="widget-glow">
+                  <SafeEventsWidget />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Progression Row: Achievements & Goals */}
+          {(visibleWidgets.achievements || visibleWidgets.goals || visibleWidgets.achievementGalaxy || visibleWidgets.growthTree) && (
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              {visibleWidgets.achievements && (
+                <div className="widget-glow">
+                  <SafeRecentAchievementsWidget />
+                </div>
+              )}
+              {visibleWidgets.goals && (
+                <div className="widget-glow">
+                  <SafePersonalGoalsWidget />
+                </div>
+              )}
+              {visibleWidgets.achievementGalaxy && (
+                <div className="widget-glow">
+                  <SafeAchievementGalaxyWidget />
+                </div>
+              )}
+              {visibleWidgets.growthTree && (
+                <div className="widget-glow">
+                  <SafePersonalGrowthTreeWidget />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Quick Access Grid (4-Column cards) */}
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {visibleWidgets.quickActions && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '850ms' }}>
-                <div className="widget-glow">
-                  <SafeQuickActionsPanel />
-                </div>
+              <div className="widget-glow">
+                <SafeQuickActionsPanel />
               </div>
             )}
-            {visibleWidgets.announcements && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '900ms' }}>
-                <div className="widget-glow">
-                  <SafeAnnouncementsPanel />
-                </div>
-              </div>
-            )}
-            {visibleWidgets.highlights && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '950ms' }}>
-                <div className="widget-glow">
-                  <SafeDailyHighlightsWidget />
-                </div>
-              </div>
-            )}
-            {visibleWidgets.notifications && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '1000ms' }}>
-                <div className="widget-glow">
-                  <SafeNotificationsWidget />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Secondary Widgets Row */}
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             {visibleWidgets.projects && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '1050ms' }}>
-                <div className="widget-glow">
-                  <SafeProjectsWidget />
-                </div>
+              <div className="widget-glow">
+                <SafeProjectsWidget />
               </div>
             )}
             {visibleWidgets.experiments && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '1100ms' }}>
-                <div className="widget-glow">
-                  <SafeExperimentsWidget />
-                </div>
+              <div className="widget-glow">
+                <SafeExperimentsWidget />
               </div>
             )}
-            {visibleWidgets.surpriseBox && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '1150ms' }}>
-                <div className="widget-glow">
-                  <SafeSurpriseBoxWidget />
-                </div>
-              </div>
-            )}
-            {visibleWidgets.learningJourney && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '1200ms' }}>
-                <div className="widget-glow">
-                  <SafeLearningJourneyWidget />
-                </div>
+            {visibleWidgets.notifications && (
+              <div className="widget-glow">
+                <SafeNotificationsWidget />
               </div>
             )}
           </div>
 
-          {/* My Squad & Activity */}
-          <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-            {visibleWidgets.squad && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '1250ms' }}>
-                <div className="widget-glow">
-                  <SafeMySquadWidget />
-                </div>
+          {/* Updates & Secondary Row */}
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {visibleWidgets.announcements && (
+              <div className="widget-glow">
+                <SafeAnnouncementsPanel />
               </div>
             )}
-            {visibleWidgets.activity && (
-              <div className="animate-fade-in-up" style={{ animationDelay: '1300ms' }}>
-                <div className="widget-glow">
-                  <SafeRecentActivityPanel />
-                </div>
+            {visibleWidgets.highlights && (
+              <div className="widget-glow">
+                <SafeDailyHighlightsWidget />
+              </div>
+            )}
+            {visibleWidgets.surpriseBox && (
+              <div className="widget-glow">
+                <SafeSurpriseBoxWidget />
+              </div>
+            )}
+            {visibleWidgets.learningJourney && (
+              <div className="widget-glow">
+                <SafeLearningJourneyWidget />
               </div>
             )}
           </div>
+
+          {/* Social & Community Activity */}
+          {(visibleWidgets.friends || visibleWidgets.trending || visibleWidgets.squad || visibleWidgets.activity || visibleWidgets.energyCrystal) && (
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              {visibleWidgets.friends && (
+                <div className="widget-glow">
+                  <SafeFriendsActivityWidget />
+                </div>
+              )}
+              {visibleWidgets.trending && (
+                <div className="widget-glow">
+                  <SafeTrendingWidget />
+                </div>
+              )}
+              {visibleWidgets.squad && (
+                <div className="widget-glow">
+                  <SafeMySquadWidget />
+                </div>
+              )}
+              {visibleWidgets.activity && (
+                <div className="widget-glow">
+                  <SafeRecentActivityPanel />
+                </div>
+              )}
+              {visibleWidgets.energyCrystal && (
+                <div className="widget-glow">
+                  <SafeCreativeEnergyCrystalWidget />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </SectionWrapper>
 
@@ -565,10 +503,10 @@ const Dashboard = React.memo(function Dashboard() {
       {/* Floating Command Palette */}
       <CommandPalette />
 
-      {/* Personalization Sidebar */}
+      {/* Personalization Drawer */}
       {showSettings && (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-50 flex justify-end bg-slate-950/70 backdrop-blur-md animate-fade-in"
           onClick={handleCloseSettings}
         >
           <div
@@ -576,16 +514,16 @@ const Dashboard = React.memo(function Dashboard() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Sliders className="h-5 w-5 text-accent animate-pulse" />
-                Personalize Console
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Sliders className="h-4 w-4 text-accent" />
+                Customize Console
               </h3>
               <button
                 onClick={handleCloseSettings}
-                className="p-2 rounded-xl text-text-muted hover:text-white hover:bg-white/10 transition-all duration-200 hover:scale-110 active:scale-95"
+                className="p-1.5 rounded-xl text-text-muted hover:text-white hover:bg-white/10 transition-all"
                 aria-label="Close settings"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -603,62 +541,59 @@ const Dashboard = React.memo(function Dashboard() {
                     updateDoc(userRef, { 'profileCustomization.dashboard': next }).catch(() => {});
                   }
                 }}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm font-bold text-white hover:bg-white/10 hover:border-white/20 transition-all duration-300"
+                className="flex-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold text-white hover:bg-white/10 transition-all"
               >
                 {Object.values(visibleWidgets).every(Boolean) ? 'Hide All' : 'Show All'}
               </button>
               <button
                 onClick={handleCloseSettings}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-accent to-purple-500 text-sm font-bold text-background hover:shadow-lg hover:shadow-accent/50 transition-all duration-300 hover:-translate-y-0.5"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-accent to-purple-600 text-xs font-bold text-slate-950 hover:brightness-110 transition-all"
               >
                 Done
               </button>
             </div>
 
-            <p className="text-xs font-bold text-text-muted mb-4 uppercase tracking-wider">Show / Hide Widgets</p>
+            <p className="text-[11px] font-bold text-text-muted mb-3 uppercase tracking-wider">Toggle Widgets</p>
 
-            <div className="space-y-2.5 flex-1 overflow-y-auto pr-1 pb-2 overscroll-contain">
+            <div className="space-y-2 flex-1 overflow-y-auto pr-1 pb-2 overscroll-contain">
               {[
-                { key: 'welcome', label: 'Welcome Hero', icon: '👋' },
-                { key: 'streak', label: 'Daily Streak', icon: '🔥' },
-                { key: 'mission', label: 'Daily Mission', icon: '🎯' },
+                { key: 'mission', label: 'Daily Missions', icon: '🎯' },
                 { key: 'continue', label: 'Continue Journey', icon: '🚀' },
-                { key: 'discovery', label: 'Discovery', icon: '💎' },
-                { key: 'achievementGalaxy', label: 'Achievement Galaxy', icon: '⭐' },
-                { key: 'achievements', label: 'Achievements', icon: '🏆' },
+                { key: 'funflix', label: 'FunFlix Cinema', icon: '🎬' },
                 { key: 'spotlight', label: 'Creative Spotlight', icon: '🎨' },
-                { key: 'friends', label: 'Friends Activity', icon: '👥' },
-                { key: 'trending', label: 'Trending', icon: '📈' },
-                { key: 'energyCrystal', label: 'Creative Energy', icon: '💎' },
-                { key: 'growthTree', label: 'Growth Tree', icon: '🌳' },
-                { key: 'events', label: 'Events', icon: '📅' },
-                { key: 'leaderboard', label: 'Leaderboard', icon: '🏅' },
+                { key: 'leaderboard', label: 'Leaderboard Arena', icon: '🏆' },
+                { key: 'events', label: 'Upcoming Events', icon: '📅' },
+                { key: 'achievements', label: 'Recent Achievements', icon: '🏅' },
                 { key: 'goals', label: 'Personal Goals', icon: '🎯' },
-                { key: 'funflix', label: 'FunFlix', icon: '🎬' },
-                { key: 'quickActions', label: 'Quick Actions', icon: '⚡' },
+                { key: 'quickActions', label: 'Quick Teleport', icon: '⚡' },
+                { key: 'projects', label: 'My Projects', icon: '📁' },
+                { key: 'experiments', label: 'Lab Experiments', icon: '🧪' },
+                { key: 'notifications', label: 'Notifications', icon: '🔔' },
                 { key: 'announcements', label: 'Announcements', icon: '📢' },
                 { key: 'highlights', label: 'Daily Highlights', icon: '✨' },
-                { key: 'notifications', label: 'Notifications', icon: '🔔' },
-                { key: 'projects', label: 'Projects', icon: '📁' },
-                { key: 'experiments', label: 'Experiments', icon: '🧪' },
                 { key: 'surpriseBox', label: 'Surprise Box', icon: '🎁' },
                 { key: 'learningJourney', label: 'Learning Journey', icon: '📚' },
+                { key: 'friends', label: 'Friends Activity', icon: '👥' },
+                { key: 'trending', label: 'Trending', icon: '📈' },
                 { key: 'squad', label: 'My Squad', icon: '👫' },
-                { key: 'activity', label: 'Recent Activity', icon: '📊' },
+                { key: 'activity', label: 'Recent Activity Logs', icon: '📊' },
+                { key: 'energyCrystal', label: 'Creative Energy', icon: '💎' },
+                { key: 'growthTree', label: 'Growth Tree', icon: '🌳' },
+                { key: 'achievementGalaxy', label: 'Achievement Galaxy', icon: '⭐' },
               ].map(({ key, label, icon }) => {
                 const active = visibleWidgets[key];
                 return (
                   <div
                     key={key}
-                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-300 ${
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-all duration-200 ${
                       active
                         ? 'border-white/20 bg-white/[0.06]'
-                        : 'border-white/5 bg-white/[0.02] opacity-70'
+                        : 'border-white/5 bg-white/[0.02] opacity-60'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{icon}</span>
-                      <span className="text-sm font-bold text-white">{label}</span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-base">{icon}</span>
+                      <span className="text-xs font-bold text-white">{label}</span>
                     </div>
                     <button
                       onClick={() => handleToggleWidget(key)}
@@ -674,249 +609,15 @@ const Dashboard = React.memo(function Dashboard() {
               })}
             </div>
 
-            <div className="pt-4 border-t border-white/10 text-center">
-              <p className="text-[10px] text-text-muted font-bold flex items-center justify-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-status-success animate-pulse"></span>
-                Auto-saved to Firestore
+            <div className="pt-3 border-t border-white/10 text-center">
+              <p className="text-[10px] text-text-muted font-bold flex items-center justify-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-status-success animate-pulse"></span>
+                Preferences auto-saved to cloud
               </p>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px) scale(0.95); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .animate-fade-in-up {
-          animation: fadeInUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-        }
-        @keyframes slideIn {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-        .animate-slide-in {
-          animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.4s ease-out both;
-        }
-        @keyframes bounceIn {
-          0% { opacity: 0; transform: scale(0.3) translateY(50px); }
-          50% { transform: scale(1.05) translateY(-10px); }
-          70% { transform: scale(0.95) translateY(5px); }
-          100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        .animate-bounce-in {
-          animation: bounceIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-        }
-        @keyframes floatUp {
-          0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.6; }
-          50% { transform: translateY(-10px) rotate(5deg); opacity: 1; }
-        }
-        .particles-container {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-          z-index: 0;
-          overflow: hidden;
-        }
-        .particle {
-          position: absolute;
-          bottom: -10px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #8338ec, #ff006e, #3a86ff);
-          animation: floatUp 4s ease-in-out infinite;
-          opacity: 0.6;
-        }
-        .membership-banner {
-          position: relative;
-          overflow: hidden;
-          border-radius: 24px;
-          padding: 1.5rem;
-          margin-bottom: 1.5rem;
-          background: linear-gradient(135deg, rgba(131, 56, 236, 0.3), rgba(255, 0, 110, 0.2), rgba(58, 134, 255, 0.3));
-          backdrop-filter: blur(20px);
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          box-shadow: 0 10px 40px rgba(131, 56, 236, 0.3);
-        }
-        .banner-bg {
-          position: absolute;
-          top: -50%;
-          right: -20%;
-          width: 300px;
-          height: 300px;
-          background: radial-gradient(circle, rgba(255, 0, 110, 0.4), transparent 70%);
-          border-radius: 50%;
-          filter: blur(60px);
-          animation: pulse-glow 3s ease-in-out infinite;
-        }
-        .banner-icon {
-          width: 56px;
-          height: 56px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, rgba(131, 56, 236, 0.3), rgba(255, 0, 110, 0.3));
-          border-radius: 20px;
-          color: white;
-          box-shadow: 0 0 30px rgba(131, 56, 236, 0.5);
-          animation: floatUp 3s ease-in-out infinite;
-        }
-        .daily-reward {
-          position: relative;
-          overflow: hidden;
-          border-radius: 24px;
-          padding: 1.5rem;
-          margin-bottom: 1.5rem;
-          background: linear-gradient(135deg, rgba(255, 84, 0, 0.3), rgba(255, 0, 110, 0.2), rgba(255, 240, 31, 0.2));
-          backdrop-filter: blur(20px);
-          border: 2px solid rgba(255, 255, 255, 0.2);
-          box-shadow: 0 10px 40px rgba(255, 84, 0, 0.3);
-        }
-        .reward-bg {
-          position: absolute;
-          top: -30%;
-          left: -10%;
-          width: 200px;
-          height: 200px;
-          background: radial-gradient(circle, rgba(255, 240, 31, 0.4), transparent 70%);
-          border-radius: 50%;
-          filter: blur(40px);
-          animation: pulse-glow 2s ease-in-out infinite;
-        }
-        .reward-icon {
-          width: 56px;
-          height: 56px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: linear-gradient(135deg, rgba(255, 240, 31, 0.3), rgba(255, 84, 0, 0.3));
-          border-radius: 20px;
-          color: white;
-          box-shadow: 0 0 30px rgba(255, 240, 31, 0.5);
-          animation: floatUp 2.5s ease-in-out infinite;
-        }
-        .reward-btn {
-          padding: 0.75rem 1.5rem;
-          background: linear-gradient(135deg, #ff5400, #ff006e);
-          color: white;
-          border: none;
-          border-radius: 16px;
-          font-weight: 800;
-          font-size: 0.875rem;
-          box-shadow: 0 0 20px rgba(255, 0, 110, 0.4);
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .reward-btn:hover:not(:disabled) {
-          transform: translateY(-3px) scale(1.05);
-          box-shadow: 0 0 30px rgba(255, 84, 0, 0.6);
-        }
-        .reward-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        .settings-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.875rem 1.25rem;
-          background: rgba(255, 255, 255, 0.08);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 16px;
-          color: white;
-          font-weight: 700;
-          font-size: 0.875rem;
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .settings-btn:hover {
-          transform: translateY(-2px) scale(1.05);
-          background: rgba(255, 255, 255, 0.12);
-          box-shadow: 0 6px 20px rgba(131, 56, 236, 0.4);
-          border-color: rgba(131, 56, 236, 0.5);
-        }
-        .widget-glow {
-          position: relative;
-          border-radius: 20px;
-          transition: all 0.4s;
-        }
-        .widget-glow::before {
-          content: '';
-          position: absolute;
-          inset: -2px;
-          border-radius: 22px;
-          background: linear-gradient(135deg, #8338ec, #ff006e, #3a86ff);
-          opacity: 0;
-          transition: opacity 0.4s;
-          z-index: -1;
-          filter: blur(8px);
-        }
-        .widget-glow:hover::before {
-          opacity: 0.5;
-        }
-        .widget-wrapper {
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .widget-wrapper:hover {
-          transform: translateY(-4px) scale(1.02);
-        }
-        .settings-drawer {
-          width: 100%;
-          max-width: 400px;
-          height: 100%;
-          background: linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.95));
-          backdrop-filter: blur(30px);
-          border-l: 1px solid rgba(255, 255, 255, 0.15);
-          padding: 2rem;
-          display: flex;
-          flex-col;
-          box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
-        }
-        .toggle-switch {
-          position: relative;
-          width: 48px;
-          height: 24px;
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          transition: all 0.3s;
-          cursor: pointer;
-          padding: 0;
-        }
-        .toggle-switch.active {
-          background: linear-gradient(135deg, #8338ec, #ff006e);
-          box-shadow: 0 0 15px rgba(255, 0, 110, 0.4);
-          border-color: rgba(255, 0, 110, 0.5);
-        }
-        .toggle-thumb {
-          position: absolute;
-          top: 2px;
-          left: 2px;
-          width: 18px;
-          height: 18px;
-          background: white;
-          border-radius: 50%;
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-        .toggle-switch.active .toggle-thumb {
-          left: 26px;
-        }
-        .hero-section {
-          position: relative;
-          z-index: 1;
-        }
-      `}</style>
     </PageContainer>
   );
 });
