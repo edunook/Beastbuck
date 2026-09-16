@@ -87,21 +87,38 @@ export default function FunFlixHub() {
 
         const moviesQuery = query(
           collection(db, 'funflix_videos'),
-          limit(50)
+          limit(100)
         );
         const moviesSnap = await getDocs(moviesQuery);
         let allMoviesList = moviesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Client-side sort by views descending
-        allMoviesList.sort((a, b) => (b.views || 0) - (a.views || 0));
-        allMoviesList = allMoviesList.slice(0, 24);
 
-        if (featuredList.length === 0 && allMoviesList.length > 0) {
-          featuredList = allMoviesList.slice(0, 4);
+        // Genuine, multi-factor ranking score algorithm (views, likes, recency)
+        const getRankScore = (m) => {
+          const views = Number(m.views || 0);
+          const likes = Array.isArray(m.likes) ? m.likes.length : Number(m.likeCount || m.likes || 0);
+          const createdMs = m.createdAt?.toMillis?.() || (m.createdAt ? new Date(m.createdAt).getTime() : 0);
+          const ageInDays = createdMs > 0 ? (Date.now() - createdMs) / (1000 * 60 * 60 * 24) : 30;
+          const recencyMultiplier = ageInDays <= 7 ? 1.5 : ageInDays <= 30 ? 1.2 : 1.0;
+          return (views + (likes * 12)) * recencyMultiplier;
+        };
+
+        // Strictly ranked Top 10 (Total genuine engagement)
+        const top10Sorted = [...allMoviesList].sort((a, b) => {
+          const scoreA = Number(a.views || 0) + ((Array.isArray(a.likes) ? a.likes.length : Number(a.likeCount || 0)) * 12);
+          const scoreB = Number(b.views || 0) + ((Array.isArray(b.likes) ? b.likes.length : Number(b.likeCount || 0)) * 12);
+          return scoreB - scoreA;
+        });
+
+        // Trending Sorted (Recency + Velocity + Engagement)
+        const trendingSorted = [...allMoviesList].sort((a, b) => getRankScore(b) - getRankScore(a));
+
+        if (featuredList.length === 0 && trendingSorted.length > 0) {
+          featuredList = trendingSorted.slice(0, 5);
         }
 
         setFeaturedMovies(featuredList);
-        setTrendingMovies(allMoviesList);
-        setTop10Movies(allMoviesList.slice(0, 10));
+        setTrendingMovies(trendingSorted);
+        setTop10Movies(top10Sorted.slice(0, 10));
 
         const challengesQuery = query(
           collection(db, 'funflix_challenges'),
