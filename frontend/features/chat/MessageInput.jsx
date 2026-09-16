@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   SendHorizonal, X, Smile, Paperclip, Mic, Image as ImageIcon, 
-  FileText, Film, Radio, Trash2, Loader2, MessageSquareReply
+  FileText, Film, Radio, Trash2, Loader2, MessageSquareReply, Gamepad2
 } from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 
@@ -73,12 +73,13 @@ async function fileToDataUrl(file) {
 export function MessageInput({
   disabled = false,
   readOnlyReason = '',
-  placeholder = 'Message channel...',
+  placeholder = 'Message community...',
   onSend,
   onTyping,
   replyTo,
   onCancelReply,
   members = [],
+  onShowGames,
 }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -464,6 +465,19 @@ export function MessageInput({
               className="hidden"
               accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip"
             />
+
+            {/* Games Quick Launcher */}
+            {onShowGames && (
+              <button
+                type="button"
+                onClick={onShowGames}
+                className="p-2 rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/15 transition border border-transparent"
+                aria-label="Start multiplayer game"
+                title="Play Multiplayer Games"
+              >
+                <Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            )}
           </div>
 
           {/* Text Area */}

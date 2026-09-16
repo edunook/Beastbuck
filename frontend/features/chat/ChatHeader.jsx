@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { 
   Users, Settings, Hash, Megaphone, Search, Pin, 
-  Image as ImageIcon, Menu, X, Sparkles, SlidersHorizontal
+  Image as ImageIcon, Gamepad2, X, Sparkles, SlidersHorizontal
 } from 'lucide-react';
 
 export function ChatHeader({ 
   currentRoom,
   memberName, 
   memberRole, 
-  onToggleSidebar,
+  onShowGames,
   onShowPinned, 
   pinnedCount = 0,
   onShowMedia, 
@@ -21,7 +21,7 @@ export function ChatHeader({
   onToggleSearch
 }) {
   const isAnnouncement = currentRoom?.type === 'announcement' || currentRoom?.id === 'announcements';
-  const roomName = currentRoom?.name || currentRoom?.id || 'general';
+  const roomName = currentRoom?.name || currentRoom?.id || 'Community Chat';
   const roomDescription = currentRoom?.description || 'Community discussion and collaboration.';
 
   return (
@@ -30,25 +30,13 @@ export function ChatHeader({
       {/* Top Main Bar */}
       <div className="flex items-center justify-between px-3 sm:px-5 py-2.5 sm:py-3 gap-2">
         
-        {/* Left: Mobile Toggle & Channel Info */}
+        {/* Left: Chat Branding */}
         <div className="flex items-center gap-2.5 min-w-0">
-          {/* Mobile Sidebar Hamburger */}
-          <button 
-            type="button"
-            onClick={onToggleSidebar}
-            className="md:hidden p-2 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 transition"
-            aria-label="Toggle Channels"
-            title="Channels"
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-
-          {/* Channel Icon & Title */}
           <div className="flex items-center gap-2.5 min-w-0">
             <div className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl border ${
               isAnnouncement 
                 ? 'bg-amber-500/15 border-amber-500/30 text-amber-400' 
-                : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-400'
+                : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-400 shadow-lg shadow-indigo-500/10'
             }`}>
               {isAnnouncement ? <Megaphone className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
             </div>
@@ -70,8 +58,22 @@ export function ChatHeader({
           </div>
         </div>
 
-        {/* Right: Search, Pinned, Media, Members, Settings */}
+        {/* Right: Games, Search, Pinned, Media, Members, Settings */}
         <div className="flex items-center gap-1 sm:gap-1.5">
+
+          {/* Multiplayer Games Button */}
+          {onShowGames && (
+            <button 
+              type="button"
+              onClick={onShowGames} 
+              className="flex items-center gap-1.5 rounded-xl border border-purple-500/40 bg-gradient-to-r from-purple-600/25 via-indigo-600/20 to-purple-600/25 px-2.5 py-1.5 sm:px-3 text-purple-300 transition-all duration-200 hover:bg-purple-500/35 hover:border-purple-400 hover:scale-105 active:scale-95 shadow-lg shadow-purple-500/15 text-xs font-bold" 
+              aria-label="Play Games" 
+              title="Play Live Multiplayer Games"
+            >
+              <Gamepad2 className="h-4 w-4 text-purple-400" />
+              <span className="hidden xs:inline sm:inline">Games</span>
+            </button>
+          )}
           
           {/* Search Toggle */}
           <button 

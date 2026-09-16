@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { AlertCircle, X, Pin, Settings, Flag, Sparkles, Hash, Megaphone } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { ChatService, DEFAULT_CHANNELS } from '@services/firestore/chat';
+import { ChatService } from '@services/firestore/chat';
 import { UsersService } from '@services/firestore/users';
 import { hasPermission } from '@shared/permissions/permissions';
 import { ChatHeader, MemberListModal } from './ChatHeader';
-import { ChannelSidebar } from './ChannelSidebar';
 import { MessageInput } from './MessageInput';
 import { MessageList } from './MessageList';
 import { Card, CardContent, CardHeader, CardTitle } from '@frontend/components/ui/Card';
@@ -13,12 +12,19 @@ import Button from '@frontend/components/ui/Button';
 import { ChatNotificationCenter } from './ChatNotifications';
 import { MediaHub } from './MediaHub';
 import { MemberProfileDrawer } from './MemberProfileDrawer';
+import { ChatGamesModal } from './ChatGamesModal';
 
 const ChatPage = React.memo(function ChatPage() {
   const { user, roleData } = useAuth();
 
-  const [rooms, setRooms] = useState(DEFAULT_CHANNELS);
-  const [activeRoomId, setActiveRoomId] = useState('general');
+  const activeRoomId = 'general';
+  const currentRoom = useMemo(() => ({
+    id: 'general',
+    name: 'Community Chat',
+    type: 'public',
+    description: 'BeastBuck global community chat & live multiplayer gaming.',
+  }), []);
+
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,9 +33,10 @@ const ChatPage = React.memo(function ChatPage() {
   const [typingUsers, setTypingUsers] = useState([]);
   const [showPinnedModal, setShowPinnedModal] = useState(false);
   const [pinnedMessages, setPinnedMessages] = useState([]);
-  const [showSidebarMobile, setShowSidebarMobile] = useState(false);
   const [showMemberList, setShowMemberList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showGamesModal, setShowGamesModal] = useState(false);
+  const [joinGameSessionId, setJoinGameSessionId] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMessage, setReportMessage] = useState(null);
   const [reportReason, setReportReason] = useState('');
@@ -57,26 +64,6 @@ const ChatPage = React.memo(function ChatPage() {
   const memberName = roleData?.displayName || roleData?.username || user?.displayName || 'Member';
   const memberRole = roleData?.role || 'Member';
   const canManageAnnouncements = hasPermission(memberRole, 'canManageAnnouncements') || memberRole === 'Leader' || memberRole === 'Admin' || memberRole === 'Main CEO' || memberRole === 'Co-CEO';
-  const canManageChannels = canManageAnnouncements;
-
-  const currentRoom = useMemo(() => {
-    return rooms.find(r => r.id === activeRoomId) || { id: activeRoomId, name: activeRoomId, type: 'public', description: 'BeastBuck channel' };
-  }, [rooms, activeRoomId]);
-
-  // Load rooms from Firestore
-  useEffect(() => {
-    const unsubscribe = ChatService.subscribeToRooms({
-      onRooms: (nextRooms) => {
-        if (nextRooms && nextRooms.length > 0) {
-          setRooms(nextRooms);
-        }
-      },
-      onError: (err) => {
-        console.warn('Channels subscription error, using defaults:', err);
-      }
-    });
-    return () => unsubscribe?.();
-  }, []);
 
   // Load messages for active channel
   useEffect(() => {
@@ -167,7 +154,8 @@ const ChatPage = React.memo(function ChatPage() {
         setShowMemberList(false);
         setShowMediaHub(false);
         setShowMediaViewer(false);
-        setShowSidebarMobile(false);
+        setShowGamesModal(false);
+        setJoinGameSessionId(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -223,48 +211,6 @@ const ChatPage = React.memo(function ChatPage() {
       } else {
         setError('Failed to send message. Please check your connection.');
       }
-    }
-  };
-
-  const handleSelectRoom = (roomId) => {
-    setActiveRoomId(roomId);
-    setReplyTarget(null);
-    setShowSidebarMobile(false);
-  };
-
-  const handleCreateChannel = async ({ name, description, type }) => {
-    try {
-      const newRoomId = await ChatService.createChannel({
-        name,
-        description,
-        type,
-        createdBy: user?.uid,
-      });
-      setActiveRoomId(newRoomId);
-      addNotification({
-        type: 'system',
-        title: 'Channel Created',
-        message: `#${name} is now live.`,
-      });
-    } catch (err) {
-      console.error('Create channel failed:', err);
-      setError(err?.message || 'Failed to create channel.');
-    }
-  };
-
-  const handleArchiveChannel = async (roomId) => {
-    try {
-      await ChatService.archiveChannel(roomId);
-      if (activeRoomId === roomId) {
-        setActiveRoomId('general');
-      }
-      addNotification({
-        type: 'system',
-        title: 'Channel Archived',
-        message: `#${roomId} has been archived.`,
-      });
-    } catch (err) {
-      console.error('Archive channel failed:', err);
     }
   };
 
