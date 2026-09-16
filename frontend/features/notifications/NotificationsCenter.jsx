@@ -17,7 +17,8 @@ import {
   ExternalLink,
   Users,
   Calendar,
-  Zap
+  Zap,
+  Trophy
 } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { Card, CardContent } from '@frontend/components/ui/Card';
@@ -66,6 +67,8 @@ function getTimeGroup(createdAt) {
 
 function getNotificationBadge(type) {
   switch (type) {
+    case 'challenge_winner':
+      return { icon: Trophy, color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', label: 'Challenge Won' };
     case 'member_join':
       return { icon: UserPlus, color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', label: 'New Member' };
     case 'funflix':

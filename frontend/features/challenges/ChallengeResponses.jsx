@@ -18,10 +18,13 @@ import {
   Eye,
   X,
   Star,
-  TrendingUp,
   BarChart3,
   Crown,
-  Sparkles
+  Sparkles,
+  Brain,
+  XCircle,
+  FileDown,
+  ExternalLink,
 } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { LoadingState } from '@frontend/components/ui/UIElements';
@@ -96,13 +99,382 @@ const animations = `
 `;
 
 const TYPE_ICONS = {
-  mcq_quiz: FileText,
+  mcq_quiz: Brain,
   image_upload: ImageIcon,
   video_upload: Video,
   text_essay: FileText,
   file_upload: Upload,
   poll_voting: BarChart3,
 };
+
+// ─── Compute MCQ score from stored responseData + challenge questions ───────
+function computeQuizScore(responseData, questions) {
+  if (!questions || !questions.length || !responseData) return null;
+  let correct = 0;
+  const results = questions.map((q, idx) => {
+    const userAnswer = responseData[idx] !== undefined
+      ? responseData[idx]
+      : responseData[String(idx)];
+    const isCorrect = userAnswer === q.correctAnswer;
+    if (isCorrect) correct++;
+    return {
+      question: q.question,
+      choices: q.choices,
+      correctAnswer: q.correctAnswer,
+      userAnswer,
+      isCorrect,
+      explanation: q.explanation,
+    };
+  });
+  const score = Math.round((correct / questions.length) * 100);
+  return { correct, total: questions.length, score, results };
+}
+
+// ─── Full detail view used inside modal ───────────────────────────────────
+function ResponsePreviewCard({ response, challenge }) {
+  const { responseData } = response;
+  const type = challenge?.type;
+
+  if (type === 'image_upload') {
+    const imageUrl = responseData?.url || responseData?.imageUrl;
+    if (imageUrl && (imageUrl.startsWith('http') || imageUrl.startsWith('/'))) {
+      return (
+        <div className="rounded-xl overflow-hidden border border-white/10">
+          <img
+            src={imageUrl}
+            alt="Submitted image"
+            className="w-full max-h-80 object-contain bg-black/30"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+          <div className="p-3 bg-white/5 flex items-center justify-between">
+            <p className="text-xs text-text-muted flex items-center gap-1.5">
+              <ImageIcon className="h-3.5 w-3.5 text-accent" />
+              {responseData?.fileName || 'Image submission'}
+            </p>
+            <a
+              href={imageUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-accent flex items-center gap-1 hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" /> Open full size
+            </a>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <p className="text-sm text-yellow-400">
+        ⚠️ Image URL not stored correctly. Raw value: {String(responseData?.url || responseData?.file || 'none')}
+      </p>
+    );
+  }
+
+  if (type === 'video_upload') {
+    const videoUrl = responseData?.url || responseData?.videoUrl;
+    if (videoUrl && (videoUrl.startsWith('http') || videoUrl.startsWith('/'))) {
+      return (
+        <div className="rounded-xl overflow-hidden border border-white/10">
+          <video src={videoUrl} controls className="w-full max-h-72 bg-black" />
+          <div className="p-3 bg-white/5 flex items-center justify-between">
+            <p className="text-xs text-text-muted flex items-center gap-1.5">
+              <Video className="h-3.5 w-3.5 text-accent" />
+              {responseData?.fileName || 'Video submission'}
+            </p>
+            <a
+              href={videoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-accent flex items-center gap-1 hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" /> Open
+            </a>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <p className="text-sm text-yellow-400">
+        ⚠️ Video URL not stored correctly. Raw value: {String(responseData?.url || responseData?.file || 'none')}
+      </p>
+    );
+  }
+
+  if (type === 'file_upload') {
+    const fileUrl = responseData?.url || responseData?.fileUrl;
+    const fileName = responseData?.fileName || responseData?.file || 'File submission';
+    return (
+      <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-accent/20 flex-shrink-0">
+          <FileDown className="h-6 w-6 text-accent" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-white truncate">{fileName}</p>
+          {responseData?.fileSize && (
+            <p className="text-xs text-text-muted">{(responseData.fileSize / 1024).toFixed(1)} KB</p>
+          )}
+        </div>
+        {fileUrl && (fileUrl.startsWith('http') || fileUrl.startsWith('/')) ? (
+          <a
+            href={fileUrl}
+            download={fileName}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/20 border border-accent/30 text-accent text-xs font-bold hover:bg-accent/30 transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" /> Download
+          </a>
+        ) : (
+          <span className="text-xs text-yellow-400">No download URL</span>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'text_essay') {
+    return (
+      <div className="rounded-xl bg-black/30 border border-white/5 p-4">
+        <p className="text-xs text-text-muted mb-3 flex items-center gap-1.5">
+          <FileText className="h-3.5 w-3.5 text-accent" />
+          Essay Response · {responseData?.text?.length || 0} characters
+        </p>
+        <p className="text-sm text-white leading-relaxed whitespace-pre-wrap">
+          {responseData?.text || 'No text provided'}
+        </p>
+      </div>
+    );
+  }
+
+  if (type === 'poll_voting') {
+    const options = challenge?.options || [];
+    const selected = responseData?.selected;
+    const selectedArr = Array.isArray(selected)
+      ? selected
+      : selected !== undefined ? [selected] : [];
+    return (
+      <div className="space-y-2">
+        <p className="text-xs text-text-muted flex items-center gap-1.5 mb-3">
+          <BarChart3 className="h-3.5 w-3.5 text-accent" />
+          Poll Selection
+        </p>
+        {options.map((opt, idx) => (
+          <div
+            key={idx}
+            className={cn(
+              'flex items-center gap-3 px-4 py-2.5 rounded-xl border-2 text-sm transition-all',
+              selectedArr.includes(idx)
+                ? 'border-accent bg-accent/15 text-white font-bold'
+                : 'border-white/10 bg-white/5 text-text-muted'
+            )}
+          >
+            {selectedArr.includes(idx)
+              ? <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" />
+              : <div className="h-4 w-4 rounded-full border-2 border-white/20 flex-shrink-0" />}
+            <span>{opt}</span>
+            {selectedArr.includes(idx) && (
+              <span className="ml-auto text-xs text-accent">Selected</span>
+            )}
+          </div>
+        ))}
+        {selectedArr.length === 0 && (
+          <p className="text-sm text-yellow-400">No option selected</p>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'mcq_quiz') {
+    const quiz = computeQuizScore(responseData, challenge?.questions);
+    if (!quiz) {
+      return <p className="text-sm text-yellow-400">No quiz data available</p>;
+    }
+    return (
+      <div className="space-y-3">
+        {/* Score summary */}
+        <div className={cn(
+          'flex items-center gap-4 p-4 rounded-xl border',
+          quiz.score >= 70
+            ? 'bg-green-500/10 border-green-500/30'
+            : quiz.score >= 40
+            ? 'bg-yellow-500/10 border-yellow-500/30'
+            : 'bg-red-500/10 border-red-500/30'
+        )}>
+          <div className={cn(
+            'flex items-center justify-center w-16 h-16 rounded-full border-2',
+            quiz.score >= 70
+              ? 'bg-green-500/20 border-green-500/30'
+              : quiz.score >= 40
+              ? 'bg-yellow-500/20 border-yellow-500/30'
+              : 'bg-red-500/20 border-red-500/30'
+          )}>
+            <span className="text-xl font-bold text-white">{quiz.score}%</span>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-white">{quiz.correct} / {quiz.total} Correct</p>
+            <p className={cn(
+              'text-sm font-bold',
+              quiz.score >= 70 ? 'text-green-400' : quiz.score >= 40 ? 'text-yellow-400' : 'text-red-400'
+            )}>
+              {quiz.score >= 70 ? '✅ Passed' : quiz.score >= 40 ? '⚠️ Average' : '❌ Failed'}
+            </p>
+          </div>
+          <div className="ml-auto">
+            <div className="w-24 bg-white/10 rounded-full h-2.5">
+              <div
+                className={cn(
+                  'h-2.5 rounded-full transition-all',
+                  quiz.score >= 70 ? 'bg-green-400' : quiz.score >= 40 ? 'bg-yellow-400' : 'bg-red-400'
+                )}
+                style={{ width: `${quiz.score}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Per-question breakdown */}
+        <p className="text-xs text-text-muted font-bold uppercase tracking-wider">Question Breakdown</p>
+        {quiz.results.map((r, idx) => (
+          <div
+            key={idx}
+            className={cn(
+              'rounded-xl border p-4',
+              r.isCorrect
+                ? 'border-green-500/30 bg-green-500/5'
+                : 'border-red-500/30 bg-red-500/5'
+            )}
+          >
+            <p className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+              {r.isCorrect
+                ? <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0" />
+                : <XCircle className="h-4 w-4 text-red-400 flex-shrink-0" />}
+              Q{idx + 1}: {r.question}
+            </p>
+            <div className="space-y-1.5 ml-6">
+              {r.choices?.map((choice, ci) => (
+                <div
+                  key={ci}
+                  className={cn(
+                    'text-xs px-3 py-2 rounded-lg border',
+                    ci === r.correctAnswer && ci === r.userAnswer
+                      ? 'border-green-500/50 bg-green-500/20 text-green-300 font-bold'
+                      : ci === r.correctAnswer
+                      ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                      : ci === r.userAnswer
+                      ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                      : 'border-white/5 bg-white/5 text-text-muted'
+                  )}
+                >
+                  {ci === r.correctAnswer && ci === r.userAnswer && '✅ '}
+                  {ci === r.correctAnswer && ci !== r.userAnswer && '✓ '}
+                  {ci === r.userAnswer && ci !== r.correctAnswer && '✗ '}
+                  {choice}
+                  {ci === r.userAnswer && ci === r.correctAnswer && ' — Your answer (Correct!)'}
+                  {ci === r.userAnswer && ci !== r.correctAnswer && ' — Your answer (Wrong)'}
+                  {ci === r.correctAnswer && ci !== r.userAnswer && ' — Correct answer'}
+                </div>
+              ))}
+            </div>
+            {r.explanation && (
+              <p className="mt-2 ml-6 text-xs text-text-muted italic border-l-2 border-accent/30 pl-3">
+                💡 {r.explanation}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Generic fallback
+  return (
+    <pre className="text-xs text-text-muted whitespace-pre-wrap bg-black/30 p-4 rounded-xl overflow-auto max-h-64 border border-white/5">
+      {JSON.stringify(responseData, null, 2)}
+    </pre>
+  );
+}
+
+// ─── Inline thumbnail shown on the list card ──────────────────────────────
+function ResponseCardPreview({ response, challenge }) {
+  const { responseData } = response;
+  const type = challenge?.type;
+
+  if (type === 'image_upload') {
+    const url = responseData?.url || responseData?.imageUrl;
+    if (url && (url.startsWith('http') || url.startsWith('/'))) {
+      return (
+        <div className="mt-3 rounded-xl overflow-hidden border border-white/10">
+          <img
+            src={url}
+            alt="preview"
+            className="w-full h-36 object-cover"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        </div>
+      );
+    }
+  }
+
+  if (type === 'mcq_quiz') {
+    const quiz = computeQuizScore(responseData, challenge?.questions);
+    if (quiz) {
+      return (
+        <div className="mt-3 flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+          <div className={cn(
+            'flex items-center justify-center w-11 h-11 rounded-full border flex-shrink-0 font-bold text-sm',
+            quiz.score >= 70
+              ? 'bg-green-500/20 border-green-500/30 text-green-400'
+              : quiz.score >= 40
+              ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+              : 'bg-red-500/20 border-red-500/30 text-red-400'
+          )}>
+            {quiz.score}%
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white">
+              {quiz.correct}/{quiz.total} correct
+            </p>
+            <div className="mt-1.5 w-full bg-white/10 rounded-full h-1.5">
+              <div
+                className={cn(
+                  'h-1.5 rounded-full',
+                  quiz.score >= 70 ? 'bg-green-400' : quiz.score >= 40 ? 'bg-yellow-400' : 'bg-red-400'
+                )}
+                style={{ width: `${quiz.score}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
+  if (type === 'text_essay') {
+    const text = responseData?.text;
+    if (text) {
+      return (
+        <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
+          <p className="text-xs text-text-muted line-clamp-2">{text}</p>
+        </div>
+      );
+    }
+  }
+
+  if (type === 'poll_voting') {
+    const options = challenge?.options || [];
+    const sel = responseData?.selected;
+    const selArr = Array.isArray(sel) ? sel : sel !== undefined ? [sel] : [];
+    return (
+      <div className="mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
+        <p className="text-xs text-text-muted">
+          <BarChart3 className="h-3 w-3 inline mr-1 text-accent" />
+          Selected: {selArr.map(i => options[i] || `Option ${i + 1}`).join(', ') || 'None'}
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export default function ChallengeResponses() {
   const { challengeId } = useParams();
@@ -157,24 +529,6 @@ export default function ChallengeResponses() {
     return true;
   });
 
-  const getResponseTypeDisplay = (responseData) => {
-    if (!responseData) return 'No data';
-    
-    if (responseData.selected !== undefined) {
-      return `Poll selection: Option ${responseData.selected + 1}`;
-    }
-    if (responseData.text) {
-      return `Text response: ${responseData.text.substring(0, 50)}${responseData.text.length > 50 ? '...' : ''}`;
-    }
-    if (responseData.file) {
-      return `File: ${responseData.file}`;
-    }
-    if (Array.isArray(responseData)) {
-      return `Quiz: ${responseData.length} questions answered`;
-    }
-    return 'Response submitted';
-  };
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'PENDING': return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/30';
@@ -190,7 +544,15 @@ export default function ChallengeResponses() {
     const reviewed = responses.filter(r => r.status === 'REVIEWED').length;
     const accepted = responses.filter(r => r.status === 'ACCEPTED').length;
     const rejected = responses.filter(r => r.status === 'REJECTED').length;
-    const avgScore = responses.filter(r => r.score !== undefined).reduce((sum, r) => sum + r.score, 0) / responses.filter(r => r.score !== undefined).length || 0;
+
+    let avgScore = 0;
+    if (challenge?.type === 'mcq_quiz' && challenge?.questions?.length) {
+      const quizScores = responses.map(r => computeQuizScore(r.responseData, challenge.questions)?.score || 0);
+      avgScore = quizScores.length ? quizScores.reduce((a, b) => a + b, 0) / quizScores.length : 0;
+    } else {
+      const scored = responses.filter(r => r.score !== undefined && r.score > 0);
+      avgScore = scored.length ? scored.reduce((sum, r) => sum + r.score, 0) / scored.length : 0;
+    }
     
     return { pending, reviewed, accepted, rejected, avgScore };
   };
@@ -205,10 +567,15 @@ export default function ChallengeResponses() {
       const response = responses.find(r => r.id === responseId);
       if (!response) throw new Error('Response not found');
       
-      // Update response as winner
-      await ChallengeService.gradeResponse(responseId, 100, 1, 'Congratulations! You won this challenge!');
+      // Use actual quiz score if MCQ challenge, otherwise 100
+      let scoreToGrade = 100;
+      if (challenge?.type === 'mcq_quiz' && challenge?.questions?.length) {
+        const quiz = computeQuizScore(response.responseData, challenge.questions);
+        scoreToGrade = quiz?.score ?? 100;
+      }
+
+      await ChallengeService.gradeResponse(responseId, scoreToGrade, 1, 'Congratulations! You won this challenge!');
       
-      // Award XP via gamification service
       const { GamificationService } = await import('@services/firestore/gamification');
       await GamificationService.awardXP({
         uid: response.userId,
@@ -219,13 +586,46 @@ export default function ChallengeResponses() {
         actorId: user.uid,
       });
       
-      // Update challenge with winner info
       await ChallengeService.updateCommunityChallenge(challengeId, {
         winnerId: response.userId,
         winnerName: response.userName || response.userUsername,
         winnerResponseId: responseId,
         awardedAt: new Date(),
       });
+
+      // Send personal winner notification to participant
+      try {
+        const { NotificationsService } = await import('@services/firestore/notifications');
+        await NotificationsService.createNotification({
+          title: '🏆 Challenge Winner!',
+          message: `Congratulations! You won the challenge "${challenge?.title || 'Community Challenge'}" and were awarded ${xpAmount} XP!`,
+          type: 'challenge_winner',
+          category: 'personal',
+          actorName: user?.displayName || user?.name || 'Challenge Host',
+          actorAvatar: user?.photoURL || null,
+          actorUid: user?.uid,
+          targetUid: response.userId,
+          link: '/challenges',
+          isPublic: false,
+          isPrivate: true,
+        });
+
+        // Broadcast public notification to community
+        await NotificationsService.createNotification({
+          title: '🎉 Challenge Winner Announced!',
+          message: `${response.userName || response.userUsername || 'A member'} won "${challenge?.title || 'the challenge'}" and earned ${xpAmount} XP!`,
+          type: 'challenge_winner',
+          category: 'public',
+          actorName: user?.displayName || user?.name || 'BeastBuck',
+          actorAvatar: user?.photoURL || null,
+          actorUid: user?.uid,
+          link: '/challenges',
+          isPublic: true,
+          isPrivate: false,
+        });
+      } catch (notifErr) {
+        console.warn('Could not dispatch winner notification:', notifErr);
+      }
       
       setWinnerId(responseId);
       toast.success(`Successfully awarded ${xpAmount} XP to ${response.userName || response.userUsername}!`);
@@ -369,11 +769,62 @@ export default function ChallengeResponses() {
           <div className="rounded-xl bg-white/5 border border-white/10 p-4">
             <div className="flex items-center gap-2 mb-2">
               <Star className="h-4 w-4 text-yellow-400" />
-              <span className="text-xs text-text-muted">Avg Score</span>
+              <span className="text-xs text-text-muted">
+                {challenge.type === 'mcq_quiz' ? 'Avg Quiz %' : 'Avg Grade'}
+              </span>
             </div>
-            <p className="text-2xl font-bold text-white">{stats.avgScore.toFixed(1)}</p>
+            <p className="text-2xl font-bold text-white">
+              {stats.avgScore.toFixed(1)}{challenge.type === 'mcq_quiz' ? '%' : ''}
+            </p>
           </div>
         </div>
+
+        {/* Quiz Leaderboard for MCQ type */}
+        {challenge.type === 'mcq_quiz' && responses.length > 0 && (
+          <div className="mb-8 rounded-2xl bg-gradient-to-r from-purple-500/10 to-accent/10 border border-accent/30 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Brain className="h-6 w-6 text-accent" />
+              <h3 className="text-xl font-bold text-white">Quiz Leaderboard</h3>
+            </div>
+            <div className="space-y-2">
+              {[...responses]
+                .map(r => ({ ...r, quizScore: computeQuizScore(r.responseData, challenge.questions)?.score || 0 }))
+                .sort((a, b) => b.quizScore - a.quizScore)
+                .slice(0, 5)
+                .map((r, idx) => (
+                  <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                    <span className={cn(
+                      'flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm flex-shrink-0',
+                      idx === 0 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                      idx === 1 ? 'bg-gray-400/20 text-gray-300 border border-gray-400/30' :
+                      idx === 2 ? 'bg-amber-600/20 text-amber-400 border border-amber-600/30' :
+                      'bg-white/10 text-text-muted border border-white/10'
+                    )}>
+                      {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                    </span>
+                    <span className="flex-1 text-sm font-bold text-white truncate">{r.userName || r.userUsername || 'Anonymous'}</span>
+                    <div className="text-right mr-3">
+                      <p className="text-sm font-bold text-white">{r.quizScore}%</p>
+                      <p className="text-xs text-text-muted">
+                        {computeQuizScore(r.responseData, challenge.questions)?.correct}/{challenge.questions?.length} correct
+                      </p>
+                    </div>
+                    <div className="w-20 flex-shrink-0">
+                      <div className="w-full bg-white/10 rounded-full h-1.5">
+                        <div
+                          className={cn(
+                            'h-1.5 rounded-full',
+                            r.quizScore >= 70 ? 'bg-green-400' : r.quizScore >= 40 ? 'bg-yellow-400' : 'bg-red-400'
+                          )}
+                          style={{ width: `${r.quizScore}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* Winner Selection Panel */}
         <div className="mb-8 rounded-2xl bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 p-6">
@@ -444,87 +895,102 @@ export default function ChallengeResponses() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredResponses.map((response, index) => (
-              <div
-                key={response.id}
-                className="group rounded-2xl glass-card border border-white/10 p-6 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/10 transition-all animate-fade-in-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-accent/20 to-cyan-500/20 text-accent font-bold text-lg border border-accent/30">
-                      {(response.userName || response.userUsername || '?')[0].toUpperCase()}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-white group-hover:text-accent transition-colors">
-                        {response.userName || response.userUsername || 'Anonymous'}
-                      </h3>
-                      <div className="flex items-center gap-3 mt-1 flex-wrap">
-                        <span className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border",
-                          getStatusColor(response.status)
-                        )}>
-                          {response.status}
-                        </span>
-                        {response.submittedAt && (
-                          <span className="flex items-center gap-1 text-xs text-text-muted">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(response.submittedAt.seconds * 1000).toLocaleDateString()} at {new Date(response.submittedAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            {filteredResponses.map((response, index) => {
+              const quizData = challenge.type === 'mcq_quiz' && challenge.questions?.length
+                ? computeQuizScore(response.responseData, challenge.questions)
+                : null;
+
+              return (
+                <div
+                  key={response.id}
+                  className="group rounded-2xl glass-card border border-white/10 p-6 hover:border-accent/30 hover:shadow-lg hover:shadow-accent/10 transition-all animate-fade-in-up"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-accent/20 to-cyan-500/20 text-accent font-bold text-lg border border-accent/30">
+                        {(response.userName || response.userUsername || '?')[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-white group-hover:text-accent transition-colors">
+                          {response.userName || response.userUsername || 'Anonymous'}
+                        </h3>
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          <span className={cn(
+                            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border",
+                            getStatusColor(response.status)
+                          )}>
+                            {response.status}
                           </span>
-                        )}
+                          {response.submittedAt && (
+                            <span className="flex items-center gap-1 text-xs text-text-muted">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(response.submittedAt.seconds * 1000).toLocaleDateString()} at {new Date(response.submittedAt.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            </span>
+                          )}
+                          {quizData && (
+                            <span className={cn(
+                              'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold border',
+                              quizData.score >= 70
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                                : quizData.score >= 40
+                                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                : 'bg-red-500/20 text-red-400 border-red-500/30'
+                            )}>
+                              <Brain className="h-3 w-3" />
+                              {quizData.correct}/{quizData.total} · {quizData.score}%
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setSelectedResponse(response)}
-                      className="group-hover:bg-accent/20"
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-                    {response.status !== 'ACCEPTED' && !challenge.winnerId && (
+                    
+                    <div className="flex items-center gap-2">
                       <Button
-                        variant="primary"
+                        variant="secondary"
                         size="sm"
-                        onClick={() => handleAwardWinner(response.id)}
-                        disabled={awarding}
-                        className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-black font-bold"
+                        onClick={() => setSelectedResponse(response)}
+                        className="group-hover:bg-accent/20"
                       >
-                        <Crown className="h-4 w-4 mr-2" />
-                        {awarding ? 'Awarding...' : 'Award Winner'}
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
                       </Button>
-                    )}
-                    {response.id === challenge.winnerResponseId && (
-                      <div className="flex items-center gap-1 text-yellow-400 font-bold text-sm">
-                        <Crown className="h-4 w-4" />
-                        Winner
-                      </div>
-                    )}
+                      {response.status !== 'ACCEPTED' && !challenge.winnerId && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleAwardWinner(response.id)}
+                          disabled={awarding}
+                          className="bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-black font-bold"
+                        >
+                          <Crown className="h-4 w-4 mr-2" />
+                          {awarding ? 'Awarding...' : 'Award Winner'}
+                        </Button>
+                      )}
+                      {response.id === challenge.winnerResponseId && (
+                        <div className="flex items-center gap-1 text-yellow-400 font-bold text-sm">
+                          <Crown className="h-4 w-4" />
+                          Winner
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="rounded-xl bg-white/5 p-4 border border-white/5">
-                  <p className="text-sm text-text-muted">
-                    {getResponseTypeDisplay(response.responseData)}
-                  </p>
-                </div>
+                  {/* Rich inline preview */}
+                  <ResponseCardPreview response={response} challenge={challenge} />
 
-                {response.score !== undefined && (
-                  <div className="mt-4 flex items-center gap-2">
-                    <Award className="h-4 w-4 text-yellow-400" />
-                    <span className="text-sm font-bold text-white">Score: {response.score}/100</span>
-                  </div>
-                )}
-              </div>
-            ))}
+                  {response.score !== undefined && response.score > 0 && challenge.type !== 'mcq_quiz' && (
+                    <div className="mt-4 flex items-center gap-2">
+                      <Award className="h-4 w-4 text-yellow-400" />
+                      <span className="text-sm font-bold text-white">Grade: {response.score}/100</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* Response Detail Modal */}
         {selectedResponse && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
             <div className="relative w-full max-w-3xl rounded-3xl glass-card p-6 md:p-8 animate-scale-in max-h-[90vh] overflow-y-auto">
@@ -535,6 +1001,7 @@ export default function ChallengeResponses() {
                 <X className="h-5 w-5" />
               </button>
 
+              {/* Header */}
               <div className="mb-6">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-accent/20 to-cyan-500/20 text-accent font-bold text-2xl border border-accent/30">
@@ -557,23 +1024,43 @@ export default function ChallengeResponses() {
                   )}>
                     {selectedResponse.status}
                   </span>
-                  {selectedResponse.score !== undefined && (
+                  {/* For MCQ: show live computed quiz score badge */}
+                  {challenge.type === 'mcq_quiz' && challenge.questions?.length && (() => {
+                    const q = computeQuizScore(selectedResponse.responseData, challenge.questions);
+                    return q ? (
+                      <span className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold border',
+                        q.score >= 70
+                          ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                          : q.score >= 40
+                          ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                          : 'bg-red-500/20 text-red-400 border-red-500/30'
+                      )}>
+                        <Brain className="h-4 w-4" />
+                        Quiz: {q.correct}/{q.total} ({q.score}%)
+                      </span>
+                    ) : null;
+                  })()}
+                  {selectedResponse.score !== undefined && selectedResponse.score > 0 && challenge.type !== 'mcq_quiz' && (
                     <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
                       <Award className="h-4 w-4" />
-                      Score: {selectedResponse.score}/100
+                      Grade: {selectedResponse.score}/100
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-white/5 p-6 border border-white/10">
-                <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-accent" />
-                  Response Details
+              {/* Type label */}
+              <div className="mb-3 flex items-center gap-2">
+                <TypeIcon className="h-5 w-5 text-accent" />
+                <h3 className="text-base font-bold text-white capitalize">
+                  {challenge.type?.replace(/_/g, ' ')} Response
                 </h3>
-                <pre className="text-sm text-text-muted whitespace-pre-wrap bg-black/30 p-4 rounded-xl overflow-auto max-h-96 border border-white/5">
-                  {JSON.stringify(selectedResponse.responseData, null, 2)}
-                </pre>
+              </div>
+
+              {/* Rich type-specific response view */}
+              <div className="rounded-2xl bg-white/5 p-4 sm:p-6 border border-white/10">
+                <ResponsePreviewCard response={selectedResponse} challenge={challenge} />
               </div>
 
               {selectedResponse.feedback && (
@@ -583,6 +1070,23 @@ export default function ChallengeResponses() {
                     Feedback
                   </h3>
                   <p className="text-sm text-text-muted">{selectedResponse.feedback}</p>
+                </div>
+              )}
+
+              {/* Award winner button inside modal */}
+              {selectedResponse.status !== 'ACCEPTED' && !challenge.winnerId && (
+                <div className="mt-4">
+                  <Button
+                    onClick={() => {
+                      setSelectedResponse(null);
+                      handleAwardWinner(selectedResponse.id);
+                    }}
+                    disabled={awarding}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-black font-bold"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Award Winner ({xpAmount} XP)
+                  </Button>
                 </div>
               )}
             </div>

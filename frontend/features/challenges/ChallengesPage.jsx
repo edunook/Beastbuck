@@ -45,6 +45,7 @@ import Button from '@frontend/components/ui/Button';
 import { ChallengeService } from '@services/firestore/challenges';
 import { CHALLENGE_TYPES, CHALLENGE_STATUS, CHALLENGE_CATEGORIES } from '@shared/constants/challenges';
 import { cn } from '@shared/lib/utils';
+import { uploadChallengeMedia } from '@services/storage/storage';
 
 const animations = `
   @keyframes fadeInUp {
@@ -1030,6 +1031,9 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [responseData, setResponseData] = useState({});
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const { user, roleData } = useAuth();
 
   if (!isOpen || !challenge) return null;
@@ -1232,26 +1236,85 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
                 <Upload className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
                 Upload Your {challenge.type === 'image_upload' ? 'Image' : challenge.type === 'video_upload' ? 'Video' : 'File'}
               </label>
-              <div className="rounded-xl sm:rounded-2xl border-2 border-dashed border-white/20 p-6 sm:p-8 text-center hover:border-accent/50 transition-colors">
-                <Upload className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-2 sm:mb-3 text-text-muted" />
-                <p className="text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">
-                  Drag and drop or click to upload
-                </p>
-                <p className="text-[10px] sm:text-xs text-text-muted">
-                  {challenge.type === 'image_upload' ? 'PNG, JPG, GIF up to 10MB' : 
-                   challenge.type === 'video_upload' ? 'MP4, MOV up to 100MB' : 
-                   'Any file up to 50MB'}
-                </p>
+              <div className="rounded-xl sm:rounded-2xl border-2 border-dashed border-white/20 p-4 sm:p-6 text-center hover:border-accent/50 transition-colors relative">
+                {previewUrl && challenge.type === 'image_upload' && (
+                  <div className="mb-4">
+                    <img src={previewUrl} alt="Preview" className="mx-auto max-h-48 rounded-lg object-contain" />
+                    <p className="mt-2 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> Image uploaded successfully
+                    </p>
+                  </div>
+                )}
+                {previewUrl && challenge.type === 'video_upload' && (
+                  <div className="mb-4">
+                    <video src={previewUrl} controls className="mx-auto max-h-48 rounded-lg w-full" />
+                    <p className="mt-2 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
+                      <CheckCircle className="h-3 w-3" /> Video uploaded successfully
+                    </p>
+                  </div>
+                )}
+                {responseData.fileName && challenge.type === 'file_upload' && !uploading && (
+                  <p className="mb-3 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
+                    <CheckCircle className="h-3 w-3" /> {responseData.fileName} uploaded!
+                  </p>
+                )}
+                {!previewUrl && !responseData.fileName && (
+                  <>
+                    <Upload className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-2 sm:mb-3 text-text-muted" />
+                    <p className="text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">
+                      Click to select &amp; upload
+                    </p>
+                    <p className="text-[10px] sm:text-xs text-text-muted">
+                      {challenge.type === 'image_upload' ? 'PNG, JPG, GIF up to 10MB' :
+                       challenge.type === 'video_upload' ? 'MP4, MOV up to 100MB' :
+                       'Any file up to 50MB'}
+                    </p>
+                  </>
+                )}
+                {uploading && (
+                  <div className="mt-3">
+                    <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+                      <div
+                        className="bg-gradient-to-r from-accent to-cyan-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-accent font-bold">
+                      Uploading... {Math.round(uploadProgress)}%
+                    </p>
+                  </div>
+                )}
                 <input
                   type="file"
                   accept={challenge.type === 'image_upload' ? 'image/*' : challenge.type === 'video_upload' ? 'video/*' : '*/*'}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files[0];
-                    if (file) {
-                      setResponseData({ file: file.name });
+                    if (!file) return;
+                    setUploading(true);
+                    setUploadProgress(0);
+                    setPreviewUrl(null);
+                    setError('');
+                    try {
+                      const result = await uploadChallengeMedia(file, {
+                        ownerId: user?.uid,
+                        onProgress: (pct) => setUploadProgress(pct),
+                        metadata: { challengeId: challenge.id, userId: user?.uid },
+                      });
+                      const url = result.url || result.cdnUrl;
+                      setResponseData({ url, fileName: file.name, fileSize: file.size, mimeType: file.type });
+                      if (challenge.type === 'image_upload' || challenge.type === 'video_upload') {
+                        setPreviewUrl(url);
+                      }
+                      setUploadProgress(100);
+                    } catch (err) {
+                      console.error('Upload failed:', err);
+                      setError('Upload failed: ' + (err.message || 'Please try again'));
+                    } finally {
+                      setUploading(false);
                     }
                   }}
-                  className="mt-3 sm:mt-4"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={uploading}
                 />
               </div>
             </div>
@@ -1268,13 +1331,18 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploading}
               className="flex-1 text-xs sm:text-sm"
             >
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
                   Submitting...
+                </span>
+              ) : uploading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                  Uploading...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">

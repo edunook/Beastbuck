@@ -15,6 +15,7 @@ import {
   increment,
 } from 'firebase/firestore';
 import { GamificationService } from './gamification';
+import { NotificationsService } from './notifications';
 import { CHALLENGE_STATUS, SUBMISSION_STATUS } from '@shared/constants/challenges';
 
 function docsFrom(snap) {
@@ -161,6 +162,26 @@ export const ChallengeService = {
       } catch (err) {
         console.error('Failed to issue certificate for challenge win:', err);
       }
+    }
+
+    // 4. Send winner notification to participant
+    try {
+      if (submission.userId) {
+        await NotificationsService.createNotification({
+          title: '🏆 Challenge Winner!',
+          message: `Congratulations! You won the challenge "${submission.challengeTitle || submission.challengeId}" and were awarded ${xpAmount ? `${xpAmount} XP` : 'winner status'}!`,
+          type: 'challenge_winner',
+          category: 'personal',
+          actorName: 'Challenge Admin',
+          actorUid: actorId,
+          targetUid: submission.userId,
+          link: '/challenges',
+          isPublic: false,
+          isPrivate: true,
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Failed to send challenge winner notification:', notifErr);
     }
   },
 
