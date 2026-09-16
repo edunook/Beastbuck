@@ -123,8 +123,6 @@ export const FunFlixService = {
     if (!videoId || !uid) throw new Error('Video ID and User ID are required to like');
     await updateDoc(funflixVideoRef(videoId), {
       likes: hasLiked ? arrayRemove(uid) : arrayUnion(uid),
-      likeCount: increment(hasLiked ? -1 : 1),
-      updatedAt: serverTimestamp(),
     });
   },
 

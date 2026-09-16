@@ -16,23 +16,15 @@ import {
   Plus, 
   Check, 
   Share2, 
-  Users, 
-  MessageSquare, 
   ArrowLeft, 
   Eye, 
   Clock, 
-  Award, 
-  Trophy, 
   Film, 
-  Send, 
-  Trash2, 
   SlidersHorizontal,
-  ChevronRight,
-  Info,
   Flame,
-  Radio,
-  Copy,
-  ExternalLink
+  Calendar,
+  User,
+  Tag
 } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import Button from '@frontend/components/ui/Button';
@@ -43,28 +35,6 @@ import { normalizeMediaUrl } from '@services/storage/b2Client';
 import { cn } from '@shared/lib/utils';
 
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
-const REACTION_EMOJIS = ['🔥', '❤️', '👏', '🤯', '😂', '🍿', '⚡'];
-
-const playerStyles = `
-  @keyframes flyUp {
-    0% {
-      opacity: 1;
-      transform: translateY(0) scale(0.8);
-    }
-    50% {
-      opacity: 0.9;
-      transform: translateY(-80px) scale(1.3) rotate(5deg);
-    }
-    100% {
-      opacity: 0;
-      transform: translateY(-160px) scale(1.6) rotate(-5deg);
-    }
-  }
-
-  .animate-fly-up {
-    animation: flyUp 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  }
-`;
 
 export default function MoviePlayer() {
   const { movieId } = useParams();
@@ -94,14 +64,8 @@ export default function MoviePlayer() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
-  // Related & Discussion States
+  // Recommendations State
   const [relatedVideos, setRelatedVideos] = useState([]);
-  const [comments, setComments] = useState([]);
-  const [commentText, setCommentText] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
-  const [activeTab, setActiveTab] = useState('related'); // 'related' | 'comments' | 'details'
-  const [floatingReactions, setFloatingReactions] = useState([]);
-  const [showShareModal, setShowShareModal] = useState(false);
 
   const videoRef = useRef(null);
   const playerContainerRef = useRef(null);
@@ -119,7 +83,7 @@ export default function MoviePlayer() {
     }
   }, [movieId]);
 
-  // Load Video & Realtime Listeners
+  // Load Video & Realtime Listener
   useEffect(() => {
     if (!movieId) return;
 
@@ -128,7 +92,7 @@ export default function MoviePlayer() {
     setCurrentTime(0);
     setIsPlaying(false);
 
-    // Subscribe to video real-time updates
+    // Subscribe to real-time video document
     const unsubVideo = FunFlixService.subscribeToVideo(movieId, {
       onVideo: (videoData) => {
         if (!videoData) {
@@ -137,15 +101,19 @@ export default function MoviePlayer() {
           return;
         }
         setVideo(videoData);
-        setLikeCount(videoData.likes?.length || 0);
-        if (user && videoData.likes?.includes(user.uid)) {
+
+        // Real likes calculation from array
+        const likesArr = Array.isArray(videoData.likes) ? videoData.likes : [];
+        setLikeCount(likesArr.length);
+        if (user?.uid && likesArr.includes(user.uid)) {
           setLiked(true);
         } else {
           setLiked(false);
         }
+
         setLoading(false);
 
-        // Fetch related videos
+        // Fetch genuine recommendations
         FunFlixService.getRelatedVideos(movieId, videoData.category, 6).then(setRelatedVideos);
       },
       onError: (err) => {
@@ -153,12 +121,6 @@ export default function MoviePlayer() {
         setLoading(false);
         setVideoError(true);
       },
-    });
-
-    // Subscribe to real-time comments
-    const unsubComments = FunFlixService.subscribeToComments(movieId, {
-      onComments: (items) => setComments(items),
-      onError: (err) => console.warn('Comments fetch error:', err),
     });
 
     // Increment views once per session
@@ -169,7 +131,6 @@ export default function MoviePlayer() {
 
     return () => {
       unsubVideo();
-      unsubComments();
     };
   }, [movieId, user?.uid]);
 
@@ -188,7 +149,6 @@ export default function MoviePlayer() {
   // Keyboard Shortcuts Handler
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Don't trigger shortcuts if user is typing in comment input
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
 
       switch (e.key.toLowerCase()) {
@@ -334,20 +294,29 @@ export default function MoviePlayer() {
     }
   };
 
-  // Like Toggle
+  // Like & Unlike (Reliable & Tested)
   const handleLike = async () => {
-    if (!user) {
+    if (!user?.uid) {
       toast.error('Please sign in to like videos');
       return;
     }
+
+    const currentStatus = liked;
+    const nextStatus = !currentStatus;
+
+    // Optimistic UI Update
+    setLiked(nextStatus);
+    setLikeCount(prev => nextStatus ? prev + 1 : Math.max(0, prev - 1));
+
     try {
-      await FunFlixService.toggleLike(movieId, user.uid, liked);
-      setLiked(!liked);
-      setLikeCount(prev => liked ? Math.max(0, prev - 1) : prev + 1);
-      if (!liked) triggerReaction('❤️');
-      toast.success(liked ? 'Removed from liked' : 'Added to liked videos!');
+      await FunFlixService.toggleLike(movieId, user.uid, currentStatus);
+      toast.success(nextStatus ? 'Liked! ❤️' : 'Like removed');
     } catch (error) {
-      toast.error('Failed to update like');
+      console.error('Error toggling like:', error);
+      // Revert optimistic update
+      setLiked(currentStatus);
+      setLikeCount(prev => currentStatus ? prev + 1 : Math.max(0, prev - 1));
+      toast.error('Failed to update like: ' + (error.message || 'Please try again'));
     }
   };
 
@@ -377,54 +346,6 @@ export default function MoviePlayer() {
     }
   };
 
-  // Comment Submission
-  const handleAddComment = async (e) => {
-    e.preventDefault();
-    if (!user) {
-      toast.error('Please sign in to comment');
-      return;
-    }
-    if (!commentText.trim()) return;
-
-    setSubmittingComment(true);
-    try {
-      await FunFlixService.addComment(movieId, {
-        text: commentText.trim(),
-        user,
-      });
-      setCommentText('');
-      toast.success('Comment posted!');
-    } catch (err) {
-      toast.error('Failed to post comment');
-    } finally {
-      setSubmittingComment(false);
-    }
-  };
-
-  const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('Delete this comment?')) return;
-    try {
-      await FunFlixService.deleteComment(movieId, commentId);
-      toast.success('Comment deleted');
-    } catch {
-      toast.error('Could not delete comment');
-    }
-  };
-
-  // Flying Emoji Reaction
-  const triggerReaction = (emoji) => {
-    const id = Date.now() + Math.random();
-    const newReaction = {
-      id,
-      emoji,
-      left: Math.floor(Math.random() * 60) + 20, // 20% to 80% horizontal
-    };
-    setFloatingReactions(prev => [...prev, newReaction]);
-    setTimeout(() => {
-      setFloatingReactions(prev => prev.filter(r => r.id !== id));
-    }, 2500);
-  };
-
   const formatTime = (seconds) => {
     if (isNaN(seconds)) return '00:00';
     const mins = Math.floor(seconds / 60);
@@ -442,14 +363,14 @@ export default function MoviePlayer() {
 
   if (loading) {
     return (
-      <PageContainer className="bg-[#0b0c10] min-h-screen text-white flex items-center justify-center">
+      <PageContainer className="bg-[#07080b] min-h-screen text-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="relative">
-            <div className="h-16 w-16 rounded-full border-4 border-red-600/30 border-t-red-600 animate-spin" />
-            <Film className="h-7 w-7 text-red-500 absolute inset-0 m-auto" />
+            <div className="h-14 w-14 rounded-full border-4 border-red-600/30 border-t-red-600 animate-spin" />
+            <Film className="h-6 w-6 text-red-500 absolute inset-0 m-auto" />
           </div>
-          <p className="text-sm font-semibold tracking-widest uppercase text-text-muted animate-pulse">
-            Loading FunFlix Cinema...
+          <p className="text-xs font-semibold tracking-widest uppercase text-text-muted animate-pulse">
+            Loading Video...
           </p>
         </div>
       </PageContainer>
@@ -458,14 +379,14 @@ export default function MoviePlayer() {
 
   if (!video || videoError) {
     return (
-      <PageContainer className="bg-[#0b0c10] min-h-screen text-white flex items-center justify-center p-6">
+      <PageContainer className="bg-[#07080b] min-h-screen text-white flex items-center justify-center p-6">
         <div className="max-w-md w-full text-center bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
-          <Film className="h-16 w-16 text-red-500 mx-auto mb-4 opacity-80" />
-          <h2 className="text-2xl font-bold text-white mb-2">Video Unavailable</h2>
+          <Film className="h-14 w-14 text-red-500 mx-auto mb-4 opacity-80" />
+          <h2 className="text-xl font-bold text-white mb-2">Video Unavailable</h2>
           <p className="text-sm text-text-muted mb-6">
             The video could not be loaded. It may have been removed or is temporarily unavailable.
           </p>
-          <Button onClick={() => navigate('/funflix')} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold">
+          <Button onClick={() => navigate('/funflix')} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm">
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to FunFlix
           </Button>
         </div>
@@ -473,24 +394,29 @@ export default function MoviePlayer() {
     );
   }
 
+  const publishedDate = video.createdAt?.toDate 
+    ? video.createdAt.toDate().toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    : video.createdAt 
+    ? new Date(video.createdAt).toLocaleDateString()
+    : 'Recently';
+
   return (
     <div className="min-h-screen bg-[#07080b] text-white selection:bg-red-600 selection:text-white pb-24">
-      <style>{playerStyles}</style>
-      {/* Top Netflix-style Cinema Bar */}
-      <div className="sticky top-0 z-40 bg-gradient-to-b from-[#07080b]/90 via-[#07080b]/70 to-transparent backdrop-blur-md px-4 sm:px-8 py-4 flex items-center justify-between">
+      {/* Top Cinema Header Bar */}
+      <div className="sticky top-0 z-40 bg-gradient-to-b from-[#07080b]/95 via-[#07080b]/80 to-transparent backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/funflix')}
-            className="flex items-center gap-2 text-sm font-bold text-white/80 hover:text-white bg-white/5 hover:bg-white/15 px-3.5 py-1.5 rounded-full border border-white/10 transition"
+            className="flex items-center gap-2 text-xs sm:text-sm font-bold text-white/80 hover:text-white bg-white/5 hover:bg-white/15 px-3.5 py-1.5 rounded-full border border-white/10 transition"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">FunFlix Hub</span>
+            <span>FunFlix</span>
           </button>
-          <div className="hidden md:flex items-center gap-2 text-xs text-text-muted">
+          <div className="hidden md:flex items-center gap-2 text-xs text-text-muted truncate max-w-lg">
             <span>/</span>
-            <span className="text-red-400 font-semibold">{video.category || 'Movies'}</span>
+            <span className="text-red-400 font-semibold">{video.category || 'Video'}</span>
             <span>/</span>
-            <span className="text-white font-medium truncate max-w-xs">{video.title}</span>
+            <span className="text-white font-medium truncate">{video.title}</span>
           </div>
         </div>
 
@@ -504,30 +430,21 @@ export default function MoviePlayer() {
                 ? "bg-red-500/20 text-red-400 border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.3)]" 
                 : "bg-white/5 text-text-muted border-white/10 hover:text-white"
             )}
-            title="Toggle Cinema Ambient Glow"
+            title="Toggle Ambient Glow"
           >
             <Sparkles className="h-4 w-4" />
-            <span className="hidden lg:inline">{ambientGlow ? 'Glow On' : 'Glow Off'}</span>
+            <span className="hidden sm:inline">{ambientGlow ? 'Glow On' : 'Glow Off'}</span>
           </button>
-
-          {/* Watch Party Shortcut */}
-          <Link
-            to={`/funflix/watch-parties?video=${movieId}`}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg transition"
-          >
-            <Users className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Start Watch Party</span>
-          </Link>
         </div>
       </div>
 
       <div className={cn("mx-auto transition-all duration-300 px-3 sm:px-6 lg:px-8", isTheaterMode ? "max-w-full" : "max-w-7xl")}>
-        {/* Main Cinema Video Section */}
+        {/* Main Video Section */}
         <div className="relative mb-8">
           {/* Ambient Glow Aura */}
           {ambientGlow && (
             <div 
-              className="absolute -inset-4 sm:-inset-8 bg-gradient-to-r from-red-600/20 via-purple-600/20 to-blue-600/20 rounded-3xl blur-3xl opacity-60 pointer-events-none transition-opacity duration-1000 -z-10 animate-pulse"
+              className="absolute -inset-4 sm:-inset-8 bg-gradient-to-r from-red-600/20 via-purple-600/15 to-blue-600/20 rounded-3xl blur-3xl opacity-60 pointer-events-none transition-opacity duration-1000 -z-10"
             />
           )}
 
@@ -536,9 +453,9 @@ export default function MoviePlayer() {
             ref={playerContainerRef}
             onMouseMove={handleMouseMove}
             onMouseLeave={() => isPlaying && setShowControls(false)}
-            className="relative aspect-video w-full bg-black rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)] border border-white/10 group select-none"
+            className="relative aspect-video w-full bg-black rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.85)] border border-white/10 group select-none"
           >
-            {/* HTML5 Native Video Tag */}
+            {/* HTML5 Native Video */}
             <video
               ref={videoRef}
               src={currentVideoUrl}
@@ -556,32 +473,19 @@ export default function MoviePlayer() {
               playsInline
             />
 
-            {/* Flying Emoji Reactions Overlay */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden z-20">
-              {floatingReactions.map(r => (
-                <div
-                  key={r.id}
-                  style={{ left: `${r.left}%` }}
-                  className="absolute bottom-16 text-3xl sm:text-4xl animate-fly-up drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)]"
-                >
-                  {r.emoji}
-                </div>
-              ))}
-            </div>
-
-            {/* Center Giant Play / Pause Splash on Click */}
+            {/* Center Play Splash when Paused */}
             {!isPlaying && (
               <div 
                 onClick={togglePlay}
                 className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] cursor-pointer z-10 transition-opacity"
               >
-                <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-red-600/90 hover:bg-red-600 text-white flex items-center justify-center shadow-[0_0_40px_rgba(220,38,38,0.7)] transition-transform transform hover:scale-110 active:scale-95">
-                  <Play className="h-10 w-10 sm:h-12 sm:w-12 fill-current ml-1" />
+                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-[0_0_35px_rgba(220,38,38,0.7)] transition-transform transform hover:scale-110 active:scale-95">
+                  <Play className="h-8 w-8 sm:h-10 sm:w-10 fill-current ml-1" />
                 </div>
               </div>
             )}
 
-            {/* Cinema Custom Controls Bar Overlay */}
+            {/* Custom Cinema Controls Bar */}
             <div 
               className={cn(
                 "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-3 sm:p-5 transition-opacity duration-300 z-30 flex flex-col justify-end gap-2",
@@ -640,7 +544,7 @@ export default function MoviePlayer() {
                     <RotateCw className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
 
-                  {/* Volume Deck */}
+                  {/* Volume Slider */}
                   <div className="flex items-center gap-1.5 group/vol">
                     <button 
                       onClick={toggleMute} 
@@ -736,30 +640,18 @@ export default function MoviePlayer() {
           </div>
         </div>
 
-        {/* Video Overview & Interactive Deck */}
+        {/* Video Information & Actions Deck */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main 2-Column Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Title & Badges Bar */}
+            {/* Title & Real Metadata */}
             <div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2.5">
                 <span className="bg-red-600 text-white font-extrabold text-[11px] px-2.5 py-0.5 rounded tracking-wider uppercase">
-                  {video.category || 'Movie'}
+                  {video.category || 'General'}
                 </span>
-                <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold px-2 py-0.5 rounded">
-                  98% Match
-                </span>
-                <span className="text-[11px] font-bold text-white/70 border border-white/20 px-1.5 py-0.5 rounded">
-                  4K Ultra HD
-                </span>
-                <span className="text-[11px] font-bold text-white/70 border border-white/20 px-1.5 py-0.5 rounded">
-                  HDR 10
-                </span>
-                <span className="text-[11px] font-bold text-white/70 border border-white/20 px-1.5 py-0.5 rounded">
-                  Spatial 5.1
-                </span>
-                <span className="flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
-                  <Trophy className="h-3 w-3" /> +25 XP
+                <span className="text-[11px] font-bold text-white/80 bg-white/10 px-2 py-0.5 rounded">
+                  {video.visibility || 'Public'}
                 </span>
               </div>
 
@@ -767,36 +659,37 @@ export default function MoviePlayer() {
                 {video.title}
               </h1>
 
-              <div className="flex items-center gap-4 text-xs text-text-muted">
-                <span className="flex items-center gap-1 text-white/80 font-medium">
+              <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted">
+                <span className="flex items-center gap-1.5 text-white/90 font-medium">
                   <Eye className="h-3.5 w-3.5 text-accent" />
                   {(video.views || 0).toLocaleString()} Views
                 </span>
                 <span>•</span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {formatTime(duration)} Duration
+                  {formatTime(duration)}
                 </span>
                 <span>•</span>
-                <span>
-                  {video.createdAt?.toDate ? video.createdAt.toDate().toLocaleDateString() : 'Recent Release'}
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
+                  {publishedDate}
                 </span>
               </div>
             </div>
 
-            {/* Quick Action Button Deck (Netflix Style) */}
+            {/* Clean Action Deck */}
             <div className="flex flex-wrap items-center gap-3 py-3 border-y border-white/10">
-              {/* Like / Heart Button */}
+              {/* Like / Unlike Button (Guaranteed working) */}
               <button
                 onClick={handleLike}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-95",
+                  "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-95 cursor-pointer",
                   liked 
                     ? "bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.5)]" 
                     : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
                 )}
               >
-                <Heart className={cn("h-4 w-4", liked && "fill-current animate-ping-once")} />
+                <Heart className={cn("h-4 w-4", liked && "fill-current")} />
                 <span>{liked ? 'Liked' : 'Like'} ({likeCount})</span>
               </button>
 
@@ -804,7 +697,7 @@ export default function MoviePlayer() {
               <button
                 onClick={handleWatchlistToggle}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-95",
+                  "flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-95 cursor-pointer",
                   inWatchlist 
                     ? "bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.5)]" 
                     : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
@@ -814,43 +707,20 @@ export default function MoviePlayer() {
                 <span>{inWatchlist ? 'In My List' : 'Add to List'}</span>
               </button>
 
-              {/* Watch Party Button */}
-              <Link
-                to={`/funflix/watch-parties?video=${movieId}`}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs sm:text-sm shadow-lg transition-all active:scale-95"
-              >
-                <Radio className="h-4 w-4" />
-                <span>Watch Party</span>
-              </Link>
-
               {/* Share Button */}
               <button
                 onClick={() => {
                   navigator.clipboard?.writeText(window.location.href);
                   toast.success('Link copied to clipboard! 📋');
                 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold text-xs sm:text-sm transition-all active:scale-95"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold text-xs sm:text-sm transition-all active:scale-95 cursor-pointer"
               >
                 <Share2 className="h-4 w-4" />
                 <span>Share</span>
               </button>
-
-              {/* Quick Floating Emojis */}
-              <div className="flex items-center gap-1 ml-auto">
-                {REACTION_EMOJIS.slice(0, 5).map(emoji => (
-                  <button
-                    key={emoji}
-                    onClick={() => triggerReaction(emoji)}
-                    className="h-8 w-8 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-sm transition-transform hover:scale-125 active:scale-90"
-                    title={`React ${emoji}`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
             </div>
 
-            {/* Creator Spotlight & Story Info */}
+            {/* Creator Spotlight Box */}
             <div className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div className="h-12 w-12 rounded-full bg-gradient-to-br from-red-600 to-purple-700 flex items-center justify-center font-extrabold text-white text-lg shadow-lg ring-2 ring-white/10 shrink-0">
@@ -861,12 +731,9 @@ export default function MoviePlayer() {
                     <h3 className="font-bold text-white text-sm sm:text-base">
                       {video.creatorName || video.creatorUsername || 'FunFlix Creator'}
                     </h3>
-                    <span className="bg-red-500/20 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                      Director / Creator
-                    </span>
                   </div>
                   <p className="text-xs text-text-muted mt-0.5">
-                    Verified BeastBuck Creator • Content Contributor
+                    @{video.creatorUsername || 'creator'} • Content Creator
                   </p>
                 </div>
               </div>
@@ -874,20 +741,20 @@ export default function MoviePlayer() {
               {video.creatorId && (
                 <Link
                   to={`/portfolio/${video.creatorUsername || video.creatorId}`}
-                  className="text-xs font-bold text-accent hover:text-white bg-accent/10 hover:bg-accent/20 px-3 py-1.5 rounded-lg transition shrink-0"
+                  className="text-xs font-bold text-accent hover:text-white bg-accent/10 hover:bg-accent/20 px-3.5 py-1.5 rounded-lg transition shrink-0"
                 >
-                  View Creator Portfolio ➔
+                  View Portfolio ➔
                 </Link>
               )}
             </div>
 
-            {/* Description & Tags */}
+            {/* Real Description & Tags */}
             <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10">
               <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
-                Synopsis & Description
+                About this video
               </h4>
               <p className="text-sm text-white/90 leading-relaxed whitespace-pre-line">
-                {video.description || 'No detailed synopsis provided for this title.'}
+                {video.description || 'No description provided.'}
               </p>
 
               {video.tags && video.tags.length > 0 && (
@@ -895,7 +762,7 @@ export default function MoviePlayer() {
                   {video.tags.map((tag, idx) => (
                     <span 
                       key={idx} 
-                      className="bg-white/5 hover:bg-white/10 text-white/80 text-xs px-2.5 py-1 rounded-full border border-white/5 cursor-pointer transition"
+                      className="bg-white/5 text-white/70 text-xs px-2.5 py-1 rounded-full border border-white/5"
                     >
                       #{tag}
                     </span>
@@ -903,73 +770,9 @@ export default function MoviePlayer() {
                 </div>
               )}
             </div>
-
-            {/* Discussion / Comments Section */}
-            <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-white text-base flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4 text-red-400" />
-                  Live Community Discussion ({comments.length})
-                </h3>
-              </div>
-
-              {/* Comment Input */}
-              <form onSubmit={handleAddComment} className="flex gap-2.5 mb-6">
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder={user ? "Write a reaction or comment..." : "Please sign in to join discussion"}
-                  disabled={!user || submittingComment}
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-text-muted focus:border-red-500 focus:outline-none"
-                />
-                <Button
-                  type="submit"
-                  disabled={!user || !commentText.trim() || submittingComment}
-                  className="bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm px-4 font-bold"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
-
-              {/* Comments Feed */}
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-                {comments.length === 0 ? (
-                  <p className="text-xs text-text-muted text-center py-6">
-                    Be the first to share your thoughts on this movie! 🎬
-                  </p>
-                ) : (
-                  comments.map(c => (
-                    <div key={c.id} className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-start gap-3">
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
-                        {(c.userName || 'M')[0].toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-white">{c.userName}</span>
-                          <span className="text-[10px] text-text-muted">
-                            {c.createdAt?.toDate ? c.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-white/90 mt-1 leading-normal">{c.text}</p>
-                      </div>
-                      {user && user.uid === c.userId && (
-                        <button
-                          onClick={() => handleDeleteComment(c.id)}
-                          className="text-text-muted hover:text-red-400 p-1 transition"
-                          title="Delete comment"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
           </div>
 
-          {/* Right Sidebar: "More Like This" Recommendations */}
+          {/* Right Column: Genuine "More Like This" Recommendations */}
           <div className="space-y-6">
             <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-xl">
               <div className="flex items-center justify-between mb-4">
@@ -977,13 +780,12 @@ export default function MoviePlayer() {
                   <Flame className="h-4 w-4 text-red-500" />
                   More Like This
                 </h3>
-                <span className="text-xs text-text-muted">FunFlix Recs</span>
               </div>
 
               <div className="space-y-3.5">
                 {relatedVideos.length === 0 ? (
                   <p className="text-xs text-text-muted text-center py-6">
-                    Loading recommendations...
+                    No related videos found in this category.
                   </p>
                 ) : (
                   relatedVideos.map(item => (
@@ -1019,7 +821,7 @@ export default function MoviePlayer() {
                           {item.creatorName || item.creatorUsername || 'Creator'}
                         </p>
                         <div className="flex items-center gap-2 text-[10px] text-text-muted mt-1">
-                          <span className="text-red-400 font-semibold">{item.category || 'Movie'}</span>
+                          <span className="text-red-400 font-semibold">{item.category || 'General'}</span>
                           <span>•</span>
                           <span>{(item.views || 0).toLocaleString()} views</span>
                         </div>
@@ -1028,22 +830,6 @@ export default function MoviePlayer() {
                   ))
                 )}
               </div>
-            </div>
-
-            {/* Quick Watch Party Card */}
-            <div className="p-5 rounded-2xl bg-gradient-to-br from-purple-900/30 via-indigo-900/20 to-slate-900/60 border border-purple-500/30">
-              <div className="flex items-center gap-2.5 text-purple-400 font-bold text-sm mb-1.5">
-                <Users className="h-4 w-4" /> Watch Party Mode
-              </div>
-              <p className="text-xs text-text-muted mb-4">
-                Host a synchronized live movie night with voice chat and live sync with members!
-              </p>
-              <Link
-                to={`/funflix/watch-parties?video=${movieId}`}
-                className="block text-center w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
-              >
-                Create Party Room
-              </Link>
             </div>
           </div>
         </div>

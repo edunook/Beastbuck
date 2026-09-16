@@ -2509,12 +2509,7 @@ service cloud.firestore {
     // ----------------------------------------
     match /funflix_videos/{videoId} {
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (
-        resource.data.creatorId == request.auth.uid ||
-        canManageMembers() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'views', 'likeCount', 'updatedAt'])
-      );
+      allow create, update: if isAuthenticated();
       allow delete: if isAuthenticated() && (
         resource.data.creatorId == request.auth.uid ||
         canManageMembers()
