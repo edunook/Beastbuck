@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
-import { AlertCircle, X, Pin, Settings, Flag, Sparkles, Hash, Megaphone } from 'lucide-react';
+import { AlertCircle, X, Pin, Settings, Flag } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { ChatService } from '@services/firestore/chat';
 import { UsersService } from '@services/firestore/users';
@@ -14,16 +14,10 @@ import { MediaHub } from './MediaHub';
 import { MemberProfileDrawer } from './MemberProfileDrawer';
 import { ChatGamesModal } from './ChatGamesModal';
 
+const CHAT_ROOM_ID = 'general';
+
 const ChatPage = React.memo(function ChatPage() {
   const { user, roleData } = useAuth();
-
-  const activeRoomId = 'general';
-  const currentRoom = useMemo(() => ({
-    id: 'general',
-    name: 'Community Chat',
-    type: 'public',
-    description: 'BeastBuck global community chat & live multiplayer gaming.',
-  }), []);
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +26,6 @@ const ChatPage = React.memo(function ChatPage() {
   const [members, setMembers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [showPinnedModal, setShowPinnedModal] = useState(false);
-  const [pinnedMessages, setPinnedMessages] = useState([]);
   const [showMemberList, setShowMemberList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGamesModal, setShowGamesModal] = useState(false);
@@ -45,7 +38,7 @@ const ChatPage = React.memo(function ChatPage() {
   const [notifications, setNotifications] = useState([]);
   const [optimisticMessages, setOptimisticMessages] = useState([]);
   
-  // Search in channel
+  // Search in chat
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
@@ -65,27 +58,27 @@ const ChatPage = React.memo(function ChatPage() {
   const memberRole = roleData?.role || 'Member';
   const canManageAnnouncements = hasPermission(memberRole, 'canManageAnnouncements') || memberRole === 'Leader' || memberRole === 'Admin' || memberRole === 'Main CEO' || memberRole === 'Co-CEO';
 
-  // Load messages for active channel
+  // Load messages for community chat
   useEffect(() => {
     setLoading(true);
     setError(null);
     setSearchQuery('');
     setShowSearch(false);
     
-    const unsubscribe = ChatService.subscribeToRoomMessages(activeRoomId, {
+    const unsubscribe = ChatService.subscribeToRoomMessages(CHAT_ROOM_ID, {
       onMessages: (nextMessages) => {
         setMessages(nextMessages.filter(m => !m.archived && !m.deleted));
         setLoading(false);
       },
       onError: (err) => {
         console.error('Room messages listener error:', err);
-        setError('Could not load channel messages.');
+        setError('Could not load community chat messages.');
         setLoading(false);
       },
     });
 
     return () => unsubscribe?.();
-  }, [activeRoomId]);
+  }, []);
 
   // Load assignable members
   useEffect(() => {
@@ -102,16 +95,16 @@ const ChatPage = React.memo(function ChatPage() {
     return () => { cancelled = true; };
   }, []);
 
-  // Subscribe to typing in active channel
+  // Subscribe to typing
   useEffect(() => {
     if (!user?.uid) return;
-    const unsubscribe = ChatService.subscribeToTyping(activeRoomId, (users) => {
+    const unsubscribe = ChatService.subscribeToTyping(CHAT_ROOM_ID, (users) => {
       setTypingUsers((users || []).filter(u => u.userId !== user.uid));
     });
     return () => unsubscribe?.();
-  }, [activeRoomId, user?.uid]);
+  }, [user?.uid]);
 
-  // Load pinned messages when modal opens or messages change
+  // Load pinned messages
   const currentPinnedMessages = useMemo(() => {
     return messages.filter(m => m.pinned);
   }, [messages]);
@@ -119,12 +112,12 @@ const ChatPage = React.memo(function ChatPage() {
   const allMessages = useMemo(() => {
     const combined = [...messages];
     optimisticMessages.forEach(opt => {
-      if (opt.roomId === activeRoomId && !messages.find(m => m.id === opt.id)) {
+      if (!messages.find(m => m.id === opt.id)) {
         combined.push(opt);
       }
     });
     return combined;
-  }, [messages, optimisticMessages, activeRoomId]);
+  }, [messages, optimisticMessages]);
 
   const addNotification = useCallback((notification) => {
     const id = `notification-${Date.now()}-${Math.random()}`;
@@ -166,8 +159,8 @@ const ChatPage = React.memo(function ChatPage() {
     setError(null);
     const payload = {
       id: `temp-${Date.now()}`,
-      roomId: activeRoomId,
-      roomType: currentRoom?.type || 'public',
+      roomId: CHAT_ROOM_ID,
+      roomType: 'public',
       senderId: user?.uid,
       senderName: memberName,
       senderRole: memberRole,
@@ -186,8 +179,8 @@ const ChatPage = React.memo(function ChatPage() {
 
     try {
       await ChatService.sendMessage({
-        roomId: activeRoomId,
-        roomType: currentRoom?.type || 'public',
+        roomId: CHAT_ROOM_ID,
+        roomType: 'public',
         senderId: user?.uid,
         senderName: memberName,
         senderRole: memberRole,
@@ -200,14 +193,14 @@ const ChatPage = React.memo(function ChatPage() {
 
       setOptimisticMessages(prev => prev.filter(m => m.id !== payload.id));
       if (user?.uid) {
-        ChatService.setTypingStatus(activeRoomId, user.uid, memberName, false);
+        ChatService.setTypingStatus(CHAT_ROOM_ID, user.uid, memberName, false);
       }
     } catch (err) {
       console.error('Chat message send failed:', err);
       setOptimisticMessages(prev => prev.filter(m => m.id !== payload.id));
       const messageText = (err?.message || '').toLowerCase();
       if (messageText.includes('permission') || messageText.includes('insufficient')) {
-        setError('You do not have permission to send messages in this channel.');
+        setError('You do not have permission to send messages.');
       } else {
         setError('Failed to send message. Please check your connection.');
       }
@@ -217,11 +210,11 @@ const ChatPage = React.memo(function ChatPage() {
   const handleTyping = useCallback((isTyping) => {
     if (!user?.uid || !memberName) return;
     try {
-      ChatService.setTypingStatus(activeRoomId, user.uid, memberName, isTyping);
+      ChatService.setTypingStatus(CHAT_ROOM_ID, user.uid, memberName, isTyping);
     } catch {
       // Ignore typing errors
     }
-  }, [activeRoomId, user?.uid, memberName]);
+  }, [user?.uid, memberName]);
 
   const handleReply = useCallback((message) => {
     setReplyTarget(message);
@@ -234,7 +227,7 @@ const ChatPage = React.memo(function ChatPage() {
     if (!msgId) return;
     try {
       await ChatService.toggleReaction({
-        roomId: activeRoomId,
+        roomId: CHAT_ROOM_ID,
         messageId: msgId,
         reactionKey,
         userId: user.uid,
@@ -243,7 +236,7 @@ const ChatPage = React.memo(function ChatPage() {
     } catch (error) {
       console.error('Failed to toggle reaction:', error);
     }
-  }, [activeRoomId, user?.uid]);
+  }, [user?.uid]);
 
   const handleTogglePin = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
@@ -251,35 +244,35 @@ const ChatPage = React.memo(function ChatPage() {
     const isPinned = typeof messageTarget === 'object' ? !messageTarget?.pinned : true;
     if (!msgId) return;
     try {
-      await ChatService.pinMessage(activeRoomId, msgId, isPinned);
+      await ChatService.pinMessage(CHAT_ROOM_ID, msgId, isPinned);
       addNotification({
         type: 'pin',
         title: isPinned ? 'Message Pinned' : 'Message Unpinned',
-        message: isPinned ? 'Pinned message in this channel.' : 'Removed pin.',
+        message: isPinned ? 'Pinned message.' : 'Removed pin.',
       });
     } catch (error) {
       console.error('Failed to toggle pin:', error);
     }
-  }, [activeRoomId, user?.uid, addNotification]);
+  }, [user?.uid, addNotification]);
 
   const handleEdit = useCallback(async (messageTarget, newText) => {
     if (!user?.uid) return;
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId || !newText?.trim()) return;
     try {
-      await ChatService.editMessage(activeRoomId, msgId, newText.trim());
+      await ChatService.editMessage(CHAT_ROOM_ID, msgId, newText.trim());
     } catch (error) {
       console.error('Failed to edit message:', error);
       setError('Failed to edit message.');
     }
-  }, [activeRoomId, user?.uid]);
+  }, [user?.uid]);
 
   const handleDelete = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
     const msgId = typeof messageTarget === 'object' ? messageTarget?.id : messageTarget;
     if (!msgId) return;
     try {
-      await ChatService.deleteMessage(activeRoomId, msgId);
+      await ChatService.deleteMessage(CHAT_ROOM_ID, msgId);
       addNotification({
         type: 'system',
         title: 'Message Deleted',
@@ -289,7 +282,7 @@ const ChatPage = React.memo(function ChatPage() {
       console.error('Failed to delete message:', error);
       setError('Failed to delete message.');
     }
-  }, [activeRoomId, user?.uid, addNotification]);
+  }, [user?.uid, addNotification]);
 
   const handleBookmark = useCallback(async (messageTarget) => {
     if (!user?.uid) return;
@@ -297,7 +290,7 @@ const ChatPage = React.memo(function ChatPage() {
     const isBookmarked = typeof messageTarget === 'object' ? !messageTarget?.bookmarked : true;
     if (!msgId) return;
     try {
-      await ChatService.bookmarkMessage(activeRoomId, msgId, isBookmarked);
+      await ChatService.bookmarkMessage(CHAT_ROOM_ID, msgId, isBookmarked);
       addNotification({
         type: 'system',
         title: isBookmarked ? 'Bookmarked' : 'Bookmark Removed',
@@ -306,7 +299,7 @@ const ChatPage = React.memo(function ChatPage() {
     } catch (error) {
       console.error('Failed to bookmark message:', error);
     }
-  }, [activeRoomId, user?.uid, addNotification]);
+  }, [user?.uid, addNotification]);
 
   const handleReportPrompt = useCallback((messageTarget) => {
     setReportMessage(messageTarget);
@@ -322,7 +315,7 @@ const ChatPage = React.memo(function ChatPage() {
       await addDoc(collection(db, 'chatReports'), {
         messageId: reportMessage.id,
         messageText: reportMessage.text || '',
-        roomId: activeRoomId,
+        roomId: CHAT_ROOM_ID,
         reportedBy: user.uid,
         reporterName: memberName,
         reason: reportReason.trim() || 'Flagged for moderation review',
@@ -340,7 +333,7 @@ const ChatPage = React.memo(function ChatPage() {
       console.error('Failed to report message:', error);
       setShowReportModal(false);
     }
-  }, [user?.uid, reportMessage, activeRoomId, memberName, reportReason, addNotification]);
+  }, [user?.uid, reportMessage, memberName, reportReason, addNotification]);
 
   const handleMediaOpen = useCallback((url) => {
     setMediaViewerSrc(url);
@@ -352,69 +345,35 @@ const ChatPage = React.memo(function ChatPage() {
     setMediaViewerSrc(null);
   }, []);
 
+  const handleOpenSharedContent = useCallback((content) => {
+    if (content?.type === 'game') {
+      const sessId = content.sessionId || content.gameSessionId || null;
+      setJoinGameSessionId(sessId);
+      setShowGamesModal(true);
+    } else if (content?.url) {
+      handleMediaOpen(content.url);
+    }
+  }, [handleMediaOpen]);
+
   return (
     <div className="flex h-[calc(100dvh-4rem-5rem)] md:h-[calc(100dvh-4.5rem)] w-full flex-col p-0 md:p-3 overflow-hidden select-none">
       
       {/* Outer Shell Glass Container */}
-      <div className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 overflow-hidden rounded-none md:rounded-3xl border-0 md:border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-3xl">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden rounded-none md:rounded-3xl border-0 md:border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-3xl">
         
-        {/* Left: Desktop Channel Sidebar */}
-        <div className="hidden md:flex w-64 lg:w-72 shrink-0 h-full">
-          <ChannelSidebar
-            rooms={rooms}
-            activeRoomId={activeRoomId}
-            canManageChannels={canManageChannels}
-            onSelectRoom={handleSelectRoom}
-            onCreateChannel={handleCreateChannel}
-            onArchiveChannel={handleArchiveChannel}
-          />
-        </div>
-
-        {/* Mobile Channel Drawer */}
-        {showSidebarMobile && (
-          <div 
-            className="fixed inset-0 z-50 flex md:hidden bg-black/70 backdrop-blur-md animate-fade-in"
-            onClick={() => setShowSidebarMobile(false)}
-          >
-            <div 
-              className="w-4/5 max-w-xs h-full bg-slate-950 shadow-2xl animate-slide-right"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ChannelSidebar
-                rooms={rooms}
-                activeRoomId={activeRoomId}
-                canManageChannels={canManageChannels}
-                onSelectRoom={handleSelectRoom}
-                onCreateChannel={handleCreateChannel}
-                onArchiveChannel={handleArchiveChannel}
-                onCloseMobile={() => setShowSidebarMobile(false)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Center: Main Conversation Area */}
+        {/* Main Conversation Area */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950">
           
           {/* Header */}
           <ChatHeader
-            currentRoom={currentRoom}
             memberName={memberName}
             memberRole={memberRole}
-            onToggleSidebar={() => setShowSidebarMobile(prev => !prev)}
+            canSend={!!user}
+            onShowGames={() => setShowGamesModal(true)}
             onShowPinned={() => setShowPinnedModal(true)}
-            pinnedCount={currentPinnedMessages.length}
             onShowMedia={() => setShowMediaHub(true)}
             onShowMembers={() => setShowMemberList(true)}
-            memberCount={members.length}
             onShowSettings={() => setShowSettings(true)}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            showSearch={showSearch}
-            onToggleSearch={() => {
-              setShowSearch(prev => !prev);
-              if (showSearch) setSearchQuery('');
-            }}
           />
 
           {/* Error Banner */}
@@ -436,7 +395,6 @@ const ChatPage = React.memo(function ChatPage() {
             messages={allMessages}
             loading={loading}
             currentUserId={user?.uid}
-            currentRoom={currentRoom}
             canManageAnnouncements={canManageAnnouncements}
             onReply={handleReply}
             onToggleReaction={handleToggleReaction}
@@ -447,6 +405,7 @@ const ChatPage = React.memo(function ChatPage() {
             onShowProfile={(senderId, senderName) => setSelectedDrawerMember({ id: senderId, displayName: senderName, role: 'Member' })}
             onMediaOpen={handleMediaOpen}
             onReport={handleReportPrompt}
+            onOpenSharedContent={handleOpenSharedContent}
             searchQuery={searchQuery}
             typingUsers={typingUsers}
           />
@@ -455,12 +414,13 @@ const ChatPage = React.memo(function ChatPage() {
           <MessageInput
             disabled={!user}
             readOnlyReason=""
-            placeholder={`Message #${currentRoom?.name || 'channel'}...`}
+            placeholder="Share something with the community..."
             onSend={handleSend}
             onTyping={handleTyping}
             replyTo={replyTarget}
             onCancelReply={() => setReplyTarget(null)}
             members={members}
+            onShowGames={() => setShowGamesModal(true)}
           />
         </div>
 
@@ -512,7 +472,7 @@ const ChatPage = React.memo(function ChatPage() {
               <CardTitle className="flex items-center justify-between text-white text-base">
                 <div className="flex items-center gap-2">
                   <Pin className="h-4 w-4 text-amber-400" />
-                  <span>Pinned in #{currentRoom?.name || 'channel'}</span>
+                  <span>Pinned Messages</span>
                 </div>
                 <button 
                   onClick={() => setShowPinnedModal(false)} 
@@ -528,7 +488,7 @@ const ChatPage = React.memo(function ChatPage() {
                   <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/40">
                     <Pin className="h-5 w-5" />
                   </div>
-                  <p className="text-xs text-white/50">No pinned messages in this channel</p>
+                  <p className="text-xs text-white/50">No pinned messages yet</p>
                 </div>
               ) : (
                 currentPinnedMessages.map((msg) => (
@@ -551,6 +511,42 @@ const ChatPage = React.memo(function ChatPage() {
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Chat Games (Multiplayer) Modal */}
+      {showGamesModal && (
+        <ChatGamesModal
+          onClose={() => {
+            setShowGamesModal(false);
+            setJoinGameSessionId(null);
+          }}
+          currentUser={user}
+          activeRoomId={CHAT_ROOM_ID}
+          joinSessionId={joinGameSessionId}
+          onSendGameCard={async (gameCardData) => {
+            try {
+              await ChatService.sendMessage({
+                roomId: CHAT_ROOM_ID,
+                roomType: 'public',
+                senderId: user?.uid,
+                senderName: memberName,
+                senderRole: memberRole,
+                text: `🎮 Started a live ${gameCardData.title} match! Click to play!`,
+                sharedContent: {
+                  type: 'game',
+                  title: gameCardData.title,
+                  description: gameCardData.description,
+                  gameId: gameCardData.gameId,
+                  sessionId: gameCardData.sessionId,
+                  author: memberName,
+                  icon: '🎮',
+                }
+              });
+            } catch (err) {
+              console.error('Failed to post game card:', err);
+            }
+          }}
+        />
       )}
 
       {/* Media & Files Hub Modal */}
