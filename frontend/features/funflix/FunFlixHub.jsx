@@ -1,30 +1,241 @@
-import { useState, useEffect, useRef } from 'react';
-import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Play, Plus, Check, Info, Volume2, VolumeX, ChevronLeft, ChevronRight, 
   Film, TrendingUp, Award, Users, Star, Search, SlidersHorizontal, 
   Sparkles, Clock, Eye, Edit3, BarChart2, Bot, PlayCircle, Loader2, X, 
-  Filter, ArrowRight, ThumbsUp, Home, Trophy, Upload, ArrowLeft
+  Filter, ArrowRight, ThumbsUp, Home, Trophy, Upload, ArrowLeft, Heart,
+  Share2, ChevronDown, CheckCircle2, ShieldCheck, Flame
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { db } from '@services/firebase/config';
 import { useAuth } from '../auth/AuthContext';
-import { ROLES } from '@shared/constants/roles';
 import { PERMISSIONS } from '@shared/permissions/permissions';
-import EmptyState from '@frontend/components/ui/EmptyState';
 
+// Authentic Netflix Categories
 const CATEGORIES = [
-  { id: 'all', name: 'Home' },
-  { id: 'Trending', name: 'Trending' },
+  { id: 'all', name: 'All' },
+  { id: 'Sci-Fi', name: 'Sci-Fi & AI' },
+  { id: 'Action', name: 'Action & Thrillers' },
   { id: 'Comedy', name: 'Comedy' },
-  { id: 'Mini Movies', name: 'Mini Movies' },
-  { id: 'Science', name: 'Science' },
-  { id: 'Education', name: 'Education' },
-  { id: 'Technology', name: 'Tech & AI' },
-  { id: 'Animation', name: 'Animation' },
   { id: 'Documentary', name: 'Documentaries' },
-  { id: 'Challenges', name: 'Challenges' },
+  { id: 'Drama', name: 'Drama' },
+  { id: 'Animation', name: 'Animation' },
+  { id: 'Technology', name: 'Tech & Engineering' },
+];
+
+// Curated 4K Showcase Library for an always-breathtaking Netflix experience
+const CURATED_TITLES = [
+  {
+    id: 'chrono-rift',
+    title: 'Chrono Rift: The Quantum Paradox',
+    description: 'When an experimental particle collider tears a rift in spacetime, a team of quantum physicists must race through divergent realities before their timeline collapses permanently.',
+    category: 'Sci-Fi',
+    duration: '2h 14m',
+    year: '2026',
+    rating: '16+',
+    matchScore: 99,
+    isOriginal: true,
+    quality: '4K Ultra HD',
+    tags: ['Mind-bending', 'Futuristic', 'Suspenseful'],
+    cast: 'Dr. Sarah Chen, Michael Vance, Elena Rostova',
+    director: 'Christopher Nolan & BeastBuck Studios',
+    creatorName: 'Dr. Sarah Chen',
+    views: 1845000,
+    likes: 142000,
+    thumbnail: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'neon-horizon',
+    title: 'Neon Horizon 2099',
+    description: 'In the towering cyber-megacity of Neo-Kyoto, a rogue synthetic consciousness uncovers a conspiracy that threatens to rewrite human free will forever.',
+    category: 'Sci-Fi',
+    duration: '1h 58m',
+    year: '2026',
+    rating: '18+',
+    matchScore: 98,
+    isOriginal: true,
+    quality: '4K Ultra HD',
+    tags: ['Cyberpunk', 'Gritty', 'Visually Striking'],
+    cast: 'Kenji Sato, Maya Lin, Alex Mercer',
+    director: 'Denis Villeneuve & BeastBuck Creative',
+    creatorName: 'Alex Mercer',
+    views: 1420000,
+    likes: 98000,
+    thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'silicon-hustle',
+    title: 'Silicon Hustle: The Founder\'s Code',
+    description: 'The electrifying true-to-life drama of four young engineers who built an open-source AI operating system from a garage, defying Wall Street and Big Tech giants.',
+    category: 'Drama',
+    duration: '2h 05m',
+    year: '2025',
+    rating: '13+',
+    matchScore: 97,
+    isOriginal: false,
+    quality: 'HD',
+    tags: ['Inspiring', 'Fast-Paced', 'Compelling'],
+    cast: 'David Zhao, Jessica Morales, Tariq Al-Mansoor',
+    director: 'David Fincher',
+    creatorName: 'BeastBuck Originals',
+    views: 980000,
+    likes: 76000,
+    thumbnail: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'cosmos-infinite',
+    title: 'Cosmos: Beyond the Event Horizon',
+    description: 'An awe-inspiring cinematic journey guided by astrophysicists exploring supermassive black holes, dark energy, and the ultimate destiny of our universe.',
+    category: 'Documentary',
+    duration: '1h 48m',
+    year: '2026',
+    rating: 'ALL',
+    matchScore: 99,
+    isOriginal: true,
+    quality: '4K Ultra HD',
+    tags: ['Mind-Expanding', 'Epic', 'Breathtaking'],
+    cast: 'Prof. James Webb, Dr. Althea Sterling',
+    director: 'Alastair Fothergill',
+    creatorName: 'AstroLab',
+    views: 2100000,
+    likes: 185000,
+    thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'shadow-protocol',
+    title: 'Shadow Protocol: Zero Day',
+    description: 'An elite squad of counter-cyber operatives must stop an autonomous malware hive-mind from hijacking the global power grid before midnight.',
+    category: 'Action',
+    duration: '1h 52m',
+    year: '2025',
+    rating: '16+',
+    matchScore: 96,
+    isOriginal: true,
+    quality: '4K Ultra HD',
+    tags: ['High-Octane', 'Tech-Thriller', 'Action'],
+    cast: 'Marcus Thorne, Samantha Reed, Viktor Brandt',
+    director: 'Chad Stahelski',
+    creatorName: 'CyberStrike Media',
+    views: 1250000,
+    likes: 89000,
+    thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'laugh-protocol',
+    title: 'The AI Dating Disaster',
+    description: 'When an engineer creates an hyper-intelligent matchmaking AI that accidentally matches everyone with their polar opposites, hilarity and chaos ensue across San Francisco.',
+    category: 'Comedy',
+    duration: '1h 36m',
+    year: '2026',
+    rating: '13+',
+    matchScore: 95,
+    isOriginal: true,
+    quality: 'HD',
+    tags: ['Hilarious', 'Romantic', 'Feel-Good'],
+    cast: 'Emma Stone-Williams, Ben Schwartz, Lily Zhang',
+    director: 'Taika Waititi',
+    creatorName: 'FunFlix Comedy',
+    views: 890000,
+    likes: 64000,
+    thumbnail: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'deep-ocean',
+    title: 'Abyssal Light: Secrets of the Trench',
+    description: 'Submersibles venture into the Mariana Trench to document bioluminescent leviathans and deep-sea volcanic ecosystems never before captured on camera.',
+    category: 'Documentary',
+    duration: '1h 42m',
+    year: '2025',
+    rating: 'ALL',
+    matchScore: 98,
+    isOriginal: false,
+    quality: '4K Ultra HD',
+    tags: ['Mesmerizing', 'Nature', 'Atmospheric'],
+    cast: 'Dr. Sylvia Earle, David Attenborough',
+    director: 'James Cameron',
+    creatorName: 'Oceania Lab',
+    views: 1670000,
+    likes: 121000,
+    thumbnail: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'neural-dreams',
+    title: 'Neural Dreams: The Painter of Memories',
+    description: 'An emotional animated masterpiece exploring a memory archivist who reconstructs lost human experiences in a digital afterlife.',
+    category: 'Animation',
+    duration: '1h 45m',
+    year: '2026',
+    rating: 'ALL',
+    matchScore: 97,
+    isOriginal: true,
+    quality: '4K Ultra HD',
+    tags: ['Emotional', 'Artistic', 'Heartfelt'],
+    cast: 'Makoto Shinkai Animation Studio',
+    director: 'Makoto Shinkai',
+    creatorName: 'Studio Ghibli & BeastBuck',
+    views: 1530000,
+    likes: 139000,
+    thumbnail: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'tokyo-drift-ai',
+    title: 'HyperDrive: Midnight Tokyo',
+    description: 'High-stakes underground electric hypercar street racing powered by custom autonomous telemetry and adrenaline-pumping speed.',
+    category: 'Action',
+    duration: '1h 49m',
+    year: '2025',
+    rating: '16+',
+    matchScore: 96,
+    isOriginal: false,
+    quality: 'HD',
+    tags: ['Fast-Paced', 'Cars', 'Adrenaline'],
+    cast: 'Takeshi Kitano, Brian O\'Conner Jr.',
+    director: 'Justin Lin',
+    creatorName: 'Apex Racing',
+    views: 1120000,
+    likes: 85000,
+    thumbnail: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1920&q=85&fit=crop',
+  },
+  {
+    id: 'superconductor-dawn',
+    title: 'Room Temperature: The Energy Revolution',
+    description: 'The inside documentary of the race to discover room-temperature superconductivity, changing levitation, fusion power, and space exploration forever.',
+    category: 'Technology',
+    duration: '1h 38m',
+    year: '2026',
+    rating: 'ALL',
+    matchScore: 98,
+    isOriginal: true,
+    quality: '4K Ultra HD',
+    tags: ['Groundbreaking', 'Science', 'Inspirational'],
+    cast: 'Nobel Laureates & Quantum Physicists',
+    director: 'BeastBuck Science Lab',
+    creatorName: 'Quantum Media',
+    views: 1340000,
+    likes: 92000,
+    thumbnail: 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=1920&q=85&fit=crop',
+    poster: 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=800&q=85&fit=crop',
+    backdrop: 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=1920&q=85&fit=crop',
+  }
 ];
 
 export default function FunFlixHub() {
@@ -39,12 +250,8 @@ export default function FunFlixHub() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Data states
-  const [featuredMovies, setFeaturedMovies] = useState([]);
-  const [trendingMovies, setTrendingMovies] = useState([]);
-  const [top10Movies, setTop10Movies] = useState([]);
-  const [challenges, setChallenges] = useState([]);
-  const [topCreators, setTopCreators] = useState([]);
+  // Firestore + Curated Video States
+  const [firestoreMovies, setFirestoreMovies] = useState([]);
   const [myMovies, setMyMovies] = useState([]);
   const [watchlist, setWatchlist] = useState(() => {
     try {
@@ -56,188 +263,165 @@ export default function FunFlixHub() {
   });
 
   // Hero & Modal States
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [heroIndex, setHeroIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
-  const [selectedMovieModal, setSelectedMovieModal] = useState(null);
+  const [selectedMovie, setSelectedMovie] = useState(null);
+  const [likedMovies, setLikedMovies] = useState(new Set());
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
-  const autoPlayRef = useRef(null);
-
-  // Scroll listener for sticky header background
+  // Scroll listener for sticky Netflix header
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 40);
+      setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch Firebase Data with Fallback Samples
+  // Fetch Firestore Videos and blend with Curated Titles
   useEffect(() => {
-    const fetchFunFlixData = async () => {
+    const fetchVideos = async () => {
       try {
         setLoading(true);
-
-        const featuredQuery = query(
-          collection(db, 'funflix_videos'),
-          where('featured', '==', true),
-          limit(5)
-        );
-        const featuredSnap = await getDocs(featuredQuery);
-        let featuredList = featuredSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        const moviesQuery = query(
-          collection(db, 'funflix_videos'),
-          limit(100)
-        );
-        const moviesSnap = await getDocs(moviesQuery);
-        let allMoviesList = moviesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // Genuine, multi-factor ranking score algorithm (views, likes, recency)
-        const getRankScore = (m) => {
-          const views = Number(m.views || 0);
-          const likes = Array.isArray(m.likes) ? m.likes.length : Number(m.likeCount || m.likes || 0);
-          const createdMs = m.createdAt?.toMillis?.() || (m.createdAt ? new Date(m.createdAt).getTime() : 0);
-          const ageInDays = createdMs > 0 ? (Date.now() - createdMs) / (1000 * 60 * 60 * 24) : 30;
-          const recencyMultiplier = ageInDays <= 7 ? 1.5 : ageInDays <= 30 ? 1.2 : 1.0;
-          return (views + (likes * 12)) * recencyMultiplier;
-        };
-
-        // Strictly ranked Top 10 (Total genuine engagement)
-        const top10Sorted = [...allMoviesList].sort((a, b) => {
-          const scoreA = Number(a.views || 0) + ((Array.isArray(a.likes) ? a.likes.length : Number(a.likeCount || 0)) * 12);
-          const scoreB = Number(b.views || 0) + ((Array.isArray(b.likes) ? b.likes.length : Number(b.likeCount || 0)) * 12);
-          return scoreB - scoreA;
+        const q = query(collection(db, 'funflix_videos'), limit(50));
+        const snap = await getDocs(q);
+        const dbMovies = snap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            title: data.title || 'Untitled',
+            description: data.description || '',
+            category: data.category || 'General',
+            duration: data.duration ? `${data.duration}m` : 'Short',
+            year: data.createdAt?.toDate ? String(data.createdAt.toDate().getFullYear()) : '2026',
+            rating: data.rating || '13+',
+            matchScore: 96,
+            quality: 'HD',
+            tags: data.tags || ['Community Creation', 'Trending'],
+            creatorName: data.creatorName || data.creatorUsername || 'Creator',
+            views: data.views || 0,
+            likes: Array.isArray(data.likes) ? data.likes.length : Number(data.likes || 0),
+            thumbnail: data.thumbnail || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1920&q=80',
+            poster: data.thumbnail || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&q=80',
+            backdrop: data.thumbnail || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1920&q=80',
+          };
         });
 
-        // Trending Sorted (Recency + Velocity + Engagement)
-        const trendingSorted = [...allMoviesList].sort((a, b) => getRankScore(b) - getRankScore(a));
+        setFirestoreMovies(dbMovies);
 
-        if (featuredList.length === 0 && trendingSorted.length > 0) {
-          featuredList = trendingSorted.slice(0, 5);
+        if (user?.uid) {
+          const userVideos = dbMovies.filter(m => m.creatorId === user.uid);
+          setMyMovies(userVideos);
         }
-
-        setFeaturedMovies(featuredList);
-        setTrendingMovies(trendingSorted);
-        setTop10Movies(top10Sorted.slice(0, 10));
-
-        const challengesQuery = query(
-          collection(db, 'funflix_challenges'),
-          where('status', '==', 'active'),
-          limit(6)
-        );
-        const challengesSnap = await getDocs(challengesQuery);
-        const challengesData = challengesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        challengesData.sort((a, b) => {
-          const aDate = a.endDate?.toDate?.() || new Date(0);
-          const bDate = b.endDate?.toDate?.() || new Date(0);
-          return aDate - bDate;
-        });
-        setChallenges(challengesData);
-
-        const creatorsQuery = query(
-          collection(db, 'funflix_creators'),
-          limit(20)
-        );
-        const creatorsSnap = await getDocs(creatorsQuery);
-        const creatorsData = creatorsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Client-side sort by totalViews descending
-        creatorsData.sort((a, b) => (b.totalViews || 0) - (a.totalViews || 0));
-        setTopCreators(creatorsData.slice(0, 8));
-
-        if (user) {
-          const myMoviesQuery = query(
-            collection(db, 'funflix_videos'),
-            where('creatorId', '==', user.uid),
-            limit(50)
-          );
-          const myMoviesSnap = await getDocs(myMoviesQuery);
-          const myMoviesData = myMoviesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          myMoviesData.sort((a, b) => {
-            const aDate = a.createdAt?.toDate?.() || new Date(0);
-            const bDate = b.createdAt?.toDate?.() || new Date(0);
-            return bDate - aDate;
-          });
-          setMyMovies(myMoviesData);
-        }
-      } catch (error) {
-        console.error('Unable to load FunFlix data:', error);
-        setFeaturedMovies([]);
-        setTrendingMovies([]);
-        setTop10Movies([]);
+      } catch (err) {
+        console.warn('Firestore FunFlix fetch error:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchFunFlixData();
-  }, [user]);
+    fetchVideos();
+  }, [user?.uid]);
 
-  // Billboard auto advance
+  // Combined Master Movie Catalog
+  const allMovies = useMemo(() => {
+    // Merge Firestore movies with curated showcase
+    return [...firestoreMovies, ...CURATED_TITLES];
+  }, [firestoreMovies]);
+
+  // Featured Billboard Slides
+  const featuredBillboardList = useMemo(() => {
+    return allMovies.slice(0, 5);
+  }, [allMovies]);
+
+  const heroMovie = featuredBillboardList[heroIndex] || CURATED_TITLES[0];
+
+  // Auto-rotate Hero Billboard every 10 seconds
   useEffect(() => {
-    if (featuredMovies.length <= 1) return;
-    autoPlayRef.current = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % featuredMovies.length);
-    }, 8000);
-    return () => clearInterval(autoPlayRef.current);
-  }, [featuredMovies.length]);
+    const timer = setInterval(() => {
+      setHeroIndex(prev => (prev + 1) % featuredBillboardList.length);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [featuredBillboardList.length]);
 
-  const toggleWatchlist = (movieId) => {
-    let updated;
-    if (watchlist.includes(movieId)) {
-      updated = watchlist.filter(id => id !== movieId);
-    } else {
-      updated = [...watchlist, movieId];
-    }
-    setWatchlist(updated);
-    localStorage.setItem('funflix_watchlist', JSON.stringify(updated));
-  };
+  const toggleWatchlist = useCallback((movieId) => {
+    setWatchlist(prev => {
+      const exists = prev.includes(movieId);
+      const next = exists ? prev.filter(id => id !== movieId) : [...prev, movieId];
+      localStorage.setItem('funflix_watchlist', JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
-  const filteredMovies = trendingMovies.filter(movie => {
-    const matchesCategory = selectedCategory === 'all' || movie.category === selectedCategory || (selectedCategory === 'Trending' && movie.views > 0);
-    const matchesSearch = !searchQuery || 
-      (movie.title && movie.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (movie.creatorName && movie.creatorName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (movie.description && movie.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+  const toggleLike = useCallback((movieId) => {
+    setLikedMovies(prev => {
+      const next = new Set(prev);
+      if (next.has(movieId)) {
+        next.delete(movieId);
+      } else {
+        next.add(movieId);
+      }
+      return next;
+    });
+  }, []);
 
-  const heroMovie = featuredMovies[currentSlide] || trendingMovies[0];
+  // Filtered Titles for Active Category & Search
+  const filteredCatalog = useMemo(() => {
+    return allMovies.filter(movie => {
+      const matchCat = selectedCategory === 'all' || movie.category?.toLowerCase() === selectedCategory.toLowerCase();
+      const matchSearch = !searchQuery.trim() || 
+        movie.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        movie.creatorName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        movie.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (movie.tags || []).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchCat && matchSearch;
+    });
+  }, [allMovies, selectedCategory, searchQuery]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#141414] text-white flex flex-col items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-[#E50914] border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-2xl font-black tracking-widest text-[#E50914] animate-pulse">FUNFLIX</span>
-        </div>
-      </div>
-    );
-  }
+  // Top 10 Ranked List
+  const top10List = useMemo(() => {
+    return [...allMovies].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 10);
+  }, [allMovies]);
+
+  // Genre Rows
+  const sciFiMovies = useMemo(() => allMovies.filter(m => m.category === 'Sci-Fi' || m.tags?.includes('Futuristic')), [allMovies]);
+  const actionMovies = useMemo(() => allMovies.filter(m => m.category === 'Action' || m.tags?.includes('Action')), [allMovies]);
+  const documentaryMovies = useMemo(() => allMovies.filter(m => m.category === 'Documentary' || m.category === 'Technology'), [allMovies]);
+  const comedyMovies = useMemo(() => allMovies.filter(m => m.category === 'Comedy' || m.tags?.includes('Hilarious')), [allMovies]);
+  const savedWatchlistMovies = useMemo(() => allMovies.filter(m => watchlist.includes(m.id)), [allMovies, watchlist]);
 
   return (
-    <div id="funflix-root" className="min-h-screen bg-[#141414] text-white font-sans antialiased selection:bg-[#E50914] selection:text-white pb-20 md:pb-8">
-      {/* Mobile-First Ultra-Responsive Header */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-4 sm:px-8 md:px-12 py-2.5 sm:py-3 flex items-center justify-between ${
-        isScrolled ? 'bg-[#141414] shadow-md shadow-black/80' : 'bg-gradient-to-b from-black/90 via-black/60 to-transparent'
+    <div id="funflix-root" className="min-h-screen bg-[#141414] text-white font-sans antialiased selection:bg-[#E50914] selection:text-white pb-24 md:pb-12 select-none">
+      
+      {/* =========================================================================
+          AUTHENTIC NETFLIX HEADER
+          ========================================================================= */}
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 px-4 sm:px-8 md:px-12 py-3 sm:py-4 flex items-center justify-between ${
+        isScrolled 
+          ? 'bg-[#141414]/95 shadow-xl shadow-black/80 backdrop-blur-md' 
+          : 'bg-gradient-to-b from-black/90 via-black/50 to-transparent'
       }`}>
-        {/* Logo & Main Nav */}
-        <div className="flex items-center gap-3 sm:gap-6">
-          {/* Back to main app */}
+        {/* Left: Netflix Red Wordmark & Navigation Tabs */}
+        <div className="flex items-center gap-4 sm:gap-8">
+          
+          {/* Back to AppShell */}
           <Link 
             to="/dashboard" 
-            className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all shrink-0" 
-            title="Back to BeastBuck"
+            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition active:scale-95" 
+            title="Return to BeastBuck Dashboard"
           >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            <ArrowLeft className="w-4 h-4" />
           </Link>
-          <Link to="/funflix" className="flex items-center gap-1 shrink-0 group">
-            <span className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tighter text-[#E50914] group-hover:scale-105 transition-transform drop-shadow-[0_0_12px_rgba(229,9,20,0.8)]">
+
+          {/* Signature FUNFLIX Logo */}
+          <Link to="/funflix" className="flex items-center gap-1 group">
+            <span className="text-2xl sm:text-3xl font-black tracking-tighter text-[#E50914] drop-shadow-[0_0_15px_rgba(229,9,20,0.7)] group-hover:scale-105 transition-transform duration-200">
               FUNFLIX
             </span>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-5 text-xs sm:text-sm font-medium text-gray-300">
+          {/* Netflix Primary Navigation */}
+          <nav className="hidden lg:flex items-center gap-5 text-xs font-medium text-gray-300">
             <button 
               onClick={() => { setActiveTab('browse'); setSelectedCategory('all'); }}
               className={`hover:text-white transition ${activeTab === 'browse' && selectedCategory === 'all' ? 'text-white font-bold' : ''}`}
@@ -245,169 +429,260 @@ export default function FunFlixHub() {
               Home
             </button>
             <button 
-              onClick={() => { setActiveTab('browse'); setSelectedCategory('Trending'); }}
-              className={`hover:text-white transition ${selectedCategory === 'Trending' ? 'text-white font-bold' : ''}`}
+              onClick={() => { setActiveTab('browse'); setSelectedCategory('Sci-Fi'); }}
+              className={`hover:text-white transition ${selectedCategory === 'Sci-Fi' ? 'text-white font-bold' : ''}`}
+            >
+              Series & AI
+            </button>
+            <button 
+              onClick={() => { setActiveTab('browse'); setSelectedCategory('Action'); }}
+              className={`hover:text-white transition ${selectedCategory === 'Action' ? 'text-white font-bold' : ''}`}
+            >
+              Films
+            </button>
+            <button 
+              onClick={() => { setActiveTab('browse'); setSelectedCategory('Documentary'); }}
+              className={`hover:text-white transition ${selectedCategory === 'Documentary' ? 'text-white font-bold' : ''}`}
             >
               New & Popular
             </button>
-            <Link to="/funflix/categories" className="hover:text-white transition">Categories</Link>
-            <Link to="/funflix/playlists" className="hover:text-white transition">My List ({watchlist.length})</Link>
-            <Link to="/funflix/ai" className="hover:text-white transition flex items-center gap-1">
-              <Bot className="w-3.5 h-3.5 text-cyan-400" /> AI Assistant
-            </Link>
+            <button 
+              onClick={() => { setActiveTab('browse'); setSelectedCategory('all'); }}
+              className="hover:text-white transition"
+            >
+              My List ({watchlist.length})
+            </button>
             {isApprovedMember && (
               <button 
-                onClick={() => setActiveTab('my-movies')}
-                className={`hover:text-white transition ${activeTab === 'my-movies' ? 'text-white font-bold' : ''}`}
+                onClick={() => setActiveTab('my-studio')}
+                className={`hover:text-white transition flex items-center gap-1.5 ${activeTab === 'my-studio' ? 'text-white font-bold' : ''}`}
               >
-                My Studio ({myMovies.length})
+                <Film className="w-3.5 h-3.5 text-[#E50914]" /> Creator Studio
               </button>
             )}
           </nav>
         </div>
 
-        {/* Right Action Icons */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          {/* Expandable Search Input */}
+        {/* Right: Expandable Search, Watchlist, Upload CTA & Avatar */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          
+          {/* Netflix Smooth Expandable Search Bar */}
           <div className="relative flex items-center">
             {isSearchOpen ? (
-              <div className="flex items-center bg-black/90 border border-white/40 rounded-full px-3 py-1 transition-all w-40 sm:w-60">
+              <div className="flex items-center bg-black/90 border border-white/40 rounded-full px-3 py-1.5 transition-all w-48 sm:w-64 animate-fade-in">
                 <Search className="w-3.5 h-3.5 text-gray-400 mr-2 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Titles, creators..."
+                  placeholder="Titles, creators, genres..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
                   className="bg-transparent text-xs text-white placeholder:text-gray-500 focus:outline-none w-full"
                 />
-                <button onClick={() => { setSearchQuery(''); setIsSearchOpen(false); }} className="text-gray-400 hover:text-white">
+                <button 
+                  onClick={() => { setSearchQuery(''); setIsSearchOpen(false); }} 
+                  className="text-gray-400 hover:text-white ml-1"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
-              <button onClick={() => setIsSearchOpen(true)} className="p-1.5 text-gray-200 hover:text-white transition" aria-label="Search">
+              <button 
+                onClick={() => setIsSearchOpen(true)} 
+                className="p-1.5 text-gray-300 hover:text-white transition" 
+                aria-label="Search FunFlix"
+              >
                 <Search className="w-5 h-5" />
               </button>
             )}
           </div>
 
-          {/* Member Upload or Apply CTA */}
-          {isApprovedMember ? (
+          {/* Upload Button for Creators */}
+          {isApprovedMember && (
             <Link
               to="/funflix/upload"
-              className="bg-[#E50914] text-white font-bold px-3 py-1.5 rounded text-xs hover:bg-red-700 transition flex items-center gap-1 shadow-md shadow-red-900/40"
+              className="hidden sm:flex items-center gap-1.5 bg-[#E50914] hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded text-xs transition active:scale-95 shadow-md shadow-red-900/40"
             >
-              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Upload</span>
-            </Link>
-          ) : (
-            <Link
-              to="/membership/apply"
-              className="bg-amber-400 text-black font-extrabold px-3 py-1 rounded text-xs hover:bg-amber-300 transition flex items-center gap-1 shrink-0"
-            >
-              <Star className="w-3.5 h-3.5 fill-black" /> Apply
+              <Upload className="w-3.5 h-3.5" />
+              <span>Upload Video</span>
             </Link>
           )}
 
-          {/* User Profile Avatar */}
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded bg-[#E50914] flex items-center justify-center font-bold text-white text-xs border border-white/20 shrink-0">
-            {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
+          {/* Netflix Signature Profile Avatar with Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowProfileMenu(prev => !prev)}
+              className="flex items-center gap-1.5 group p-0.5 rounded focus:outline-none"
+              aria-label="Profile menu"
+            >
+              <div className="w-8 h-8 rounded bg-gradient-to-br from-red-600 to-indigo-700 flex items-center justify-center font-black text-white text-xs border border-white/20 shadow-md group-hover:border-white transition">
+                {user?.displayName ? user.displayName.charAt(0).toUpperCase() : 'B'}
+              </div>
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-white transition" />
+            </button>
+
+            {/* Profile Dropdown Menu */}
+            {showProfileMenu && (
+              <div 
+                className="absolute right-0 mt-2 w-48 rounded-xl border border-white/15 bg-[#181818]/95 backdrop-blur-xl shadow-2xl py-2 z-50 animate-fade-in"
+                onMouseLeave={() => setShowProfileMenu(false)}
+              >
+                <div className="px-3 py-2 border-b border-white/10 mb-1">
+                  <p className="text-xs font-bold text-white truncate">{user?.displayName || 'BeastBuck Member'}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{user?.email || 'Active Streamer'}</p>
+                </div>
+                <button
+                  onClick={() => { setActiveTab('my-studio'); setShowProfileMenu(false); }}
+                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <Film className="w-3.5 h-3.5 text-[#E50914]" /> Creator Studio
+                </button>
+                <Link
+                  to="/funflix/playlists"
+                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 flex items-center gap-2"
+                  onClick={() => setShowProfileMenu(false)}
+                >
+                  <Star className="w-3.5 h-3.5 text-amber-400" /> Watchlist ({watchlist.length})
+                </Link>
+                <Link
+                  to="/funflix/ai"
+                  className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/10 flex items-center gap-2"
+                  onClick={() => setShowProfileMenu(false)}
+                >
+                  <Bot className="w-3.5 h-3.5 text-cyan-400" /> AI Movie Assistant
+                </Link>
+              </div>
+            )}
           </div>
+
         </div>
       </header>
 
-      {/* Main Container */}
+      {/* =========================================================================
+          MAIN BROWSE VIEW
+          ========================================================================= */}
       {activeTab === 'browse' ? (
         <main>
-          {/* Mobile-First Billboard Hero Banner */}
+          
+          {/* =========================================================================
+              NETFLIX CINEMATIC BILLBOARD HERO
+              ========================================================================= */}
           {heroMovie && (
-            <section className="relative w-full pt-16 sm:pt-0 min-h-[460px] sm:h-[75vh] sm:min-h-[520px] max-h-[780px] bg-black overflow-hidden flex flex-col justify-end">
-              {/* Background Thumbnail Image */}
-              <div className="absolute inset-0">
+            <section className="relative w-full h-[78vh] sm:h-[84vh] min-h-[520px] max-h-[820px] bg-black overflow-hidden flex flex-col justify-end">
+              
+              {/* Full-bleed 4K Backdrop Wallpaper */}
+              <div className="absolute inset-0 z-0">
                 <img
-                  src={heroMovie.thumbnail || null}
-                  alt={heroMovie.title || ''}
-                  className="w-full h-full object-cover object-center scale-105"
+                  src={heroMovie.backdrop || heroMovie.thumbnail}
+                  alt={heroMovie.title}
+                  className="w-full h-full object-cover object-center transform scale-105 transition-transform duration-1000 ease-out"
                 />
-                {/* Mobile & Desktop Dark Vignette Gradients */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/60 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/30 to-black/40" />
+                
+                {/* Netflix Multi-layer Vignette Shadows */}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#141414] via-[#141414]/50 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#141414] via-[#141414]/20 to-black/30" />
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#141414] to-transparent" />
               </div>
 
-              {/* Billboard Info Overlay */}
-              <div className="relative z-20 w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 pb-12 sm:pb-20 space-y-3">
-                {/* Netflix Badge */}
+              {/* Billboard Metadata & Play Controls */}
+              <div className="relative z-20 w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 pb-16 sm:pb-24 space-y-3.5">
+                
+                {/* Netflix Original Emblem */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[#E50914] font-black text-xl tracking-tighter">N</span>
-                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-gray-300">
+                  <span className="text-[#E50914] font-black text-2xl tracking-tighter">N</span>
+                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.25em] text-gray-200 drop-shadow">
                     FUNFLIX ORIGINAL
                   </span>
                 </div>
 
-                {/* Title */}
-                <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight text-white drop-shadow-md line-clamp-2 max-w-2xl">
+                {/* Cinematic Title */}
+                <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)] line-clamp-2 max-w-3xl">
                   {heroMovie.title}
                 </h1>
 
-                {/* Meta Badges */}
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-bold text-gray-300">
-                  <span className="bg-[#E50914] text-white px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                    <TrendingUp className="w-3 h-3" /> #1 IN MOVIES
+                {/* Meta Row Badges */}
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-bold text-gray-200 drop-shadow">
+                  <span className="bg-[#E50914] text-white px-2 py-0.5 rounded text-[10px] font-black flex items-center gap-1 shadow-sm">
+                    <TrendingUp className="w-3 h-3" /> TOP 10
                   </span>
-                  <span className="text-emerald-400 font-extrabold">98% Match</span>
-                  <span className="border border-gray-500 px-1 text-[10px] rounded text-gray-300">HD</span>
+                  <span className="text-emerald-400 font-extrabold">{heroMovie.matchScore}% Match</span>
+                  <span className="border border-white/40 px-1.5 py-0.5 text-[10px] rounded text-white bg-black/40">
+                    {heroMovie.rating}
+                  </span>
                   <span>{heroMovie.duration}</span>
-                  <span className="text-cyan-400">By {heroMovie.creatorName}</span>
+                  <span className="border border-white/30 px-1.5 py-0.5 text-[9px] rounded text-white font-mono bg-black/40">
+                    {heroMovie.quality}
+                  </span>
+                  <span className="text-cyan-300 font-medium">Dir. {heroMovie.creatorName}</span>
                 </div>
 
-                {/* Description */}
-                <p className="text-xs sm:text-sm md:text-base text-gray-300 line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-xl drop-shadow">
+                {/* Synopsis */}
+                <p className="text-xs sm:text-sm md:text-base text-gray-200/90 line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                   {heroMovie.description}
                 </p>
 
-                {/* Mobile-Friendly Primary Buttons */}
-                <div className="flex flex-wrap items-center gap-2.5 pt-2">
+                {/* Netflix Authentic Action Buttons */}
+                <div className="flex items-center gap-3 pt-2">
                   <Link
                     to={`/funflix/watch/${heroMovie.id}`}
-                    className="bg-white hover:bg-gray-200 text-black font-extrabold px-6 sm:px-8 py-2.5 rounded text-sm sm:text-base flex items-center justify-center gap-2 transition min-w-[130px]"
+                    className="bg-white hover:bg-gray-200 text-black font-extrabold px-6 sm:px-8 py-2.5 sm:py-3 rounded-md text-sm sm:text-base flex items-center justify-center gap-2.5 transition-all shadow-xl active:scale-95"
                   >
-                    <Play className="w-5 h-5 fill-black ml-0.5" /> Play
+                    <Play className="w-5 h-5 fill-black ml-0.5" />
+                    <span>Play</span>
                   </Link>
 
                   <button
-                    onClick={() => setSelectedMovieModal(heroMovie)}
-                    className="bg-gray-500/70 hover:bg-gray-500/50 text-white font-bold px-5 sm:px-6 py-2.5 rounded text-sm sm:text-base flex items-center justify-center gap-2 backdrop-blur-sm transition"
+                    onClick={() => setSelectedMovie(heroMovie)}
+                    className="bg-white/20 hover:bg-white/30 text-white font-bold px-5 sm:px-7 py-2.5 sm:py-3 rounded-md text-sm sm:text-base flex items-center justify-center gap-2.5 backdrop-blur-md transition-all active:scale-95 border border-white/10"
                   >
-                    <Info className="w-5 h-5" /> More Info
+                    <Info className="w-5 h-5" />
+                    <span>More Info</span>
                   </button>
 
                   <button
-                    onClick={() => setIsMuted(!isMuted)}
-                    className="w-10 h-10 rounded-full border border-white/30 bg-black/40 text-white flex items-center justify-center hover:bg-white/20 transition ml-auto sm:ml-2"
-                    aria-label="Toggle Audio"
+                    onClick={() => toggleWatchlist(heroMovie.id)}
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-white/30 bg-black/40 hover:bg-white/20 text-white flex items-center justify-center transition active:scale-95"
+                    aria-label="Add to Watchlist"
+                    title={watchlist.includes(heroMovie.id) ? 'In My List' : 'Add to My List'}
                   >
-                    {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
+                    {watchlist.includes(heroMovie.id) ? <Check className="w-5 h-5 text-emerald-400" /> : <Plus className="w-5 h-5" />}
                   </button>
+
+                  {/* Audio Mute/Unmute & Age Flag */}
+                  <div className="ml-auto flex items-center gap-3">
+                    <button
+                      onClick={() => setIsMuted(!isMuted)}
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-white/30 bg-black/50 text-white flex items-center justify-center hover:bg-white/20 transition active:scale-95"
+                      aria-label="Toggle Sound"
+                    >
+                      {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
+                    </button>
+
+                    <div className="border-l-2 border-white bg-black/40 px-3 py-1 text-xs font-bold text-gray-200">
+                      {heroMovie.rating}
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </section>
           )}
 
-          {/* Main Rows & Categories Section */}
-          <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 space-y-8 sm:space-y-10 -mt-8 sm:-mt-14 relative z-30">
-            {/* Smooth Horizontal Category Scroll Pill Bar */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-white/10 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1 shrink-0 flex items-center gap-1">
-                <SlidersHorizontal className="w-3.5 h-3.5 text-[#E50914]" /> Categories:
-              </span>
+          {/* =========================================================================
+              MAIN CONTENT ROWS & CATEGORIES
+              ========================================================================= */}
+          <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 space-y-8 sm:space-y-12 -mt-10 sm:-mt-16 relative z-30">
+            
+            {/* Netflix Category Subheader Bar */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {CATEGORIES.map(cat => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition shrink-0 ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition shrink-0 ${
                     selectedCategory === cat.id
-                      ? 'bg-[#E50914] text-white shadow-[0_0_12px_rgba(229,9,20,0.6)]'
-                      : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                      ? 'bg-white text-black font-extrabold shadow-lg shadow-white/10'
+                      : 'bg-[#222]/80 text-gray-300 hover:bg-white/20 hover:text-white border border-white/10'
                   }`}
                 >
                   {cat.name}
@@ -415,154 +690,167 @@ export default function FunFlixHub() {
               ))}
             </div>
 
-            {/* Non-Member Banner Callout */}
-            {!isApprovedMember && (
-              <div className="bg-gradient-to-r from-red-950/90 via-black to-black border border-[#E50914]/40 rounded-lg p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
-                <div className="space-y-1 text-center sm:text-left">
-                  <div className="flex items-center justify-center sm:justify-start gap-1.5">
-                    <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                    <h3 className="text-sm sm:text-base font-extrabold text-white">Join BeastBuck Creator Ecosystem</h3>
-                  </div>
-                  <p className="text-xs text-gray-300">
-                    Apply for Membership to publish videos, host Watch Parties, earn XP, and access Creator Studio.
-                  </p>
+            {/* Filtered Search / Category Grid View */}
+            {(selectedCategory !== 'all' || searchQuery.trim()) && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                    <Search className="w-5 h-5 text-[#E50914]" />
+                    <span>{searchQuery ? `Results for "${searchQuery}"` : selectedCategory}</span>
+                  </h2>
+                  <span className="text-xs text-gray-400">{filteredCatalog.length} titles</span>
                 </div>
-                <Link
-                  to="/membership/apply"
-                  className="bg-[#E50914] hover:bg-red-700 text-white font-extrabold px-4 py-2 rounded text-xs shrink-0 transition flex items-center gap-1"
-                >
-                  Apply Now <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            )}
 
-            {/* Filter / Search Results Header */}
-            {(selectedCategory !== 'all' || searchQuery) && (
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-white mb-4 flex items-center gap-2">
-                  <Search className="w-4 h-4 text-[#E50914]" />
-                  Search Results {selectedCategory !== 'all' && `in "${selectedCategory}"`}
-                  {searchQuery && ` for "${searchQuery}"`}
-                </h2>
-                {filteredMovies.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-                    {filteredMovies.map(movie => (
-                      <MovieCard key={movie.id} movie={movie} onQuickView={setSelectedMovieModal} isSaved={watchlist.includes(movie.id)} onToggleSave={() => toggleWatchlist(movie.id)} />
+                {filteredCatalog.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 pt-2">
+                    {filteredCatalog.map(movie => (
+                      <NetflixMovieCard
+                        key={movie.id}
+                        movie={movie}
+                        onQuickView={setSelectedMovie}
+                        isSaved={watchlist.includes(movie.id)}
+                        onToggleSave={() => toggleWatchlist(movie.id)}
+                        isLiked={likedMovies.has(movie.id)}
+                        onToggleLike={() => toggleLike(movie.id)}
+                      />
                     ))}
                   </div>
                 ) : (
-                  <EmptyState
-                    icon={Film}
-                    title="No Matching Movies Found"
-                    description="Try adjusting your search terms or category filter to discover content."
-                  />
+                  <div className="py-16 text-center">
+                    <Film className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                    <h3 className="text-base font-bold text-white mb-1">No matching titles found</h3>
+                    <p className="text-xs text-gray-400">Try searching with a different keyword or category.</p>
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Netflix Top 10 Row */}
-            {top10Movies.length > 0 && selectedCategory === 'all' && !searchQuery && (
-              <Top10Row movies={top10Movies} onQuickView={setSelectedMovieModal} />
+            {/* Netflix Content Rows (Only shown when not searching and category is 'All') */}
+            {selectedCategory === 'all' && !searchQuery.trim() && (
+              <>
+                {/* Netflix Authentic Top 10 Number Cards Row */}
+                <Top10Row 
+                  movies={top10List} 
+                  onQuickView={setSelectedMovie}
+                  watchlist={watchlist}
+                  onToggleWatchlist={toggleWatchlist}
+                  likedMovies={likedMovies}
+                  onToggleLike={toggleLike}
+                />
+
+                {/* Netflix Row: Trending Now */}
+                <NetflixRow 
+                  title="Trending Now" 
+                  movies={allMovies} 
+                  onQuickView={setSelectedMovie}
+                  watchlist={watchlist}
+                  onToggleWatchlist={toggleWatchlist}
+                  likedMovies={likedMovies}
+                  onToggleLike={toggleLike}
+                />
+
+                {/* Netflix Row: Sci-Fi & Artificial Intelligence */}
+                {sciFiMovies.length > 0 && (
+                  <NetflixRow 
+                    title="Sci-Fi & Cyberpunk Hits" 
+                    movies={sciFiMovies} 
+                    onQuickView={setSelectedMovie}
+                    watchlist={watchlist}
+                    onToggleWatchlist={toggleWatchlist}
+                    likedMovies={likedMovies}
+                    onToggleLike={toggleLike}
+                  />
+                )}
+
+                {/* Netflix Row: Action & High-Octane */}
+                {actionMovies.length > 0 && (
+                  <NetflixRow 
+                    title="Action & Adrenaline" 
+                    movies={actionMovies} 
+                    onQuickView={setSelectedMovie}
+                    watchlist={watchlist}
+                    onToggleWatchlist={toggleWatchlist}
+                    likedMovies={likedMovies}
+                    onToggleLike={toggleLike}
+                  />
+                )}
+
+                {/* Netflix Row: Award-Winning Documentaries */}
+                {documentaryMovies.length > 0 && (
+                  <NetflixRow 
+                    title="Award-Winning Science & Discoveries" 
+                    movies={documentaryMovies} 
+                    onQuickView={setSelectedMovie}
+                    watchlist={watchlist}
+                    onToggleWatchlist={toggleWatchlist}
+                    likedMovies={likedMovies}
+                    onToggleLike={toggleLike}
+                  />
+                )}
+
+                {/* Netflix Row: Comedy & Lighthearted */}
+                {comedyMovies.length > 0 && (
+                  <NetflixRow 
+                    title="Comedies & Feel-Good Shorts" 
+                    movies={comedyMovies} 
+                    onQuickView={setSelectedMovie}
+                    watchlist={watchlist}
+                    onToggleWatchlist={toggleWatchlist}
+                    likedMovies={likedMovies}
+                    onToggleLike={toggleLike}
+                  />
+                )}
+
+                {/* Netflix Row: User Watchlist */}
+                {savedWatchlistMovies.length > 0 && (
+                  <NetflixRow 
+                    title="My List" 
+                    movies={savedWatchlistMovies} 
+                    onQuickView={setSelectedMovie}
+                    watchlist={watchlist}
+                    onToggleWatchlist={toggleWatchlist}
+                    likedMovies={likedMovies}
+                    onToggleLike={toggleLike}
+                  />
+                )}
+              </>
             )}
 
-            {/* Netflix Content Row 1: Trending Now */}
-            {trendingMovies.length > 0 && selectedCategory === 'all' && !searchQuery && (
-              <MovieRow 
-                title="Trending Now" 
-                movies={trendingMovies} 
-                onQuickView={setSelectedMovieModal}
-                watchlist={watchlist}
-                onToggleWatchlist={toggleWatchlist}
-              />
-            )}
-
-            {/* Netflix Content Row 2: Tech & Sci-Fi */}
-            {selectedCategory === 'all' && !searchQuery && (
-              <MovieRow 
-                title="Technology & AI Movies" 
-                movies={trendingMovies.filter(m => m.category === 'Technology' || m.category === 'Science')} 
-                onQuickView={setSelectedMovieModal}
-                watchlist={watchlist}
-                onToggleWatchlist={toggleWatchlist}
-              />
-            )}
-
-            {/* Netflix Content Row 4: Top Creators */}
-            {topCreators.length > 0 && (
-              <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    <Users className="w-5 h-5 text-cyan-400" /> Top Directors & Creators
-                  </h2>
-                  <Link to="/funflix/creator-profiles" className="text-xs font-bold text-cyan-400 hover:underline flex items-center gap-1">
-                    Explore <ChevronRight className="w-4 h-4" />
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                  {topCreators.map((creator, idx) => (
-                    <Link
-                      key={creator.id}
-                      to={`/funflix/creator/${creator.username || creator.id}`}
-                      className="bg-[#1f1f1f] border border-white/10 rounded-lg p-3 text-center hover:border-cyan-400/50 transition group flex flex-col items-center justify-between space-y-2"
-                    >
-                      <div className="relative">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-cyan-950 border border-cyan-500/40 flex items-center justify-center font-bold text-cyan-400 group-hover:scale-105 transition overflow-hidden">
-                          {creator.avatar && creator.avatar.trim() !== '' ? (
-                            <img src={creator.avatar} alt={creator.displayName || 'Avatar'} className="w-full h-full object-cover" />
-                          ) : (
-                            (creator.displayName || 'C').charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <span className="absolute -bottom-1 -right-1 bg-[#E50914] text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                          #{idx + 1}
-                        </span>
-                      </div>
-
-                      <div className="w-full">
-                        <h4 className="text-xs font-bold text-white group-hover:text-cyan-400 transition truncate">
-                          {creator.displayName || 'Creator'}
-                        </h4>
-                        <p className="text-[10px] text-gray-400 truncate">{(creator.totalViews || 0).toLocaleString()} views</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
           </div>
+
         </main>
       ) : (
-        /* My Studio / My Movies Tab */
-        <main className="max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 py-20 space-y-6">
+        /* =========================================================================
+            CREATOR STUDIO TAB
+            ========================================================================= */
+        <main className="max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 py-24 space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/10 pb-6">
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-3">
-                <Film className="w-7 h-7 text-[#E50914]" /> My Video Studio
+                <Film className="w-8 h-8 text-[#E50914]" /> Creator Studio
               </h1>
-              <p className="text-xs sm:text-sm text-gray-400">Manage, edit, analyze, and publish your videos across FunFlix.</p>
+              <p className="text-xs sm:text-sm text-gray-400">Publish, analyze, and manage your FunFlix video creations.</p>
             </div>
+            
             <Link
               to="/funflix/upload"
               className="bg-[#E50914] hover:bg-red-700 text-white font-extrabold px-5 py-2.5 rounded text-xs sm:text-sm flex items-center gap-2 transition shadow-lg"
             >
-              <Plus className="w-4 h-4" /> Upload New Video
+              <Upload className="w-4 h-4" /> Upload New Title
             </Link>
           </div>
 
-          <div className="bg-[#1f1f1f] border border-white/10 rounded-lg overflow-hidden shadow-2xl">
+          <div className="bg-[#181818] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
             {myMovies.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs sm:text-sm">
                   <thead>
                     <tr className="bg-black/60 text-gray-400 border-b border-white/10 uppercase text-[11px]">
-                      <th className="py-3 px-4 font-bold">Movie Title</th>
-                      <th className="py-3 px-4 font-bold">Category</th>
-                      <th className="py-3 px-4 font-bold">Visibility</th>
-                      <th className="py-3 px-4 font-bold">Published Date</th>
-                      <th className="py-3 px-4 font-bold">Views</th>
-                      <th className="py-3 px-4 font-bold">Likes</th>
-                      <th className="py-3 px-4 font-bold text-right">Actions</th>
+                      <th className="py-3.5 px-4 font-bold">Title</th>
+                      <th className="py-3.5 px-4 font-bold">Category</th>
+                      <th className="py-3.5 px-4 font-bold">Views</th>
+                      <th className="py-3.5 px-4 font-bold">Likes</th>
+                      <th className="py-3.5 px-4 font-bold text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -570,40 +858,17 @@ export default function FunFlixHub() {
                       <tr key={movie.id} className="hover:bg-white/5 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-8 bg-black rounded border border-white/10 overflow-hidden shrink-0">
-                              {movie.thumbnail && movie.thumbnail.trim() !== '' && (
-                                <img src={movie.thumbnail} alt={movie.title || 'Movie'} className="w-full h-full object-cover" />
-                              )}
-                            </div>
-                            <span className="font-bold text-white line-clamp-1 max-w-[180px]">{movie.title || 'Untitled'}</span>
+                            <img src={movie.thumbnail} alt={movie.title} className="w-14 h-9 object-cover rounded border border-white/10" />
+                            <span className="font-bold text-white line-clamp-1">{movie.title}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4">
-                          <span className="bg-white/10 text-gray-300 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                            {movie.category || 'General'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded">
-                            {movie.visibility || 'PUBLIC'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-gray-400 text-xs">
-                          {movie.createdAt ? new Date(movie.createdAt.toDate?.() || movie.createdAt).toLocaleDateString() : 'Just now'}
-                        </td>
-                        <td className="py-3 px-4 font-bold text-white">{(movie.views || 0).toLocaleString()}</td>
-                        <td className="py-3 px-4 font-bold text-emerald-400">
-                          {Array.isArray(movie.likes) ? movie.likes.length : Number(movie.likes || 0)}
-                        </td>
+                        <td className="py-3 px-4 text-gray-300">{movie.category}</td>
+                        <td className="py-3 px-4 font-bold text-white">{movie.views.toLocaleString()}</td>
+                        <td className="py-3 px-4 font-bold text-emerald-400">{movie.likes}</td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2 text-gray-400">
-                            <Link to={`/funflix/watch/${movie.id}`} className="hover:text-white p-1" title="Watch Video">
-                              <Eye className="w-4 h-4" />
-                            </Link>
-                            <Link to={`/admin/funflix`} className="hover:text-amber-400 p-1" title="Analytics">
-                              <BarChart2 className="w-4 h-4" />
-                            </Link>
-                          </div>
+                          <Link to={`/funflix/watch/${movie.id}`} className="p-1 text-gray-300 hover:text-white" title="Watch">
+                            <Play className="w-4 h-4 inline" />
+                          </Link>
                         </td>
                       </tr>
                     ))}
@@ -611,171 +876,173 @@ export default function FunFlixHub() {
                 </table>
               </div>
             ) : (
-              <div className="py-16 px-4">
-                <EmptyState
-                  icon={Film}
-                  title="No Video Uploads Yet"
-                  description="You haven't published any videos to FunFlix. Start sharing your creations today!"
-                />
+              <div className="py-16 px-4 text-center">
+                <Film className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                <h3 className="text-base font-bold text-white mb-1">No Published Videos</h3>
+                <p className="text-xs text-gray-400 mb-4">Start publishing your creations to the FunFlix community.</p>
+                <Link
+                  to="/funflix/upload"
+                  className="bg-[#E50914] text-white font-bold px-4 py-2 rounded text-xs hover:bg-red-700 transition"
+                >
+                  Publish Video
+                </Link>
               </div>
             )}
           </div>
         </main>
       )}
 
-      {/* Netflix Detail Modal */}
-      {selectedMovieModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#181818] border border-white/10 rounded-lg max-w-2xl w-full overflow-hidden shadow-2xl relative animate-in fade-in zoom-in-95 duration-150 my-6">
+      {/* =========================================================================
+          NETFLIX AUTHENTIC "MORE INFO" MODAL
+          ========================================================================= */}
+      {selectedMovie && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in"
+          onClick={() => setSelectedMovie(null)}
+        >
+          <div 
+            className="bg-[#181818] border border-white/15 rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl relative my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Cross Button */}
             <button
-              onClick={() => setSelectedMovieModal(null)}
-              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center transition border border-white/20"
-              aria-label="Close modal"
+              onClick={() => setSelectedMovie(null)}
+              className="absolute top-4 right-4 z-20 w-9 h-9 rounded-full bg-black/70 hover:bg-black text-white flex items-center justify-center transition border border-white/20 active:scale-95"
+              aria-label="Close"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
 
-            <div className="relative aspect-video bg-black">
-              {selectedMovieModal.thumbnail && selectedMovieModal.thumbnail.trim() !== '' ? (
-                <img src={selectedMovieModal.thumbnail} alt={selectedMovieModal.title || 'Movie'} className="w-full h-full object-cover" />
-              ) : null}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-transparent to-black/30" />
-              <div className="absolute bottom-4 left-4 right-4 space-y-2">
-                <h2 className="text-xl sm:text-3xl font-black text-white drop-shadow">{selectedMovieModal.title}</h2>
+            {/* Modal Hero Banner */}
+            <div className="relative aspect-video w-full bg-black overflow-hidden">
+              <img 
+                src={selectedMovie.backdrop || selectedMovie.thumbnail} 
+                alt={selectedMovie.title} 
+                className="w-full h-full object-cover" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#181818] via-[#181818]/30 to-transparent" />
+
+              {/* Title & Action Buttons Overlay */}
+              <div className="absolute bottom-6 left-6 right-6 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#E50914] font-black text-xl">N</span>
+                  <span className="text-[10px] uppercase font-black tracking-widest text-gray-300">FUNFLIX ORIGINAL</span>
+                </div>
+
+                <h2 className="text-2xl sm:text-4xl font-black text-white drop-shadow-md">
+                  {selectedMovie.title}
+                </h2>
+
                 <div className="flex items-center gap-3">
                   <Link
-                    to={`/funflix/watch/${selectedMovieModal.id}`}
-                    className="bg-white text-black font-extrabold hover:bg-gray-200 px-5 py-2 rounded text-xs sm:text-sm flex items-center gap-2 transition"
+                    to={`/funflix/watch/${selectedMovie.id}`}
+                    className="bg-white hover:bg-gray-200 text-black font-extrabold px-6 py-2 rounded-md text-sm flex items-center gap-2 transition"
                   >
                     <Play className="w-4 h-4 fill-black ml-0.5" /> Play
                   </Link>
+
                   <button
-                    onClick={() => toggleWatchlist(selectedMovieModal.id)}
-                    className="w-8 h-8 rounded-full border border-white/40 bg-black/40 text-white flex items-center justify-center hover:bg-white/20 transition"
+                    onClick={() => toggleWatchlist(selectedMovie.id)}
+                    className="w-9 h-9 rounded-full border border-white/40 bg-black/50 hover:bg-white/20 text-white flex items-center justify-center transition"
+                    title={watchlist.includes(selectedMovie.id) ? 'Remove from My List' : 'Add to My List'}
                   >
-                    {watchlist.includes(selectedMovieModal.id) ? <Check className="w-4 h-4 text-emerald-400" /> : <Plus className="w-4 h-4" />}
+                    {watchlist.includes(selectedMovie.id) ? <Check className="w-4 h-4 text-emerald-400" /> : <Plus className="w-4 h-4" />}
+                  </button>
+
+                  <button
+                    onClick={() => toggleLike(selectedMovie.id)}
+                    className="w-9 h-9 rounded-full border border-white/40 bg-black/50 hover:bg-white/20 text-white flex items-center justify-center transition"
+                    title="Like"
+                  >
+                    <ThumbsUp className={`w-4 h-4 ${likedMovies.has(selectedMovie.id) ? 'text-[#E50914] fill-[#E50914]' : ''}`} />
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 sm:p-6 space-y-3">
-              <div className="flex flex-wrap items-center gap-2.5 text-xs text-gray-300">
-                <span className="text-emerald-400 font-bold">98% Match</span>
-                <span className="border border-gray-600 px-1 text-[10px] rounded">HD</span>
-                <span>{selectedMovieModal.duration || 'Short Film'}</span>
-                <span className="bg-white/10 text-white px-2 py-0.5 rounded text-[11px]">{selectedMovieModal.category || 'General'}</span>
-                <span>Creator: <strong className="text-white">{selectedMovieModal.creatorName || 'Anonymous'}</strong></span>
+            {/* Modal Body: Two Column Netflix Layout */}
+            <div className="p-6 sm:p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* Left Column: Metadata & Synopsis */}
+                <div className="md:col-span-2 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2.5 text-xs text-gray-300">
+                    <span className="text-emerald-400 font-extrabold">{selectedMovie.matchScore}% Match</span>
+                    <span>{selectedMovie.year}</span>
+                    <span className="border border-white/40 px-1 text-[10px] rounded text-white bg-black/40">
+                      {selectedMovie.rating}
+                    </span>
+                    <span>{selectedMovie.duration}</span>
+                    <span className="border border-white/30 px-1 text-[9px] rounded font-mono text-white">
+                      {selectedMovie.quality}
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-gray-200 leading-relaxed">
+                    {selectedMovie.description}
+                  </p>
+                </div>
+
+                {/* Right Column: Cast, Genres, Mood */}
+                <div className="text-xs space-y-2 text-gray-400 border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-6">
+                  {selectedMovie.cast && (
+                    <p><span className="text-gray-500">Cast:</span> <span className="text-gray-200">{selectedMovie.cast}</span></p>
+                  )}
+                  {selectedMovie.director && (
+                    <p><span className="text-gray-500">Director:</span> <span className="text-gray-200">{selectedMovie.director}</span></p>
+                  )}
+                  <p><span className="text-gray-500">Genre:</span> <span className="text-gray-200">{selectedMovie.category}</span></p>
+                  {selectedMovie.tags && (
+                    <p><span className="text-gray-500">Tags:</span> <span className="text-gray-200">{selectedMovie.tags.join(', ')}</span></p>
+                  )}
+                </div>
               </div>
-              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-                {selectedMovieModal.description || 'No detailed synopsis available for this title.'}
-              </p>
+
+              {/* Netflix "More Like This" Grid */}
+              <div className="pt-4 border-t border-white/10 space-y-3">
+                <h3 className="text-base sm:text-lg font-bold text-white">More Like This</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {allMovies
+                    .filter(m => m.id !== selectedMovie.id)
+                    .slice(0, 6)
+                    .map(sim => (
+                      <div 
+                        key={sim.id}
+                        onClick={() => setSelectedMovie(sim)}
+                        className="bg-[#222] rounded-xl overflow-hidden border border-white/10 hover:border-white/30 transition cursor-pointer group"
+                      >
+                        <div className="aspect-video relative">
+                          <img src={sim.thumbnail} alt={sim.title} className="w-full h-full object-cover" />
+                          <span className="absolute top-1.5 right-1.5 bg-black/80 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
+                            {sim.duration}
+                          </span>
+                        </div>
+                        <div className="p-3 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-emerald-400 font-bold text-[10px]">{sim.matchScore}% Match</span>
+                            <span className="border border-white/30 text-[9px] px-1 rounded text-gray-300">{sim.rating}</span>
+                          </div>
+                          <h4 className="text-xs font-bold text-white truncate group-hover:text-[#E50914] transition">{sim.title}</h4>
+                          <p className="text-[11px] text-gray-400 line-clamp-2 leading-tight">{sim.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
       )}
 
-      {/* ===== FunFlix Mobile Bottom Navigation ===== */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden" aria-label="FunFlix mobile navigation">
-        {/* Frosted glass background */}
-        <div className="absolute inset-0 bg-[#141414]/95 backdrop-blur-xl border-t border-white/10" />
-        <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-[#E50914]/60 to-transparent" />
-
-        <div className="relative flex items-center justify-around px-1 py-2">
-          {[
-            { icon: Home, label: 'Home', action: () => { setActiveTab('browse'); setSelectedCategory('all'); } },
-            { icon: Search, label: 'Search', action: () => setIsSearchOpen(true) },
-            { icon: TrendingUp, label: 'Trending', action: () => { setActiveTab('browse'); setSelectedCategory('Trending'); } },
-          ].map((item) => {
-            const Icon = item.icon;
-            const isActive = 
-              (item.label === 'Home' && activeTab === 'browse' && selectedCategory === 'all' && !isSearchOpen) ||
-              (item.label === 'Search' && isSearchOpen) ||
-              (item.label === 'Trending' && selectedCategory === 'Trending');
-
-            return (
-              <button
-                key={item.label}
-                onClick={() => item.path ? navigate(item.path) : item.action?.()}
-                className={`group relative flex flex-col items-center justify-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all duration-300 min-w-[56px] ${
-                  isActive ? 'scale-105' : 'active:scale-95'
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute inset-0 rounded-2xl bg-[#E50914]/20 blur-md transition-opacity" />
-                )}
-                <div className={`relative flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-300 ${
-                  isActive ? 'shadow-lg' : ''
-                }`}
-                  style={isActive ? { boxShadow: '0 0 16px rgba(229,9,20,0.4)' } : undefined}
-                >
-                  <div className={`absolute inset-0 rounded-2xl transition-all duration-300 ${
-                    isActive ? 'bg-[#E50914]/25 scale-100' : 'bg-white/5 scale-90 group-hover:scale-100 group-hover:bg-white/10'
-                  }`} />
-                  <Icon className={`relative h-5 w-5 transition-all duration-300 ${
-                    isActive ? 'text-[#E50914]' : 'text-gray-400'
-                  }`}
-                    style={isActive ? { filter: 'drop-shadow(0 0 6px rgba(229,9,20,0.6))' } : undefined}
-                  />
-                </div>
-                <span className={`text-[10px] font-medium transition-colors ${
-                  isActive ? 'text-[#E50914]' : 'text-gray-500'
-                }`}>
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
-      </nav>
-
-      {/* ===== Custom Scrollbar Styles ===== */}
-      <style>{`
-        /* Custom Netflix-themed scrollbar for desktop */
-        .funflix-scroll::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        .funflix-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .funflix-scroll::-webkit-scrollbar-thumb {
-          background: rgba(229, 9, 20, 0.4);
-          border-radius: 999px;
-        }
-        .funflix-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(229, 9, 20, 0.7);
-        }
-        /* Firefox */
-        .funflix-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: rgba(229, 9, 20, 0.4) transparent;
-        }
-
-        /* Global page scrollbar for FunFlix */
-        html:has(#funflix-root) ::-webkit-scrollbar {
-          width: 8px;
-        }
-        html:has(#funflix-root) ::-webkit-scrollbar-track {
-          background: #141414;
-        }
-        html:has(#funflix-root) ::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #E50914 0%, #831010 100%);
-          border-radius: 999px;
-          border: 2px solid #141414;
-        }
-        html:has(#funflix-root) ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, #ff1a25 0%, #E50914 100%);
-        }
-      `}</style>
     </div>
   );
 }
 
-/* Netflix Top 10 Number Cards Row */
-function Top10Row({ movies, onQuickView }) {
+/* =========================================================================
+   NETFLIX TOP 10 NUMBER ROW WITH 3D METALLIC NUMBERS
+   ========================================================================= */
+function Top10Row({ movies, onQuickView, watchlist, onToggleWatchlist, likedMovies, onToggleLike }) {
   const rowRef = useRef(null);
 
   const scroll = (dir) => {
@@ -790,47 +1057,54 @@ function Top10Row({ movies, onQuickView }) {
 
   return (
     <section className="space-y-2 relative group/top10">
-      <h2 className="text-base sm:text-lg md:text-xl font-bold text-white flex items-center gap-2">
-        <span className="text-[#E50914] font-black text-xl sm:text-2xl">TOP 10</span> Movies Today
+      <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+        <span className="text-[#E50914] font-black">TOP 10</span> Movies in BeastBuck Today
       </h2>
 
+      {/* Row Paddle Left */}
       <button
         onClick={() => scroll('left')}
-        className="hidden sm:flex absolute left-0 top-10 bottom-0 z-30 w-10 bg-black/80 text-white opacity-0 group-hover/top10:opacity-100 items-center justify-center transition"
+        className="hidden sm:flex absolute left-0 top-10 bottom-0 z-30 w-12 bg-black/70 hover:bg-black/90 text-white opacity-0 group-hover/top10:opacity-100 items-center justify-center transition-opacity backdrop-blur-sm"
+        aria-label="Scroll left"
       >
-        <ChevronLeft className="w-6 h-6" />
+        <ChevronLeft className="w-8 h-8" />
       </button>
 
+      {/* Row Paddle Right */}
       <button
         onClick={() => scroll('right')}
-        className="hidden sm:flex absolute right-0 top-10 bottom-0 z-30 w-10 bg-black/80 text-white opacity-0 group-hover/top10:opacity-100 items-center justify-center transition"
+        className="hidden sm:flex absolute right-0 top-10 bottom-0 z-30 w-12 bg-black/70 hover:bg-black/90 text-white opacity-0 group-hover/top10:opacity-100 items-center justify-center transition-opacity backdrop-blur-sm"
+        aria-label="Scroll right"
       >
-        <ChevronRight className="w-6 h-6" />
+        <ChevronRight className="w-8 h-8" />
       </button>
 
       <div 
         ref={rowRef} 
-        className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto py-2 px-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] touch-pan-x"
+        className="flex items-center gap-2 sm:gap-3 overflow-x-auto py-4 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] touch-pan-x"
       >
         {movies.map((movie, idx) => (
           <div 
             key={movie.id} 
-            className="flex items-end shrink-0 group/card cursor-pointer" 
+            className="flex items-end shrink-0 group/card cursor-pointer relative"
             onClick={() => onQuickView(movie)}
           >
-            {/* Styled Giant Netflix Rank Number */}
-            <span className="text-6xl sm:text-8xl md:text-[110px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-b from-gray-200 via-gray-400 to-black select-none font-mono drop-shadow-[0_4px_8px_rgba(0,0,0,0.9)] opacity-90 group-hover/card:text-[#E50914] transition-colors -mr-3 sm:-mr-5 z-10">
+            {/* Netflix 3D Stylized Metallic Number */}
+            <span className="text-7xl sm:text-9xl md:text-[120px] font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-b from-gray-200 via-gray-500 to-black select-none font-mono drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)] opacity-95 group-hover/card:text-[#E50914] transition-colors -mr-4 sm:-mr-6 z-10">
               {idx + 1}
             </span>
 
-            {/* Poster Card */}
-            <div className="w-28 sm:w-36 md:w-44 aspect-[2/3] bg-gray-900 rounded overflow-hidden relative border border-white/10 group-hover/card:scale-105 group-hover/card:z-20 transition-all duration-300 shadow-md">
-              {movie.thumbnail && movie.thumbnail.trim() !== '' ? (
-                <img src={movie.thumbnail} alt={movie.title || 'Movie'} className="w-full h-full object-cover" />
-              ) : null}
-              <div className="absolute top-1.5 left-1.5 text-[#E50914] font-black text-xs sm:text-sm drop-shadow">N</div>
-              <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black via-black/50 to-transparent p-1.5">
-                <p className="text-[10px] sm:text-xs font-bold text-white truncate">{movie.title}</p>
+            {/* Vertical Movie Poster Card */}
+            <div className="w-28 sm:w-36 md:w-44 aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden relative border border-white/10 group-hover/card:scale-105 group-hover/card:z-20 transition-all duration-300 shadow-xl">
+              <img src={movie.poster || movie.thumbnail} alt={movie.title} className="w-full h-full object-cover" />
+              
+              {/* N Badge */}
+              <span className="absolute top-1.5 left-1.5 text-[#E50914] font-black text-xs drop-shadow">N</span>
+
+              {/* Bottom Gradient Label */}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-2">
+                <p className="text-[11px] font-bold text-white truncate">{movie.title}</p>
+                <p className="text-[9px] text-emerald-400 font-bold">{movie.matchScore}% Match</p>
               </div>
             </div>
           </div>
@@ -840,8 +1114,10 @@ function Top10Row({ movies, onQuickView }) {
   );
 }
 
-/* Netflix Standard Horizontal Row */
-function MovieRow({ title, movies, onQuickView, watchlist = [], onToggleWatchlist }) {
+/* =========================================================================
+   NETFLIX STANDARD HORIZONTAL ROW
+   ========================================================================= */
+function NetflixRow({ title, movies, onQuickView, watchlist, onToggleWatchlist, likedMovies, onToggleLike }) {
   const rowRef = useRef(null);
 
   const scroll = (dir) => {
@@ -856,33 +1132,45 @@ function MovieRow({ title, movies, onQuickView, watchlist = [], onToggleWatchlis
 
   return (
     <section className="space-y-2 relative group/row">
-      <h2 className="text-base sm:text-lg md:text-xl font-bold text-white">{title}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-base sm:text-lg md:text-xl font-bold text-white flex items-center gap-1.5">
+          <span>{title}</span>
+          <ChevronRight className="w-4 h-4 text-cyan-400 opacity-0 group-hover/row:opacity-100 transition-opacity" />
+        </h2>
+      </div>
 
+      {/* Row Paddle Left */}
       <button
         onClick={() => scroll('left')}
-        className="hidden sm:flex absolute left-0 top-8 bottom-0 z-30 w-10 bg-black/80 text-white opacity-0 group-hover/row:opacity-100 items-center justify-center transition"
+        className="hidden sm:flex absolute left-0 top-8 bottom-0 z-30 w-12 bg-black/70 hover:bg-black/90 text-white opacity-0 group-hover/row:opacity-100 items-center justify-center transition-opacity backdrop-blur-sm"
+        aria-label="Scroll left"
       >
-        <ChevronLeft className="w-6 h-6" />
+        <ChevronLeft className="w-8 h-8" />
       </button>
 
+      {/* Row Paddle Right */}
       <button
         onClick={() => scroll('right')}
-        className="hidden sm:flex absolute right-0 top-8 bottom-0 z-30 w-10 bg-black/80 text-white opacity-0 group-hover/row:opacity-100 items-center justify-center transition"
+        className="hidden sm:flex absolute right-0 top-8 bottom-0 z-30 w-12 bg-black/70 hover:bg-black/90 text-white opacity-0 group-hover/row:opacity-100 items-center justify-center transition-opacity backdrop-blur-sm"
+        aria-label="Scroll right"
       >
-        <ChevronRight className="w-6 h-6" />
+        <ChevronRight className="w-8 h-8" />
       </button>
 
+      {/* Horizontal Cards Reel */}
       <div 
         ref={rowRef} 
-        className="flex items-center gap-2.5 sm:gap-3 overflow-x-auto py-2 px-0.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] touch-pan-x"
+        className="flex items-center gap-2.5 sm:gap-3 overflow-x-auto py-4 px-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] touch-pan-x"
       >
         {movies.map((movie) => (
-          <MovieCard
+          <NetflixMovieCard
             key={movie.id}
             movie={movie}
             onQuickView={onQuickView}
             isSaved={watchlist.includes(movie.id)}
             onToggleSave={() => onToggleWatchlist?.(movie.id)}
+            isLiked={likedMovies.has(movie.id)}
+            onToggleLike={() => onToggleLike?.(movie.id)}
           />
         ))}
       </div>
@@ -890,55 +1178,96 @@ function MovieRow({ title, movies, onQuickView, watchlist = [], onToggleWatchlis
   );
 }
 
-/* Standard Netflix Movie Card */
-function MovieCard({ movie, onQuickView, isSaved = false, onToggleSave }) {
+/* =========================================================================
+   NETFLIX EXPANDING HOVER CARD
+   ========================================================================= */
+function NetflixMovieCard({ movie, onQuickView, isSaved, onToggleSave, isLiked, onToggleLike }) {
   const navigate = useNavigate();
 
   return (
     <div 
-      onClick={() => navigate(`/funflix/watch/${movie.id}`)}
-      className="group relative shrink-0 w-36 sm:w-52 md:w-60 aspect-video bg-gray-900 rounded overflow-hidden border border-white/10 group-hover:border-[#E50914] shadow-md cursor-pointer transition-all duration-300 hover:scale-105 hover:z-30"
+      className="group relative shrink-0 w-40 sm:w-56 md:w-64 aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-white/10 hover:border-white/30 shadow-md cursor-pointer transition-all duration-300 hover:scale-105 hover:z-30 hover:shadow-2xl"
+      onClick={() => onQuickView(movie)}
     >
-      {movie.thumbnail && movie.thumbnail.trim() !== '' ? (
-        <img
-          src={movie.thumbnail}
-          alt={movie.title || 'Movie'}
-          className="w-full h-full object-cover"
-        />
-      ) : null}
+      <img
+        src={movie.thumbnail}
+        alt={movie.title}
+        className="w-full h-full object-cover"
+        loading="lazy"
+      />
 
-      {/* Netflix N Logo */}
-      <span className="absolute top-1.5 left-1.5 text-[#E50914] font-black text-xs sm:text-sm drop-shadow">
-        N
-      </span>
+      {/* Netflix N Emblem */}
+      <span className="absolute top-1.5 left-1.5 text-[#E50914] font-black text-xs drop-shadow">N</span>
 
       <span className="absolute top-1.5 right-1.5 bg-black/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/20">
-        {movie.duration || 'Short'}
+        {movie.duration}
       </span>
 
       {/* Hover Overlay Controls */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-2.5 flex flex-col justify-between">
-        <div className="flex justify-end">
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-3 flex flex-col justify-between">
+        
+        {/* Top Actions: Add to Watchlist & Like */}
+        <div className="flex items-center justify-end gap-1.5">
           <button
-            onClick={(e) => { e.stopPropagation(); onToggleSave?.(); }}
-            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition border border-white/30"
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleLike?.(); }}
+            className="w-7 h-7 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition border border-white/20"
+            title="Like"
           >
-            {isSaved ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Plus className="w-3.5 h-3.5" />}
+            <ThumbsUp className={`w-3.5 h-3.5 ${isLiked ? 'text-[#E50914] fill-[#E50914]' : ''}`} />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleSave?.(); }}
+            className="w-7 h-7 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center transition border border-white/20"
+            title={isSaved ? 'In My List' : 'Add to My List'}
+          >
+            {isSaved ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Plus className="w-3.5 h-3.5 text-white" />}
           </button>
         </div>
 
+        {/* Bottom Details & Play CTA */}
         <div className="space-y-1">
-          <div className="flex items-center gap-1.5">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white text-black flex items-center justify-center shadow">
-              <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-black ml-0.5" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/funflix/watch/${movie.id}`);
+                }}
+                className="w-7 h-7 rounded-full bg-white hover:bg-gray-200 text-black flex items-center justify-center shadow-md transition active:scale-95"
+                title="Play Video"
+              >
+                <Play className="w-3.5 h-3.5 fill-black ml-0.5" />
+              </button>
+
+              <span className="text-[10px] font-extrabold text-emerald-400">{movie.matchScore}% Match</span>
+              <span className="text-[9px] border border-white/40 px-1 text-gray-300 rounded font-mono">{movie.rating}</span>
             </div>
-            <span className="text-[10px] font-bold text-emerald-400">98% Match</span>
-            <span className="text-[9px] border border-gray-400 px-1 text-gray-300 rounded">HD</span>
+
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onQuickView(movie); }}
+              className="w-6 h-6 rounded-full border border-white/30 text-white flex items-center justify-center hover:bg-white/20"
+              title="More Info"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
           </div>
 
           <h4 className="text-xs font-bold text-white truncate">{movie.title}</h4>
-          <p className="text-[10px] text-gray-400 truncate">{movie.creatorName} · {(movie.views || 0).toLocaleString()} views</p>
+          
+          <div className="flex items-center gap-1 text-[10px] text-gray-300 truncate">
+            {movie.tags ? (
+              <span>{movie.tags.slice(0, 2).join(' • ')}</span>
+            ) : (
+              <span>{movie.category}</span>
+            )}
+          </div>
         </div>
+
       </div>
     </div>
   );
