@@ -24,220 +24,6 @@ const CATEGORIES = [
   { id: 'Technology', name: 'Tech & Engineering' },
 ];
 
-// Curated 4K Showcase Library for an always-breathtaking Netflix experience
-const CURATED_TITLES = [
-  {
-    id: 'chrono-rift',
-    title: 'Chrono Rift: The Quantum Paradox',
-    description: 'When an experimental particle collider tears a rift in spacetime, a team of quantum physicists must race through divergent realities before their timeline collapses permanently.',
-    category: 'Sci-Fi',
-    duration: '2h 14m',
-    year: '2026',
-    rating: '16+',
-    matchScore: 99,
-    isOriginal: true,
-    quality: '4K Ultra HD',
-    tags: ['Mind-bending', 'Futuristic', 'Suspenseful'],
-    cast: 'Dr. Sarah Chen, Michael Vance, Elena Rostova',
-    director: 'Christopher Nolan & BeastBuck Studios',
-    creatorName: 'Dr. Sarah Chen',
-    views: 1845000,
-    likes: 142000,
-    thumbnail: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'neon-horizon',
-    title: 'Neon Horizon 2099',
-    description: 'In the towering cyber-megacity of Neo-Kyoto, a rogue synthetic consciousness uncovers a conspiracy that threatens to rewrite human free will forever.',
-    category: 'Sci-Fi',
-    duration: '1h 58m',
-    year: '2026',
-    rating: '18+',
-    matchScore: 98,
-    isOriginal: true,
-    quality: '4K Ultra HD',
-    tags: ['Cyberpunk', 'Gritty', 'Visually Striking'],
-    cast: 'Kenji Sato, Maya Lin, Alex Mercer',
-    director: 'Denis Villeneuve & BeastBuck Creative',
-    creatorName: 'Alex Mercer',
-    views: 1420000,
-    likes: 98000,
-    thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'silicon-hustle',
-    title: 'Silicon Hustle: The Founder\'s Code',
-    description: 'The electrifying true-to-life drama of four young engineers who built an open-source AI operating system from a garage, defying Wall Street and Big Tech giants.',
-    category: 'Drama',
-    duration: '2h 05m',
-    year: '2025',
-    rating: '13+',
-    matchScore: 97,
-    isOriginal: false,
-    quality: 'HD',
-    tags: ['Inspiring', 'Fast-Paced', 'Compelling'],
-    cast: 'David Zhao, Jessica Morales, Tariq Al-Mansoor',
-    director: 'David Fincher',
-    creatorName: 'BeastBuck Originals',
-    views: 980000,
-    likes: 76000,
-    thumbnail: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'cosmos-infinite',
-    title: 'Cosmos: Beyond the Event Horizon',
-    description: 'An awe-inspiring cinematic journey guided by astrophysicists exploring supermassive black holes, dark energy, and the ultimate destiny of our universe.',
-    category: 'Documentary',
-    duration: '1h 48m',
-    year: '2026',
-    rating: 'ALL',
-    matchScore: 99,
-    isOriginal: true,
-    quality: '4K Ultra HD',
-    tags: ['Mind-Expanding', 'Epic', 'Breathtaking'],
-    cast: 'Prof. James Webb, Dr. Althea Sterling',
-    director: 'Alastair Fothergill',
-    creatorName: 'AstroLab',
-    views: 2100000,
-    likes: 185000,
-    thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'shadow-protocol',
-    title: 'Shadow Protocol: Zero Day',
-    description: 'An elite squad of counter-cyber operatives must stop an autonomous malware hive-mind from hijacking the global power grid before midnight.',
-    category: 'Action',
-    duration: '1h 52m',
-    year: '2025',
-    rating: '16+',
-    matchScore: 96,
-    isOriginal: true,
-    quality: '4K Ultra HD',
-    tags: ['High-Octane', 'Tech-Thriller', 'Action'],
-    cast: 'Marcus Thorne, Samantha Reed, Viktor Brandt',
-    director: 'Chad Stahelski',
-    creatorName: 'CyberStrike Media',
-    views: 1250000,
-    likes: 89000,
-    thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'laugh-protocol',
-    title: 'The AI Dating Disaster',
-    description: 'When an engineer creates an hyper-intelligent matchmaking AI that accidentally matches everyone with their polar opposites, hilarity and chaos ensue across San Francisco.',
-    category: 'Comedy',
-    duration: '1h 36m',
-    year: '2026',
-    rating: '13+',
-    matchScore: 95,
-    isOriginal: true,
-    quality: 'HD',
-    tags: ['Hilarious', 'Romantic', 'Feel-Good'],
-    cast: 'Emma Stone-Williams, Ben Schwartz, Lily Zhang',
-    director: 'Taika Waititi',
-    creatorName: 'FunFlix Comedy',
-    views: 890000,
-    likes: 64000,
-    thumbnail: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'deep-ocean',
-    title: 'Abyssal Light: Secrets of the Trench',
-    description: 'Submersibles venture into the Mariana Trench to document bioluminescent leviathans and deep-sea volcanic ecosystems never before captured on camera.',
-    category: 'Documentary',
-    duration: '1h 42m',
-    year: '2025',
-    rating: 'ALL',
-    matchScore: 98,
-    isOriginal: false,
-    quality: '4K Ultra HD',
-    tags: ['Mesmerizing', 'Nature', 'Atmospheric'],
-    cast: 'Dr. Sylvia Earle, David Attenborough',
-    director: 'James Cameron',
-    creatorName: 'Oceania Lab',
-    views: 1670000,
-    likes: 121000,
-    thumbnail: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'neural-dreams',
-    title: 'Neural Dreams: The Painter of Memories',
-    description: 'An emotional animated masterpiece exploring a memory archivist who reconstructs lost human experiences in a digital afterlife.',
-    category: 'Animation',
-    duration: '1h 45m',
-    year: '2026',
-    rating: 'ALL',
-    matchScore: 97,
-    isOriginal: true,
-    quality: '4K Ultra HD',
-    tags: ['Emotional', 'Artistic', 'Heartfelt'],
-    cast: 'Makoto Shinkai Animation Studio',
-    director: 'Makoto Shinkai',
-    creatorName: 'Studio Ghibli & BeastBuck',
-    views: 1530000,
-    likes: 139000,
-    thumbnail: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'tokyo-drift-ai',
-    title: 'HyperDrive: Midnight Tokyo',
-    description: 'High-stakes underground electric hypercar street racing powered by custom autonomous telemetry and adrenaline-pumping speed.',
-    category: 'Action',
-    duration: '1h 49m',
-    year: '2025',
-    rating: '16+',
-    matchScore: 96,
-    isOriginal: false,
-    quality: 'HD',
-    tags: ['Fast-Paced', 'Cars', 'Adrenaline'],
-    cast: 'Takeshi Kitano, Brian O\'Conner Jr.',
-    director: 'Justin Lin',
-    creatorName: 'Apex Racing',
-    views: 1120000,
-    likes: 85000,
-    thumbnail: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=1920&q=85&fit=crop',
-  },
-  {
-    id: 'superconductor-dawn',
-    title: 'Room Temperature: The Energy Revolution',
-    description: 'The inside documentary of the race to discover room-temperature superconductivity, changing levitation, fusion power, and space exploration forever.',
-    category: 'Technology',
-    duration: '1h 38m',
-    year: '2026',
-    rating: 'ALL',
-    matchScore: 98,
-    isOriginal: true,
-    quality: '4K Ultra HD',
-    tags: ['Groundbreaking', 'Science', 'Inspirational'],
-    cast: 'Nobel Laureates & Quantum Physicists',
-    director: 'BeastBuck Science Lab',
-    creatorName: 'Quantum Media',
-    views: 1340000,
-    likes: 92000,
-    thumbnail: 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=1920&q=85&fit=crop',
-    poster: 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=800&q=85&fit=crop',
-    backdrop: 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?w=1920&q=85&fit=crop',
-  }
-];
-
 export default function FunFlixHub() {
   const { user, roleData } = useAuth();
   const navigate = useNavigate();
@@ -250,7 +36,7 @@ export default function FunFlixHub() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // Firestore + Curated Video States
+  // Real Firestore Video States
   const [firestoreMovies, setFirestoreMovies] = useState([]);
   const [myMovies, setMyMovies] = useState([]);
   const [watchlist, setWatchlist] = useState(() => {
@@ -278,7 +64,7 @@ export default function FunFlixHub() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch Firestore Videos and blend with Curated Titles
+  // Fetch Real Firestore Videos
   useEffect(() => {
     const fetchVideos = async () => {
       try {
@@ -295,7 +81,7 @@ export default function FunFlixHub() {
             duration: data.duration ? `${data.duration}m` : 'Short',
             year: data.createdAt?.toDate ? String(data.createdAt.toDate().getFullYear()) : '2026',
             rating: data.rating || '13+',
-            matchScore: 96,
+            matchScore: 98,
             quality: 'HD',
             tags: data.tags || ['Community Creation', 'Trending'],
             creatorName: data.creatorName || data.creatorUsername || 'Creator',
@@ -323,21 +109,19 @@ export default function FunFlixHub() {
     fetchVideos();
   }, [user?.uid]);
 
-  // Combined Master Movie Catalog
-  const allMovies = useMemo(() => {
-    // Merge Firestore movies with curated showcase
-    return [...firestoreMovies, ...CURATED_TITLES];
-  }, [firestoreMovies]);
+  // Real Movie Catalog (Only authentic uploaded videos)
+  const allMovies = useMemo(() => firestoreMovies, [firestoreMovies]);
 
   // Featured Billboard Slides
   const featuredBillboardList = useMemo(() => {
     return allMovies.slice(0, 5);
   }, [allMovies]);
 
-  const heroMovie = featuredBillboardList[heroIndex] || CURATED_TITLES[0];
+  const heroMovie = featuredBillboardList[heroIndex] || allMovies[0] || null;
 
-  // Auto-rotate Hero Billboard every 10 seconds
+  // Auto-rotate Hero Billboard every 10 seconds if multiple movies exist
   useEffect(() => {
+    if (featuredBillboardList.length <= 1) return;
     const timer = setInterval(() => {
       setHeroIndex(prev => (prev + 1) % featuredBillboardList.length);
     }, 10000);
@@ -565,9 +349,9 @@ export default function FunFlixHub() {
         <main>
           
           {/* =========================================================================
-              NETFLIX CINEMATIC BILLBOARD HERO
+              NETFLIX CINEMATIC BILLBOARD HERO / WELCOME BANNER
               ========================================================================= */}
-          {heroMovie && (
+          {heroMovie ? (
             <section className="relative w-full h-[78vh] sm:h-[84vh] min-h-[520px] max-h-[820px] bg-black overflow-hidden flex flex-col justify-end">
               
               {/* Full-bleed 4K Backdrop Wallpaper */}
@@ -591,7 +375,7 @@ export default function FunFlixHub() {
                 <div className="flex items-center gap-2">
                   <span className="text-[#E50914] font-black text-2xl tracking-tighter">N</span>
                   <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.25em] text-gray-200 drop-shadow">
-                    FUNFLIX ORIGINAL
+                    COMMUNITY FEATURED
                   </span>
                 </div>
 
@@ -602,26 +386,21 @@ export default function FunFlixHub() {
 
                 {/* Meta Row Badges */}
                 <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-bold text-gray-200 drop-shadow">
-                  <span className="bg-[#E50914] text-white px-2 py-0.5 rounded text-[10px] font-black flex items-center gap-1 shadow-sm">
-                    <TrendingUp className="w-3 h-3" /> TOP 10
-                  </span>
-                  <span className="text-emerald-400 font-extrabold">{heroMovie.matchScore}% Match</span>
                   <span className="border border-white/40 px-1.5 py-0.5 text-[10px] rounded text-white bg-black/40">
-                    {heroMovie.rating}
+                    {heroMovie.rating || '13+'}
                   </span>
                   <span>{heroMovie.duration}</span>
-                  <span className="border border-white/30 px-1.5 py-0.5 text-[9px] rounded text-white font-mono bg-black/40">
-                    {heroMovie.quality}
-                  </span>
-                  <span className="text-cyan-300 font-medium">Dir. {heroMovie.creatorName}</span>
+                  <span className="text-cyan-300 font-medium">By {heroMovie.creatorName}</span>
                 </div>
 
                 {/* Synopsis */}
-                <p className="text-xs sm:text-sm md:text-base text-gray-200/90 line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                  {heroMovie.description}
-                </p>
+                {heroMovie.description && (
+                  <p className="text-xs sm:text-sm md:text-base text-gray-200/90 line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-xl drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                    {heroMovie.description}
+                  </p>
+                )}
 
-                {/* Netflix Authentic Action Buttons */}
+                {/* Action Buttons */}
                 <div className="flex items-center gap-3 pt-2">
                   <Link
                     to={`/funflix/watch/${heroMovie.id}`}
@@ -647,23 +426,34 @@ export default function FunFlixHub() {
                   >
                     {watchlist.includes(heroMovie.id) ? <Check className="w-5 h-5 text-emerald-400" /> : <Plus className="w-5 h-5" />}
                   </button>
-
-                  {/* Audio Mute/Unmute & Age Flag */}
-                  <div className="ml-auto flex items-center gap-3">
-                    <button
-                      onClick={() => setIsMuted(!isMuted)}
-                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-white/30 bg-black/50 text-white flex items-center justify-center hover:bg-white/20 transition active:scale-95"
-                      aria-label="Toggle Sound"
-                    >
-                      {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
-                    </button>
-
-                    <div className="border-l-2 border-white bg-black/40 px-3 py-1 text-xs font-bold text-gray-200">
-                      {heroMovie.rating}
-                    </div>
-                  </div>
                 </div>
 
+              </div>
+            </section>
+          ) : (
+            <section className="relative w-full h-[50vh] min-h-[380px] max-h-[520px] bg-gradient-to-b from-black via-zinc-950 to-[#141414] overflow-hidden flex flex-col justify-end border-b border-white/10">
+              <div className="relative z-20 w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 pb-14 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#E50914] font-black text-2xl tracking-tighter">N</span>
+                  <span className="text-xs font-black uppercase tracking-[0.25em] text-gray-400">
+                    FUNFLIX CREATOR STUDIO
+                  </span>
+                </div>
+                <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white max-w-2xl">
+                  Community Cinema & Showcase
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-300 max-w-lg leading-relaxed">
+                  Stream, upload, and discover original community-created videos, films, animations, and tech demos.
+                </p>
+                <div className="flex items-center gap-3 pt-2">
+                  <Link
+                    to="/funflix/upload"
+                    className="bg-[#E50914] hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded text-sm flex items-center gap-2 transition shadow-lg shadow-red-900/40"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Upload Your Video</span>
+                  </Link>
+                </div>
               </div>
             </section>
           )}
@@ -671,9 +461,9 @@ export default function FunFlixHub() {
           {/* =========================================================================
               MAIN CONTENT ROWS & CATEGORIES
               ========================================================================= */}
-          <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 space-y-8 sm:space-y-12 -mt-10 sm:-mt-16 relative z-30">
+          <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 md:px-12 space-y-8 sm:space-y-12 -mt-6 sm:-mt-10 relative z-30">
             
-            {/* Netflix Category Subheader Bar */}
+            {/* Category Subheader Bar */}
             <div className="flex items-center gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {CATEGORIES.map(cat => (
                 <button
@@ -725,93 +515,117 @@ export default function FunFlixHub() {
               </div>
             )}
 
-            {/* Netflix Content Rows (Only shown when not searching and category is 'All') */}
+            {/* Content Rows (Only shown when not searching and category is 'All') */}
             {selectedCategory === 'all' && !searchQuery.trim() && (
               <>
-                {/* Netflix Authentic Top 10 Number Cards Row */}
-                <Top10Row 
-                  movies={top10List} 
-                  onQuickView={setSelectedMovie}
-                  watchlist={watchlist}
-                  onToggleWatchlist={toggleWatchlist}
-                  likedMovies={likedMovies}
-                  onToggleLike={toggleLike}
-                />
+                {allMovies.length === 0 ? (
+                  <div className="py-20 text-center space-y-4 max-w-md mx-auto bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
+                    <div className="w-14 h-14 rounded-2xl bg-[#E50914]/20 border border-[#E50914]/40 flex items-center justify-center mx-auto text-[#E50914]">
+                      <Film className="w-7 h-7" />
+                    </div>
+                    <h2 className="text-xl font-black text-white">No Community Videos Yet</h2>
+                    <p className="text-xs text-gray-400 leading-relaxed">
+                      Be the first creator to upload and publish an original video, film, animation, or tech showcase to FunFlix!
+                    </p>
+                    <div className="pt-2">
+                      <Link
+                        to="/funflix/upload"
+                        className="inline-flex items-center gap-2 bg-[#E50914] hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-lg text-xs transition shadow-lg shadow-red-900/40"
+                      >
+                        <Upload className="w-3.5 h-3.5" /> Upload Video
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Top 10 Row */}
+                    {top10List.length > 0 && (
+                      <Top10Row 
+                        movies={top10List} 
+                        onQuickView={setSelectedMovie}
+                        watchlist={watchlist}
+                        onToggleWatchlist={toggleWatchlist}
+                        likedMovies={likedMovies}
+                        onToggleLike={toggleLike}
+                      />
+                    )}
 
-                {/* Netflix Row: Trending Now */}
-                <NetflixRow 
-                  title="Trending Now" 
-                  movies={allMovies} 
-                  onQuickView={setSelectedMovie}
-                  watchlist={watchlist}
-                  onToggleWatchlist={toggleWatchlist}
-                  likedMovies={likedMovies}
-                  onToggleLike={toggleLike}
-                />
+                    {/* All / Trending Community Videos */}
+                    <NetflixRow 
+                      title="Community Videos" 
+                      movies={allMovies} 
+                      onQuickView={setSelectedMovie}
+                      watchlist={watchlist}
+                      onToggleWatchlist={toggleWatchlist}
+                      likedMovies={likedMovies}
+                      onToggleLike={toggleLike}
+                    />
 
-                {/* Netflix Row: Sci-Fi & Artificial Intelligence */}
-                {sciFiMovies.length > 0 && (
-                  <NetflixRow 
-                    title="Sci-Fi & Cyberpunk Hits" 
-                    movies={sciFiMovies} 
-                    onQuickView={setSelectedMovie}
-                    watchlist={watchlist}
-                    onToggleWatchlist={toggleWatchlist}
-                    likedMovies={likedMovies}
-                    onToggleLike={toggleLike}
-                  />
-                )}
+                    {/* Sci-Fi */}
+                    {sciFiMovies.length > 0 && (
+                      <NetflixRow 
+                        title="Sci-Fi & AI" 
+                        movies={sciFiMovies} 
+                        onQuickView={setSelectedMovie}
+                        watchlist={watchlist}
+                        onToggleWatchlist={toggleWatchlist}
+                        likedMovies={likedMovies}
+                        onToggleLike={toggleLike}
+                      />
+                    )}
 
-                {/* Netflix Row: Action & High-Octane */}
-                {actionMovies.length > 0 && (
-                  <NetflixRow 
-                    title="Action & Adrenaline" 
-                    movies={actionMovies} 
-                    onQuickView={setSelectedMovie}
-                    watchlist={watchlist}
-                    onToggleWatchlist={toggleWatchlist}
-                    likedMovies={likedMovies}
-                    onToggleLike={toggleLike}
-                  />
-                )}
+                    {/* Action */}
+                    {actionMovies.length > 0 && (
+                      <NetflixRow 
+                        title="Action & Thrillers" 
+                        movies={actionMovies} 
+                        onQuickView={setSelectedMovie}
+                        watchlist={watchlist}
+                        onToggleWatchlist={toggleWatchlist}
+                        likedMovies={likedMovies}
+                        onToggleLike={toggleLike}
+                      />
+                    )}
 
-                {/* Netflix Row: Award-Winning Documentaries */}
-                {documentaryMovies.length > 0 && (
-                  <NetflixRow 
-                    title="Award-Winning Science & Discoveries" 
-                    movies={documentaryMovies} 
-                    onQuickView={setSelectedMovie}
-                    watchlist={watchlist}
-                    onToggleWatchlist={toggleWatchlist}
-                    likedMovies={likedMovies}
-                    onToggleLike={toggleLike}
-                  />
-                )}
+                    {/* Documentaries */}
+                    {documentaryMovies.length > 0 && (
+                      <NetflixRow 
+                        title="Documentaries & Tech" 
+                        movies={documentaryMovies} 
+                        onQuickView={setSelectedMovie}
+                        watchlist={watchlist}
+                        onToggleWatchlist={toggleWatchlist}
+                        likedMovies={likedMovies}
+                        onToggleLike={toggleLike}
+                      />
+                    )}
 
-                {/* Netflix Row: Comedy & Lighthearted */}
-                {comedyMovies.length > 0 && (
-                  <NetflixRow 
-                    title="Comedies & Feel-Good Shorts" 
-                    movies={comedyMovies} 
-                    onQuickView={setSelectedMovie}
-                    watchlist={watchlist}
-                    onToggleWatchlist={toggleWatchlist}
-                    likedMovies={likedMovies}
-                    onToggleLike={toggleLike}
-                  />
-                )}
+                    {/* Comedy */}
+                    {comedyMovies.length > 0 && (
+                      <NetflixRow 
+                        title="Comedy & Shorts" 
+                        movies={comedyMovies} 
+                        onQuickView={setSelectedMovie}
+                        watchlist={watchlist}
+                        onToggleWatchlist={toggleWatchlist}
+                        likedMovies={likedMovies}
+                        onToggleLike={toggleLike}
+                      />
+                    )}
 
-                {/* Netflix Row: User Watchlist */}
-                {savedWatchlistMovies.length > 0 && (
-                  <NetflixRow 
-                    title="My List" 
-                    movies={savedWatchlistMovies} 
-                    onQuickView={setSelectedMovie}
-                    watchlist={watchlist}
-                    onToggleWatchlist={toggleWatchlist}
-                    likedMovies={likedMovies}
-                    onToggleLike={toggleLike}
-                  />
+                    {/* Watchlist */}
+                    {savedWatchlistMovies.length > 0 && (
+                      <NetflixRow 
+                        title="My List" 
+                        movies={savedWatchlistMovies} 
+                        onQuickView={setSelectedMovie}
+                        watchlist={watchlist}
+                        onToggleWatchlist={toggleWatchlist}
+                        likedMovies={likedMovies}
+                        onToggleLike={toggleLike}
+                      />
+                    )}
+                  </>
                 )}
               </>
             )}
