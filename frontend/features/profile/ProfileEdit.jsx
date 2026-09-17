@@ -296,12 +296,21 @@ export default function ProfileEdit() {
     if (selectedTheme === 'custom') {
       return activeCustomThemeObject;
     }
-    const allThemes = [...THEME_TEMPLATES, ...customThemes];
-    const found = allThemes.find(t => t.id === selectedTheme);
-    if (found) return found;
+    
+    // First try to find in template themes
+    const foundTemplate = THEME_TEMPLATES.find(t => t.id === selectedTheme);
+    if (foundTemplate) return foundTemplate;
+    
+    // Then try to find in custom themes
+    const foundCustom = customThemes.find(t => t.id === selectedTheme);
+    if (foundCustom) return foundCustom;
+    
+    // Finally check if it matches the profile's custom theme
     if (profile?.customTheme && selectedTheme === profile.customTheme.id) {
       return profile.customTheme;
     }
+    
+    // Fallback to resolveTheme
     return resolveTheme(selectedTheme, profile?.customTheme);
   };
 
@@ -475,6 +484,12 @@ export default function ProfileEdit() {
         const foundCustom = customThemes.find(t => t.id === selectedTheme);
         if (foundCustom) {
           updateData.customTheme = foundCustom;
+        } else {
+          // If it's a template theme, save the template theme object as customTheme
+          const foundTemplate = THEME_TEMPLATES.find(t => t.id === selectedTheme);
+          if (foundTemplate) {
+            updateData.customTheme = foundTemplate;
+          }
         }
       }
 

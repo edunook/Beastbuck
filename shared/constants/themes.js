@@ -141,6 +141,46 @@ export const THEME_TEMPLATES = [
     cardBg: 'rgba(15, 23, 42, 0.04)',
     category: 'light',
   },
+  {
+    id: 'sunset-paradise',
+    name: 'Sunset Paradise',
+    description: 'Tropical golden hour with warm peach and coral sunset glow',
+    background: 'linear-gradient(135deg, #1a0a1f 0%, #2d1b2e 50%, #4a2c35 100%)',
+    textColor: '#fff5f0',
+    accentColor: '#ff6b9d',
+    cardBg: 'rgba(255, 107, 157, 0.08)',
+    category: 'vibrant',
+  },
+  {
+    id: 'neon-dreams',
+    name: 'Neon Dreams',
+    description: 'Electric psychedelic fusion with cyan, magenta, and purple pulse',
+    background: 'linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #2a0a3e 100%)',
+    textColor: '#ffffff',
+    accentColor: '#ff00ff',
+    cardBg: 'rgba(255, 0, 255, 0.08)',
+    category: 'vibrant',
+  },
+  {
+    id: 'velvet-midnight',
+    name: 'Velvet Midnight',
+    description: 'Luxurious deep midnight blue with elegant golden starlight',
+    background: 'linear-gradient(135deg, #030514 0%, #0a0f28 50%, #121840 100%)',
+    textColor: '#e8e8ff',
+    accentColor: '#ffd700',
+    cardBg: 'rgba(255, 215, 0, 0.06)',
+    category: 'dark',
+  },
+  {
+    id: 'crystal-mint',
+    name: 'Crystal Mint',
+    description: 'Fresh mint green with crystalline cyan aurora elegance',
+    background: 'linear-gradient(135deg, #051f1a 0%, #0a3a2e 50%, #0f5a42 100%)',
+    textColor: '#f0fdfa',
+    accentColor: '#00ffcc',
+    cardBg: 'rgba(0, 255, 204, 0.06)',
+    category: 'vibrant',
+  },
 ];
 
 export const GRADIENT_PRESETS = [
@@ -152,12 +192,17 @@ export const GRADIENT_PRESETS = [
   { name: 'Rose Velvet', from: '#2c0b1e', to: '#831843', angle: '135deg' },
   { name: 'Tokyo Dusk', from: '#180e29', to: '#311042', angle: '135deg' },
   { name: 'Pure Obsidian', from: '#050508', to: '#181820', angle: '135deg' },
+  { name: 'Sunset Paradise', from: '#1a0a1f', to: '#4a2c35', angle: '135deg' },
+  { name: 'Neon Dreams', from: '#0a0a1a', to: '#2a0a3e', angle: '135deg' },
+  { name: 'Velvet Midnight', from: '#030514', to: '#121840', angle: '135deg' },
+  { name: 'Crystal Mint', from: '#051f1a', to: '#0f5a42', angle: '135deg' },
 ];
 
 export const COLOR_SWATCHES = [
   '#00d4ff', '#00ffcc', '#a855f7', '#fbbf24', '#00ff9d',
   '#f43f5e', '#38bdf8', '#ff6b35', '#f472b6', '#22c55e',
-  '#ffffff', '#e2e8f0', '#94a3b8', '#cbd5e1'
+  '#ffffff', '#e2e8f0', '#94a3b8', '#cbd5e1',
+  '#ff6b9d', '#ff00ff', '#ffd700', '#00ffcc'
 ];
 
 /**
