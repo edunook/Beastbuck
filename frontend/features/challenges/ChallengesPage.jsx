@@ -1038,39 +1038,28 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
 
   if (!isOpen || !challenge) return null;
 
-  // If user has already participated, show a message instead of the form
-  if (hasParticipated) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in p-3 sm:p-4">
-        <div className="relative w-full max-w-md rounded-2xl sm:rounded-3xl glass-card p-6 sm:p-8 animate-scale-in">
-          <button
-            onClick={onClose}
-            className="absolute right-3 sm:right-4 top-3 sm:top-4 rounded-full p-2 text-text-muted hover:bg-white/10 hover:text-white transition-colors"
-          >
-            <X className="h-4 w-4 sm:h-5 sm:w-5" />
-          </button>
+  const typeIcon = TYPE_ICONS[challenge.type] || Target;
+  const Icon = typeIcon;
+  const difficulty = challenge.difficulty || 'medium';
+  const difficultyConfig = DIFFICULTY_CONFIG[difficulty] || DIFFICULTY_CONFIG.medium;
 
-          <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-500/20 border border-green-500/30">
-                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 text-green-400" />
-              </div>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Already Participated</h2>
-            <p className="text-sm sm:text-base text-text-muted mb-6">
-              You have already submitted your response for this challenge. Each member can only participate once in a challenge.
-            </p>
-            <Button
-              onClick={onClose}
-              className="w-full text-sm sm:text-base"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const getTimeRemaining = () => {
+    if (!challenge.deadline) return null;
+    const now = new Date();
+    const deadline = new Date(challenge.deadline);
+    const diff = deadline - now;
+    
+    if (diff <= 0) return 'Expired';
+    
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (days > 0) return `${days}d left`;
+    if (hours > 0) return `${hours}h left`;
+    return 'Soon';
+  };
+
+  const timeRemaining = getTimeRemaining();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1093,267 +1082,399 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
     }
   };
 
-  const typeIcon = TYPE_ICONS[challenge.type] || Target;
-  const Icon = typeIcon;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in p-3 sm:p-4">
-      <div className="relative w-full max-w-3xl rounded-2xl sm:rounded-3xl glass-card p-4 sm:p-6 md:p-8 animate-scale-in max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md animate-fade-in p-3 sm:p-4 md:p-6 overflow-y-auto">
+      <div className="relative w-full max-w-4xl rounded-2xl sm:rounded-3xl glass-card border border-white/10 p-4 sm:p-6 md:p-8 animate-scale-in my-auto max-h-[92vh] overflow-y-auto shadow-2xl">
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-3 sm:right-4 top-3 sm:top-4 rounded-full p-2 text-text-muted hover:bg-white/10 hover:text-white transition-colors z-10"
+          aria-label="Close modal"
+          className="absolute right-3 sm:right-4 top-3 sm:top-4 rounded-full p-2 text-text-muted hover:bg-white/10 hover:text-white transition-all z-20"
         >
-          <X className="h-4 w-4 sm:h-5 sm:w-5" />
+          <X className="h-5 w-5" />
         </button>
 
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2">
-            <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-accent to-cyan-500 flex-shrink-0">
-              <Icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+        {/* Modal Header */}
+        <div className="mb-6 pb-5 border-b border-white/10">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+            <div className={cn(
+              "flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex-shrink-0 shadow-lg",
+              challenge.status === CHALLENGE_STATUS.ACTIVE 
+                ? "bg-gradient-to-br from-accent to-cyan-500 text-black" 
+                : "bg-white/10 text-white"
+            )}>
+              <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
             </div>
-            <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-white line-clamp-2">{challenge.title}</h2>
-              <p className="text-xs sm:text-sm text-text-muted line-clamp-2">{challenge.description}</p>
+
+            <div className="flex-1 min-w-0 pr-6">
+              {/* Badges Row */}
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
+                <span className={cn(
+                  "inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold border",
+                  difficultyConfig.bg, difficultyConfig.border, difficultyConfig.color
+                )}>
+                  {difficultyConfig.label}
+                </span>
+
+                {challenge.category && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-xs font-semibold text-text-muted">
+                    {challenge.category}
+                  </span>
+                )}
+
+                {challenge.points && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-xs font-bold text-yellow-400">
+                    <Coins className="h-3 w-3" />
+                    {challenge.points} Points
+                  </span>
+                )}
+
+                {timeRemaining && (
+                  <span className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold border",
+                    timeRemaining === 'Expired'
+                      ? "bg-red-500/10 border-red-500/20 text-red-400"
+                      : "bg-white/5 border-white/10 text-text-muted"
+                  )}>
+                    <Clock className="h-3 w-3" />
+                    {timeRemaining}
+                  </span>
+                )}
+
+                {challenge.participantCount !== undefined && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-xs text-text-muted">
+                    <Users className="h-3 w-3 text-accent" />
+                    {challenge.participantCount} {challenge.participantCount === 1 ? 'participant' : 'participants'}
+                  </span>
+                )}
+              </div>
+
+              {/* Challenge Title */}
+              <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white leading-snug break-words">
+                {challenge.title}
+              </h2>
             </div>
           </div>
         </div>
 
-        {error && (
-          <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3 rounded-xl bg-red-500/10 border border-red-500/20 px-3 sm:px-4 py-2 sm:py-3 animate-slide-in">
-            <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-400 flex-shrink-0" />
-            <span className="text-xs sm:text-sm text-red-400">{error}</span>
+        {/* Full Description & Overview Section */}
+        <div className="mb-6 sm:mb-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.02] p-4 sm:p-6 shadow-inner backdrop-blur-sm">
+          <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-white/10 text-accent font-bold text-xs sm:text-sm uppercase tracking-wider">
+            <FileText className="h-4 w-4 text-accent flex-shrink-0" />
+            <span>Challenge Overview &amp; Full Description</span>
           </div>
-        )}
+          
+          <div className="text-sm sm:text-base text-gray-200 leading-relaxed whitespace-pre-wrap break-words font-normal">
+            {challenge.description || 'No detailed description provided for this challenge.'}
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-          {challenge.type === 'mcq_quiz' && challenge.questions && (
-            <div className="space-y-4 sm:space-y-6">
-              {challenge.questions.map((q, qIndex) => (
-                <div key={qIndex} className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
-                  <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
-                    <span className="flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-accent/20 text-accent font-bold text-xs sm:text-sm flex-shrink-0">
-                      {qIndex + 1}
-                    </span>
-                    <p className="text-sm sm:text-base font-bold text-white flex-1">{q.question}</p>
-                  </div>
-                  <div className="space-y-2 sm:space-y-3 ml-8 sm:ml-11">
-                    {q.choices.map((choice, cIndex) => (
+          {/* Specific Challenge Metadata Grid */}
+          {(challenge.topic || challenge.theme || challenge.wordLimit || challenge.acceptedFormats || challenge.timeLimit || challenge.deadline) && (
+            <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {challenge.topic && (
+                <div className="rounded-xl bg-white/5 p-3 border border-white/5">
+                  <span className="text-text-muted block text-xs mb-1 font-semibold">Topic / Prompt</span>
+                  <span className="text-white font-medium text-xs sm:text-sm break-words">{challenge.topic}</span>
+                </div>
+              )}
+              {challenge.theme && (
+                <div className="rounded-xl bg-white/5 p-3 border border-white/5">
+                  <span className="text-text-muted block text-xs mb-1 font-semibold">Theme</span>
+                  <span className="text-white font-medium text-xs sm:text-sm break-words">{challenge.theme}</span>
+                </div>
+              )}
+              {challenge.wordLimit && (
+                <div className="rounded-xl bg-white/5 p-3 border border-white/5">
+                  <span className="text-text-muted block text-xs mb-1 font-semibold">Word Limit</span>
+                  <span className="text-white font-medium text-xs sm:text-sm">{challenge.wordLimit} words</span>
+                </div>
+              )}
+              {challenge.acceptedFormats && (
+                <div className="rounded-xl bg-white/5 p-3 border border-white/5">
+                  <span className="text-text-muted block text-xs mb-1 font-semibold">Accepted Formats</span>
+                  <span className="text-white font-medium text-xs sm:text-sm">{challenge.acceptedFormats}</span>
+                </div>
+              )}
+              {challenge.timeLimit && (
+                <div className="rounded-xl bg-white/5 p-3 border border-white/5">
+                  <span className="text-text-muted block text-xs mb-1 font-semibold">Time Limit</span>
+                  <span className="text-white font-medium text-xs sm:text-sm">{challenge.timeLimit} minutes</span>
+                </div>
+              )}
+              {challenge.deadline && (
+                <div className="rounded-xl bg-white/5 p-3 border border-white/5">
+                  <span className="text-text-muted block text-xs mb-1 font-semibold">Deadline</span>
+                  <span className="text-white font-medium text-xs sm:text-sm">
+                    {new Date(challenge.deadline).toLocaleDateString()} {new Date(challenge.deadline).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* If user has already participated */}
+        {hasParticipated ? (
+          <div className="rounded-2xl bg-green-500/10 border border-green-500/30 p-5 sm:p-6 text-center animate-fade-in">
+            <div className="flex justify-center mb-3">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-500/20 border border-green-500/40">
+                <CheckCircle className="h-6 w-6 text-green-400" />
+              </div>
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold text-white mb-2">Already Participated</h3>
+            <p className="text-xs sm:text-sm text-text-muted mb-5 max-w-md mx-auto">
+              You have already submitted your response for this challenge. Each member can only participate once per challenge.
+            </p>
+            <Button onClick={onClose} className="w-full sm:w-auto px-8 text-xs sm:text-sm">
+              Close
+            </Button>
+          </div>
+        ) : (
+          /* Submission Form */
+          <>
+            <div className="flex items-center gap-2 mb-4 text-white font-bold text-base sm:text-lg">
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+              <span>Submit Your Entry</span>
+            </div>
+
+            {error && (
+              <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3 rounded-xl bg-red-500/10 border border-red-500/20 px-3 sm:px-4 py-2 sm:py-3 animate-slide-in">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-400 flex-shrink-0" />
+                <span className="text-xs sm:text-sm text-red-400">{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              {challenge.type === 'mcq_quiz' && challenge.questions && (
+                <div className="space-y-4 sm:space-y-6">
+                  {challenge.questions.map((q, qIndex) => (
+                    <div key={qIndex} className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
+                      <div className="flex items-start gap-2 sm:gap-3 mb-3 sm:mb-4">
+                        <span className="flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-accent/20 text-accent font-bold text-xs sm:text-sm flex-shrink-0">
+                          {qIndex + 1}
+                        </span>
+                        <p className="text-sm sm:text-base font-bold text-white flex-1">{q.question}</p>
+                      </div>
+                      <div className="space-y-2 sm:space-y-3 ml-8 sm:ml-11">
+                        {q.choices.map((choice, cIndex) => (
+                          <label
+                            key={cIndex}
+                            className={cn(
+                              "flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl border-2 px-3 sm:px-4 py-2 sm:py-3 cursor-pointer transition-all",
+                              responseData[qIndex] === cIndex
+                                ? "border-accent bg-accent/10 shadow-sm shadow-accent/20"
+                                : "border-white/10 hover:border-accent/50 hover:bg-white/5"
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name={`question-${qIndex}`}
+                              checked={responseData[qIndex] === cIndex}
+                              onChange={() => {
+                                setResponseData(prev => ({ ...prev, [qIndex]: cIndex }));
+                              }}
+                              className="accent-accent flex-shrink-0"
+                            />
+                            <span className="text-xs sm:text-sm text-white">{choice}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {challenge.type === 'text_essay' && (
+                <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
+                  <label className="mb-3 sm:mb-4 block text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                    <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+                    Your Response
+                  </label>
+                  <textarea
+                    value={responseData.text || ''}
+                    onChange={(e) => setResponseData({ text: e.target.value })}
+                    placeholder="Write your response here..."
+                    rows={6}
+                    className="w-full rounded-lg sm:rounded-xl border border-white/10 bg-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all resize-none"
+                    required
+                  />
+                </div>
+              )}
+
+              {challenge.type === 'poll_voting' && challenge.options && (
+                <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
+                  <label className="mb-3 sm:mb-4 block text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                    <BarChart className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+                    Select Your {challenge.allowMultiple ? 'Options' : 'Option'}
+                  </label>
+                  <div className="space-y-2 sm:space-y-3">
+                    {challenge.options.map((option, index) => (
                       <label
-                        key={cIndex}
+                        key={index}
                         className={cn(
                           "flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl border-2 px-3 sm:px-4 py-2 sm:py-3 cursor-pointer transition-all",
-                          responseData[qIndex] === cIndex
-                            ? "border-accent bg-accent/10"
+                          challenge.allowMultiple
+                            ? (responseData.selected || []).includes(index)
+                              ? "border-accent bg-accent/10 shadow-sm shadow-accent/20"
+                              : "border-white/10 hover:border-accent/50 hover:bg-white/5"
+                            : responseData.selected === index
+                            ? "border-accent bg-accent/10 shadow-sm shadow-accent/20"
                             : "border-white/10 hover:border-accent/50 hover:bg-white/5"
                         )}
                       >
                         <input
-                          type="radio"
-                          name={`question-${qIndex}`}
-                          checked={responseData[qIndex] === cIndex}
+                          type={challenge.allowMultiple ? "checkbox" : "radio"}
+                          name="poll"
+                          checked={challenge.allowMultiple
+                            ? (responseData.selected || []).includes(index)
+                            : responseData.selected === index}
                           onChange={() => {
-                            setResponseData(prev => ({ ...prev, [qIndex]: cIndex }));
+                            if (challenge.allowMultiple) {
+                              const selected = responseData.selected || [];
+                              setResponseData({
+                                selected: selected.includes(index)
+                                  ? selected.filter(i => i !== index)
+                                  : [...selected, index]
+                              });
+                            } else {
+                              setResponseData({ selected: index });
+                            }
                           }}
                           className="accent-accent flex-shrink-0"
                         />
-                        <span className="text-xs sm:text-sm text-white">{choice}</span>
+                        <span className="text-xs sm:text-sm text-white">{option}</span>
                       </label>
                     ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {challenge.type === 'text_essay' && (
-            <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
-              <label className="mb-3 sm:mb-4 block text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
-                Your Response
-              </label>
-              <textarea
-                value={responseData.text || ''}
-                onChange={(e) => setResponseData({ text: e.target.value })}
-                placeholder="Write your response here..."
-                rows={6}
-                className="w-full rounded-lg sm:rounded-xl border border-white/10 bg-white/5 px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base text-white placeholder:text-text-muted focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none transition-all resize-none"
-                required
-              />
-            </div>
-          )}
-
-          {challenge.type === 'poll_voting' && challenge.options && (
-            <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
-              <label className="mb-3 sm:mb-4 block text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                <BarChart className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
-                Select Your {challenge.allowMultiple ? 'Options' : 'Option'}
-              </label>
-              <div className="space-y-2 sm:space-y-3">
-                {challenge.options.map((option, index) => (
-                  <label
-                    key={index}
-                    className={cn(
-                      "flex items-center gap-2 sm:gap-3 rounded-lg sm:rounded-xl border-2 px-3 sm:px-4 py-2 sm:py-3 cursor-pointer transition-all",
-                      challenge.allowMultiple
-                        ? (responseData.selected || []).includes(index)
-                          ? "border-accent bg-accent/10"
-                          : "border-white/10 hover:border-accent/50 hover:bg-white/5"
-                        : responseData.selected === index
-                        ? "border-accent bg-accent/10"
-                        : "border-white/10 hover:border-accent/50 hover:bg-white/5"
+              {(challenge.type === 'image_upload' || challenge.type === 'video_upload' || challenge.type === 'file_upload') && (
+                <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
+                  <label className="mb-3 sm:mb-4 block text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                    <Upload className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
+                    Upload Your {challenge.type === 'image_upload' ? 'Image' : challenge.type === 'video_upload' ? 'Video' : 'File'}
+                  </label>
+                  <div className="rounded-xl sm:rounded-2xl border-2 border-dashed border-white/20 p-4 sm:p-6 text-center hover:border-accent/50 transition-colors relative">
+                    {previewUrl && challenge.type === 'image_upload' && (
+                      <div className="mb-4">
+                        <img src={previewUrl} alt="Preview" className="mx-auto max-h-48 rounded-lg object-contain" />
+                        <p className="mt-2 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
+                          <CheckCircle className="h-3 w-3" /> Image uploaded successfully
+                        </p>
+                      </div>
                     )}
-                  >
+                    {previewUrl && challenge.type === 'video_upload' && (
+                      <div className="mb-4">
+                        <video src={previewUrl} controls className="mx-auto max-h-48 rounded-lg w-full" />
+                        <p className="mt-2 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
+                          <CheckCircle className="h-3 w-3" /> Video uploaded successfully
+                        </p>
+                      </div>
+                    )}
+                    {responseData.fileName && challenge.type === 'file_upload' && !uploading && (
+                      <p className="mb-3 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> {responseData.fileName} uploaded!
+                      </p>
+                    )}
+                    {!previewUrl && !responseData.fileName && (
+                      <>
+                        <Upload className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-2 sm:mb-3 text-text-muted" />
+                        <p className="text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">
+                          Click to select &amp; upload
+                        </p>
+                        <p className="text-[10px] sm:text-xs text-text-muted">
+                          {challenge.type === 'image_upload' ? 'PNG, JPG, GIF up to 10MB' :
+                           challenge.type === 'video_upload' ? 'MP4, MOV up to 100MB' :
+                           'Any file up to 50MB'}
+                        </p>
+                      </>
+                    )}
+                    {uploading && (
+                      <div className="mt-3">
+                        <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+                          <div
+                            className="bg-gradient-to-r from-accent to-cyan-500 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-accent font-bold">
+                          Uploading... {Math.round(uploadProgress)}%
+                        </p>
+                      </div>
+                    )}
                     <input
-                      type={challenge.allowMultiple ? "checkbox" : "radio"}
-                      name="poll"
-                      checked={challenge.allowMultiple
-                        ? (responseData.selected || []).includes(index)
-                        : responseData.selected === index}
-                      onChange={() => {
-                        if (challenge.allowMultiple) {
-                          const selected = responseData.selected || [];
-                          setResponseData({
-                            selected: selected.includes(index)
-                              ? selected.filter(i => i !== index)
-                              : [...selected, index]
+                      type="file"
+                      accept={challenge.type === 'image_upload' ? 'image/*' : challenge.type === 'video_upload' ? 'video/*' : '*/*'}
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        setUploading(true);
+                        setUploadProgress(0);
+                        setPreviewUrl(null);
+                        setError('');
+                        try {
+                          const result = await uploadChallengeMedia(file, {
+                            ownerId: user?.uid,
+                            onProgress: (pct) => setUploadProgress(pct),
+                            metadata: { challengeId: challenge.id, userId: user?.uid },
                           });
-                        } else {
-                          setResponseData({ selected: index });
+                          const url = result.url || result.cdnUrl;
+                          setResponseData({ url, fileName: file.name, fileSize: file.size, mimeType: file.type });
+                          if (challenge.type === 'image_upload' || challenge.type === 'video_upload') {
+                            setPreviewUrl(url);
+                          }
+                          setUploadProgress(100);
+                        } catch (err) {
+                          console.error('Upload failed:', err);
+                          setError('Upload failed: ' + (err.message || 'Please try again'));
+                        } finally {
+                          setUploading(false);
                         }
                       }}
-                      className="accent-accent flex-shrink-0"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={uploading}
                     />
-                    <span className="text-xs sm:text-sm text-white">{option}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(challenge.type === 'image_upload' || challenge.type === 'video_upload' || challenge.type === 'file_upload') && (
-            <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-6">
-              <label className="mb-3 sm:mb-4 block text-xs sm:text-sm font-bold text-white flex items-center gap-2">
-                <Upload className="h-4 w-4 sm:h-5 sm:w-5 text-accent" />
-                Upload Your {challenge.type === 'image_upload' ? 'Image' : challenge.type === 'video_upload' ? 'Video' : 'File'}
-              </label>
-              <div className="rounded-xl sm:rounded-2xl border-2 border-dashed border-white/20 p-4 sm:p-6 text-center hover:border-accent/50 transition-colors relative">
-                {previewUrl && challenge.type === 'image_upload' && (
-                  <div className="mb-4">
-                    <img src={previewUrl} alt="Preview" className="mx-auto max-h-48 rounded-lg object-contain" />
-                    <p className="mt-2 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
-                      <CheckCircle className="h-3 w-3" /> Image uploaded successfully
-                    </p>
                   </div>
-                )}
-                {previewUrl && challenge.type === 'video_upload' && (
-                  <div className="mb-4">
-                    <video src={previewUrl} controls className="mx-auto max-h-48 rounded-lg w-full" />
-                    <p className="mt-2 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
-                      <CheckCircle className="h-3 w-3" /> Video uploaded successfully
-                    </p>
-                  </div>
-                )}
-                {responseData.fileName && challenge.type === 'file_upload' && !uploading && (
-                  <p className="mb-3 text-xs text-green-400 font-bold flex items-center justify-center gap-1">
-                    <CheckCircle className="h-3 w-3" /> {responseData.fileName} uploaded!
-                  </p>
-                )}
-                {!previewUrl && !responseData.fileName && (
-                  <>
-                    <Upload className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-2 sm:mb-3 text-text-muted" />
-                    <p className="text-xs sm:text-sm font-medium text-white mb-1 sm:mb-2">
-                      Click to select &amp; upload
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-text-muted">
-                      {challenge.type === 'image_upload' ? 'PNG, JPG, GIF up to 10MB' :
-                       challenge.type === 'video_upload' ? 'MP4, MOV up to 100MB' :
-                       'Any file up to 50MB'}
-                    </p>
-                  </>
-                )}
-                {uploading && (
-                  <div className="mt-3">
-                    <div className="w-full bg-white/10 rounded-full h-2 mb-2">
-                      <div
-                        className="bg-gradient-to-r from-accent to-cyan-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-accent font-bold">
-                      Uploading... {Math.round(uploadProgress)}%
-                    </p>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept={challenge.type === 'image_upload' ? 'image/*' : challenge.type === 'video_upload' ? 'video/*' : '*/*'}
-                  onChange={async (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-                    setUploading(true);
-                    setUploadProgress(0);
-                    setPreviewUrl(null);
-                    setError('');
-                    try {
-                      const result = await uploadChallengeMedia(file, {
-                        ownerId: user?.uid,
-                        onProgress: (pct) => setUploadProgress(pct),
-                        metadata: { challengeId: challenge.id, userId: user?.uid },
-                      });
-                      const url = result.url || result.cdnUrl;
-                      setResponseData({ url, fileName: file.name, fileSize: file.size, mimeType: file.type });
-                      if (challenge.type === 'image_upload' || challenge.type === 'video_upload') {
-                        setPreviewUrl(url);
-                      }
-                      setUploadProgress(100);
-                    } catch (err) {
-                      console.error('Upload failed:', err);
-                      setError('Upload failed: ' + (err.message || 'Please try again'));
-                    } finally {
-                      setUploading(false);
-                    }
-                  }}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={uploading}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="flex gap-3 sm:gap-4 pt-4">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onClose}
-              className="flex-1 text-xs sm:text-sm"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading || uploading}
-              className="flex-1 text-xs sm:text-sm"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
-                  Submitting...
-                </span>
-              ) : uploading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
-                  Uploading...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Submit Response</span>
-                  <span className="sm:hidden">Submit</span>
-                </span>
+                </div>
               )}
-            </Button>
-          </div>
-        </form>
+
+              <div className="flex gap-3 sm:gap-4 pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={onClose}
+                  className="flex-1 text-xs sm:text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading || uploading}
+                  className="flex-1 text-xs sm:text-sm"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                      Submitting...
+                    </span>
+                  ) : uploading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                      Uploading...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Submit Response</span>
+                      <span className="sm:hidden">Submit</span>
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
