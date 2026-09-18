@@ -4,6 +4,7 @@ import {
   runTransaction, query, where, getDocs, orderBy, limit
 } from 'firebase/firestore';
 import { calculateLevel, XP_REWARD_TYPES } from './gamification';
+import { NotificationsService } from './notifications';
 
 function mapDocs(snap) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -211,5 +212,94 @@ export const TasksService = {
       archivedBy,
       updatedAt: serverTimestamp(),
     });
+  },
+
+  /**
+   * Add a task update (text information about progress)
+   * Available to both participants and CEO/Co-CEO
+   */
+  async addTaskUpdate(taskId, updateText, authorId, authorName, authorRole) {
+    const update = {
+      taskId,
+      updateText,
+      authorId,
+      authorName,
+      authorRole,
+      createdAt: serverTimestamp(),
+    };
+    const docRef = await addDoc(collection(db, 'taskUpdates'), update);
+
+    // Get task details to notify participants
+    try {
+      const taskSnap = await getDoc(doc(db, 'tasks', taskId));
+      if (taskSnap.exists()) {
+        const task = taskSnap.data();
+        const participantIds = task.assigneeIds || [];
+        
+        // Send notifications to all participants (excluding the author)
+        for (const participantId of participantIds) {
+          if (participantId !== authorId) {
+            try {
+              await NotificationsService.createNotification({
+                title: '📝 Task Update Posted',
+                message: `${authorName} posted an update on task "${task.title || 'Untitled'}"`,
+                type: 'task_update',
+                category: 'personal',
+                actorName: authorName,
+                actorUid: authorId,
+                targetUid: participantId,
+                link: `/tasks?taskId=${taskId}`,
+                isPublic: false,
+                isPrivate: true,
+              });
+            } catch (notifErr) {
+              console.warn('Failed to send task update notification:', notifErr);
+            }
+          }
+        }
+      }
+    } catch (taskErr) {
+      console.warn('Failed to fetch task for notifications:', taskErr);
+    }
+
+    return docRef.id;
+  },
+
+  /**
+   * Get all updates for a specific task
+   */
+  async getTaskUpdates(taskId) {
+    const q = query(
+      collection(db, 'taskUpdates'),
+      where('taskId', '==', taskId),
+      orderBy('createdAt', 'desc')
+    );
+    const snap = await getDocs(q);
+    return mapDocs(snap);
+  },
+
+  /**
+   * Get task updates for tasks the user is participating in
+   */
+  async getTaskUpdatesForUser(taskIds) {
+    if (!taskIds || taskIds.length === 0) return [];
+    
+    const chunks = [];
+    for (let i = 0; i < taskIds.length; i += 10) {
+      chunks.push(taskIds.slice(i, i + 10));
+    }
+    
+    const allUpdates = [];
+    for (const chunk of chunks) {
+      const q = query(
+        collection(db, 'taskUpdates'),
+        where('taskId', 'in', chunk),
+        orderBy('createdAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      allUpdates.push(...mapDocs(snap));
+    }
+    
+    return allUpdates;
   },
 };

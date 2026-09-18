@@ -817,13 +817,13 @@ export default function AIStudioUnified() {
                 description="Build your first custom AI assistant with a dedicated system prompt and avatar."
                 action={
                   isApprovedMember ? (
-                    <Button onClick={() => setActiveTab('create')} className="ai-premium-button">
-                      <Plus className="h-4 w-4" /> Create Your First AI
+                    <Button onClick={() => setActiveTab('create')} className="ai-premium-button w-full sm:w-auto">
+                      <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Create Your First AI</span><span className="sm:hidden">Create AI</span>
                     </Button>
                   ) : (
                     <Link to="/membership/apply">
-                      <Button className="ai-premium-button">
-                        <Star className="h-4 w-4" /> Apply for Membership
+                      <Button className="ai-premium-button w-full sm:w-auto">
+                        <Star className="h-4 w-4" /> <span className="hidden sm:inline">Apply for Membership</span><span className="sm:hidden">Apply</span>
                       </Button>
                     </Link>
                   )

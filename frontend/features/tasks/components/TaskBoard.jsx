@@ -1,6 +1,8 @@
+import React, { useState, useEffect } from 'react';
 import { TaskCard } from './TaskCard';
 import { cn } from '@shared/lib/utils';
 import { Clock, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
+import { TasksService } from '@services/firestore/tasks';
 
 const animations = `
   @keyframes fadeIn {
@@ -66,6 +68,29 @@ const COLUMN_CONFIG = {
 };
 
 export function TaskBoard({ tasks = [], onTaskClick }) {
+  const [updateCounts, setUpdateCounts] = useState({});
+
+  // Load update counts for all tasks
+  useEffect(() => {
+    const loadUpdateCounts = async () => {
+      const taskIds = tasks.map(t => t.id);
+      if (taskIds.length === 0) return;
+
+      try {
+        const allUpdates = await TasksService.getTaskUpdatesForUser(taskIds);
+        const counts = {};
+        allUpdates.forEach(update => {
+          counts[update.taskId] = (counts[update.taskId] || 0) + 1;
+        });
+        setUpdateCounts(counts);
+      } catch (error) {
+        console.error('Failed to load update counts:', error);
+      }
+    };
+
+    loadUpdateCounts();
+  }, [tasks]);
+
   // Group tasks by status
   const columns = {
     'TODO': tasks.filter(t => t.status === 'TODO'),
@@ -123,7 +148,11 @@ export function TaskBoard({ tasks = [], onTaskClick }) {
                     className="animate-fade-in"
                     style={{ animationDelay: `${(index * 0.1) + (taskIndex * 0.05)}s` }}
                   >
-                    <TaskCard task={task} onClick={onTaskClick} />
+                    <TaskCard 
+                      task={task} 
+                      onClick={onTaskClick} 
+                      hasUpdates={updateCounts[task.id] || 0}
+                    />
                   </div>
                 ))
               )}

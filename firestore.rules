@@ -70,6 +70,10 @@ service cloud.firestore {
       return isLeader() || canManageMembers();
     }
 
+    function canUpdateTaskProgress() {
+      return isMainCEO() || isCoCEO();
+    }
+
     function isDefaultChatRoom(roomId) {
       return roomId in [
         'general',
@@ -1281,13 +1285,15 @@ service cloud.firestore {
       allow create: if isMember()
                     && request.resource.data.creatorId == request.auth.uid
                     && request.resource.data.ventureId is string;
-      // Creator, Assignee (for status updates), or Admin can update
+      // CEO/Co-CEO can update any task fields including progress and status
+      allow update: if canUpdateTaskProgress();
+      // Creator, Assignee, or Admin can update other fields but NOT progressPercent or status
       allow update: if isAuthenticated() && (
         resource.data.creatorId == request.auth.uid || 
         request.auth.uid in resource.data.assigneeIds ||
         (resource.data.type == 'GLOBAL' && isMember()) ||
         canManageMembers()
-      );
+      ) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['progressPercent', 'status']);
       allow delete: if canManageMembers() || resource.data.creatorId == request.auth.uid;
       
       match /comments/{commentId} {
@@ -1301,6 +1307,35 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
       allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || canReviewTasks());
+    }
+
+    match /taskUpdates/{updateId} {
+      // Read: Authenticated users who are either task participants or CEO/Co-CEO
+      allow read: if isAuthenticated() && (
+        canManageMembers() || 
+        request.auth.uid in get(/databases/$(database)/documents/tasks/$(resource.data.taskId)).data.assigneeIds ||
+        get(/databases/$(database)/documents/tasks/$(resource.data.taskId)).data.type == 'GLOBAL'
+      );
+      
+      // Create: Task participants or CEO/Co-CEO can create updates
+      allow create: if isAuthenticated() && (
+        canManageMembers() || 
+        request.auth.uid in get(/databases/$(database)/documents/tasks/$(request.resource.data.taskId)).data.assigneeIds ||
+        get(/databases/$(database)/documents/tasks/$(request.resource.data.taskId)).data.type == 'GLOBAL'
+      ) && request.resource.data.keys().hasOnly([
+        'taskId',
+        'updateText',
+        'authorId',
+        'authorName',
+        'authorRole',
+        'createdAt'
+      ]) && request.resource.data.updateText is string
+      && request.resource.data.updateText.size() > 0
+      && request.resource.data.updateText.size() <= 500
+      && request.resource.data.authorId == request.auth.uid;
+      
+      // Updates are immutable - no updates or deletes allowed
+      allow update, delete: if false;
     }
 
     // ----------------------------------------

@@ -777,7 +777,8 @@ export default function CreativityPage() {
                     className="w-full justify-center bg-[linear-gradient(135deg,var(--creative-cyan),var(--creative-violet),var(--creative-rose))] px-6 text-white shadow-[0_18px_44px_rgba(155,92,255,0.28)] sm:w-auto"
                   >
                     <Plus className="h-5 w-5" aria-hidden="true" />
-                    Share Your Work
+                    <span className="hidden sm:inline">Share Your Work</span>
+                    <span className="sm:hidden">Share</span>
                   </Button>
                 )}
 
@@ -880,9 +881,10 @@ export default function CreativityPage() {
                   Try a different search, category, or sort option.
                 </p>
                 {showMemberAction && (
-                  <Button onClick={() => setShowUpload(true)} className="mt-6">
+                  <Button onClick={() => setShowUpload(true)} className="mt-6 w-full sm:w-auto">
                     <Plus className="h-4 w-4" aria-hidden="true" />
-                    Share Your First Work
+                    <span className="hidden sm:inline">Share Your First Work</span>
+                    <span className="sm:hidden">Share</span>
                   </Button>
                 )}
               </div>

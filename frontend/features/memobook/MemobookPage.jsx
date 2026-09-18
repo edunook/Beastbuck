@@ -608,7 +608,8 @@ const MemobookPage = () => {
                     className="create-btn"
                   >
                     <Plus className="w-4 h-4" />
-                    Create New Memobook
+                    <span className="hidden sm:inline">Create New Memobook</span>
+                    <span className="sm:hidden">Create</span>
                   </Button>
                 </div>
 

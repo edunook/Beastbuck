@@ -38,13 +38,14 @@ export default function ChaptersHub() {
 
   return (
     <PageContainer>
-      <PageHeader 
-        title="Chapters Hub" 
+      <PageHeader
+        title="Chapters Hub"
         description="Connect with local and regional BeastBuck chapters. Join a community near you or start your own."
         action={
-          <Button onClick={() => setShowCreateForm(true)}>
+          <Button onClick={() => setShowCreateForm(true)} className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
-            Start a Chapter
+            <span className="hidden sm:inline">Start a Chapter</span>
+            <span className="sm:hidden">Start</span>
           </Button>
         }
       />

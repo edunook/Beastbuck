@@ -1,5 +1,5 @@
 import { cn } from '@shared/lib/utils';
-import { CheckCircle2, Clock, AlertCircle, Zap, Flame, Target, Calendar } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, Zap, Flame, Target, Calendar, MessageSquare } from 'lucide-react';
 
 const PRIORITY_CONFIG = {
   LOW: {
@@ -61,7 +61,7 @@ const STATUS_CONFIG = {
   },
 };
 
-export function TaskCard({ task, onClick }) {
+export function TaskCard({ task, onClick, hasUpdates }) {
   if (!task) return null;
 
   const priority = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.NORMAL;
@@ -87,9 +87,17 @@ export function TaskCard({ task, onClick }) {
 
       {/* Header */}
       <div className="mb-3 sm:mb-4 pr-16">
-        <h4 className="font-bold text-white text-sm sm:text-base line-clamp-2 leading-tight group-hover:text-accent transition-colors">
-          {task.title || 'Untitled Task'}
-        </h4>
+        <div className="flex items-center gap-2 mb-1">
+          <h4 className="font-bold text-white text-sm sm:text-base line-clamp-2 leading-tight group-hover:text-accent transition-colors">
+            {task.title || 'Untitled Task'}
+          </h4>
+          {hasUpdates && (
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+              <MessageSquare className="h-3 w-3" />
+              <span className="font-bold">{hasUpdates}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Description */}

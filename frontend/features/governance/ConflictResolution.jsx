@@ -52,13 +52,14 @@ export default function ConflictResolution() {
 
   return (
     <PageContainer>
-      <PageHeader 
-        title="Conflict Resolution" 
+      <PageHeader
+        title="Conflict Resolution"
         description="A fair, transparent, and neutral ground for mediating disputes within the BeastBuck community."
         action={
-          <Button onClick={() => setShowCreateForm(true)}>
+          <Button onClick={() => setShowCreateForm(true)} className="w-full sm:w-auto">
             <AlertCircle className="mr-2 h-4 w-4" />
-            Open a Case
+            <span className="hidden sm:inline">Open a Case</span>
+            <span className="sm:hidden">Open</span>
           </Button>
         }
       />

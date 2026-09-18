@@ -28,6 +28,7 @@ export const hasPermission = (userRole, permissionName) => {
     canCreateTeam: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MEMBER],
     canManageOrganization: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER],
     canModerate: [ROLES.MAIN_CEO, ROLES.CO_CEO, ROLES.LEADER, ROLES.MODERATOR],
+    canUpdateTaskProgress: [ROLES.MAIN_CEO, ROLES.CO_CEO],
   };
 
   const allowedRoles = permissionMatrix[permissionName];

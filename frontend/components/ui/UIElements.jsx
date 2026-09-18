@@ -19,7 +19,7 @@ export function PageHeader({ title, description, action, className, hero = false
           hero ? "text-description" : "text-description"
         )}>{description}</p>}
       </div>
-      {action && <div className={cn("shrink-0", hero && "relative z-10")}>{action}</div>}
+      {action && <div className={cn("shrink-0 w-full sm:w-auto", hero && "relative z-10")}>{action}</div>}
     </div>
   );
 }

@@ -163,11 +163,11 @@ export default function UniverseHome() {
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionWrapper title="Your Goals">
           {goals.length === 0 ? (
-            <EmptyState 
-              icon={Target} 
-              title="No goals yet" 
+            <EmptyState
+              icon={Target}
+              title="No goals yet"
               description="Set your first goal to track your progress in the BeastBuck ecosystem."
-              action={isApprovedMember ? <Link to="/universe/goals"><Button size="sm">Create a Goal</Button></Link> : null}
+              action={isApprovedMember ? <Link to="/universe/goals"><Button size="sm" className="w-full sm:w-auto"><span className="hidden sm:inline">Create a Goal</span><span className="sm:hidden">Create</span></Button></Link> : null}
             />
           ) : (
             <div className="space-y-2">

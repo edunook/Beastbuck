@@ -83,8 +83,8 @@ export default function EventsPage() {
         title="Events & Competitions"
         description="Join hackathons, innovation challenges, and seasonal events."
         action={
-          <Link to="/events/create" className="flex items-center gap-2 bg-accent hover:bg-accent/90 text-black font-bold px-4 py-2 rounded-lg transition">
-            <Plus className="w-4 h-4" /> Create Event
+          <Link to="/events/create" className="flex items-center justify-center gap-2 bg-accent hover:bg-accent/90 text-black font-bold px-4 py-2 rounded-lg transition w-full sm:w-auto">
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Create Event</span><span className="sm:hidden">Create</span>
           </Link>
         }
       />
