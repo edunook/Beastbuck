@@ -59,10 +59,11 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
       const newStatus = progress === 100 ? 'UNDER_REVIEW'
         : progress > 0 ? 'IN_PROGRESS'
         : 'TODO';
-      await TasksService.updateProgress(task.id, progress, newStatus);
+      await TasksService.updateProgress(task.id, progress, newStatus, roleData?.role);
       onTaskUpdated?.({ ...task, progressPercent: progress, status: newStatus });
-    } catch {
-      setProgressError('Failed to save. Try again.');
+    } catch (error) {
+      console.error('Progress update failed:', error);
+      setProgressError(error.message || 'Failed to save. Try again.');
     } finally {
       setUpdatingProgress(false);
     }
@@ -108,6 +109,8 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
       await loadTaskUpdates(); // Reload updates
     } catch (error) {
       console.error('Failed to add task update:', error);
+      // Show error to user
+      alert(error.message || 'Failed to add update. You may not have permission to post updates on this task.');
     } finally {
       setAddingUpdate(false);
     }

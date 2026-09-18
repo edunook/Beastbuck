@@ -31,10 +31,6 @@ export function NotificationBell() {
   }, [user?.uid]);
 
   const handleClick = () => {
-    // Automatically mark all current unread as read when clicking the notification button
-    if (notifications.length > 0) {
-      NotificationsService.markAllAsRead(user?.uid, notifications);
-    }
     navigate('/notifications');
   };
 
@@ -52,9 +48,7 @@ export function NotificationBell() {
     >
       <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
       {unreadCount > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-lg shadow-red-500/50 ring-2 ring-surface animate-pulse">
-          {unreadCount > 9 ? '9+' : unreadCount}
-        </span>
+        <span className="absolute -top-1 -right-1 h-3 w-3 sm:h-3.5 sm:w-3.5 rounded-full bg-red-500 shadow-lg shadow-red-500/50 ring-2 ring-surface z-50" />
       )}
     </button>
   );

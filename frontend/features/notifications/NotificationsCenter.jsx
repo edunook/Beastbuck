@@ -102,9 +102,10 @@ export default function NotificationsCenter() {
       onNotifications: (items) => {
         setNotifications(items);
         setLoading(false);
-        // Automatically mark all current unread notifications as read when opening the page
-        if (items.some(n => !n.read)) {
-          NotificationsService.markAllAsRead(user?.uid, items);
+        // Mark all unread notifications as read when opening the page
+        const unreadNotifications = items.filter(n => !n.read);
+        if (unreadNotifications.length > 0) {
+          NotificationsService.markAllAsRead(user?.uid, unreadNotifications);
         }
       },
       onError: (err) => {
