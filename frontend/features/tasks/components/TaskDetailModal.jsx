@@ -53,6 +53,13 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
 
   const handleProgressSave = async () => {
     if (progress === (task.progressPercent || 0)) return;
+    
+    // Double-check authorization before proceeding
+    if (!hasPermission(roleData?.role, 'canUpdateTaskProgress')) {
+      setProgressError('Only CEO and Co-CEO can update task progress.');
+      return;
+    }
+    
     setUpdatingProgress(true);
     setProgressError(null);
     try {
@@ -96,6 +103,16 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
 
   const handleAddUpdate = async () => {
     if (!updateText.trim()) return;
+    
+    // Double-check authorization before proceeding
+    const isAssignee = task.assigneeIds?.includes(user?.uid) || task.type === 'GLOBAL';
+    const isCEOOrCoCEO = hasPermission(roleData?.role, 'canUpdateTaskProgress');
+    
+    if (!isAssignee && !isCEOOrCoCEO) {
+      alert('You must be a task participant or CEO/Co-CEO to post updates on this task.');
+      return;
+    }
+    
     setAddingUpdate(true);
     try {
       await TasksService.addTaskUpdate(
@@ -109,8 +126,7 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
       await loadTaskUpdates(); // Reload updates
     } catch (error) {
       console.error('Failed to add task update:', error);
-      // Show error to user
-      alert(error.message || 'Failed to add update. You may not have permission to post updates on this task.');
+      alert('Failed to add update. Please try again.');
     } finally {
       setAddingUpdate(false);
     }

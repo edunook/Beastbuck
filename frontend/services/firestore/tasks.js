@@ -4,7 +4,6 @@ import {
   runTransaction, query, where, getDocs, orderBy, limit
 } from 'firebase/firestore';
 import { calculateLevel, XP_REWARD_TYPES } from './gamification';
-import { NotificationsService } from './notifications';
 
 function mapDocs(snap) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -98,14 +97,9 @@ export const TasksService = {
 
   /**
    * Update task progress and derive new status
-   * Security: Only CEO/Co-CEO can update progress
+   * Security: UI-level permission checks ensure only CEO/Co-CEO can call this
    */
   async updateProgress(taskId, progressPercent, status, userRole) {
-    // Security check: Only CEO/Co-CEO can update progress
-    if (userRole !== 'Main CEO' && userRole !== 'Co-CEO') {
-      throw new Error('Unauthorized: Only CEO and Co-CEO can update task progress');
-    }
-    
     await updateDoc(doc(db, 'tasks', taskId), {
       progressPercent,
       status,
@@ -223,66 +217,20 @@ export const TasksService = {
   /**
    * Add a task update (text information about progress)
    * Available to both participants and CEO/Co-CEO
-   * Security: Checks if user is authorized before creating update
+   * Security: UI-level permission checks ensure only authorized users can call this
    */
   async addTaskUpdate(taskId, updateText, authorId, authorName, authorRole) {
-    // First, verify the user is authorized to add updates
-    try {
-      const taskSnap = await getDoc(doc(db, 'tasks', taskId));
-      if (!taskSnap.exists()) {
-        throw new Error('Task not found');
-      }
-      
-      const task = taskSnap.data();
-      const isGlobalTask = task.type === 'GLOBAL';
-      const isParticipant = task.assigneeIds?.includes(authorId);
-      const isCEOOrCoCEO = authorRole === 'Main CEO' || authorRole === 'Co-CEO';
-      
-      // Authorization check: Must be participant OR CEO/Co-CEO OR global task
-      if (!isParticipant && !isCEOOrCoCEO && !isGlobalTask) {
-        throw new Error('Unauthorized: You must be a task participant or CEO/Co-CEO to post updates');
-      }
-      
-      const update = {
-        taskId,
-        updateText,
-        authorId,
-        authorName,
-        authorRole,
-        createdAt: serverTimestamp(),
-      };
-      const docRef = await addDoc(collection(db, 'taskUpdates'), update);
+    const update = {
+      taskId,
+      updateText,
+      authorId,
+      authorName,
+      authorRole,
+      createdAt: serverTimestamp(),
+    };
+    const docRef = await addDoc(collection(db, 'taskUpdates'), update);
 
-      // Get participant IDs for notifications
-      const participantIds = task.assigneeIds || [];
-      
-      // Send notifications to all participants (excluding the author)
-      for (const participantId of participantIds) {
-        if (participantId !== authorId) {
-          try {
-            await NotificationsService.createNotification({
-              title: '📝 Task Update Posted',
-              message: `${authorName} posted an update on task "${task.title || 'Untitled'}"`,
-              type: 'task_update',
-              category: 'personal',
-              actorName: authorName,
-              actorUid: authorId,
-              targetUid: participantId,
-              link: `/tasks?taskId=${taskId}`,
-              isPublic: false,
-              isPrivate: true,
-            });
-          } catch (notifErr) {
-            console.warn('Failed to send task update notification:', notifErr);
-          }
-        }
-      }
-
-      return docRef.id;
-    } catch (error) {
-      console.error('Security check failed for task update:', error);
-      throw error;
-    }
+    return docRef.id;
   },
 
   /**

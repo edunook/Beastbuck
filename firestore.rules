@@ -1278,6 +1278,7 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
+      // Read: Allow all authenticated users to read tasks (needed for notifications and UI)
       allow read: if isAuthenticated();
       // Leaders & CEOs can create tasks
       allow create: if isLeader() || canManageMembers();
