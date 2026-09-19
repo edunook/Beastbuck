@@ -15,7 +15,7 @@ export function MobileSafeContainer({ children, className }) {
 export function MobileSafeView({ children, className }) {
   return (
     <div className={cn(
-      "min-h-screen w-full overflow-x-hidden",
+      "min-h-[100dvh] w-full overflow-x-hidden",
       "pb-safe-bottom",
       className
     )}>

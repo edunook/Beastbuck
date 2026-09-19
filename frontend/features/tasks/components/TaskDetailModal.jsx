@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Zap, Calendar, Tag, AlertCircle, CheckCircle2, Clock, ChevronRight, FileText, User, Target, Award } from 'lucide-react';
+import { X, Zap, Calendar, Tag, AlertCircle, CheckCircle2, Clock, ChevronRight, FileText, User, Target, Award, MessageSquare, Send, Sparkles } from 'lucide-react';
 import { cn } from '@shared/lib/utils';
 import Button from '@frontend/components/ui/Button';
 import { TasksService } from '@services/firestore/tasks';
@@ -28,6 +28,24 @@ const TYPE_CONFIG = {
   GLOBAL:   { label: 'Global Mission', icon: Award },
 };
 
+const UPDATE_PROMPTS = [
+  'Made progress and I am continuing the next step.',
+  'Blocked and need help with one part.',
+  'Ready for review after final checks.',
+];
+
+function formatUpdateDate(value) {
+  if (!value) return 'Just now';
+  const date = value?.toDate ? value.toDate() : new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Just now';
+  return date.toLocaleString([], {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTaskUpdated }) {
   const { user, roleData } = useAuth();
   const [progress, setProgress] = useState(Math.max(0, Math.min(100, task.progressPercent || 0)));
@@ -37,6 +55,9 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
   const [addingUpdate, setAddingUpdate] = useState(false);
   const [taskUpdates, setTaskUpdates] = useState([]);
   const [loadingUpdates, setLoadingUpdates] = useState(false);
+  const [updatesLoadError, setUpdatesLoadError] = useState(null);
+  const [updateError, setUpdateError] = useState(null);
+  const [updateSuccess, setUpdateSuccess] = useState(null);
 
   if (!task) return null;
 
@@ -91,42 +112,67 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
 
   const loadTaskUpdates = async () => {
     setLoadingUpdates(true);
+    setUpdatesLoadError(null);
     try {
       const updates = await TasksService.getTaskUpdates(task.id);
       setTaskUpdates(updates);
     } catch (error) {
       console.error('Failed to load task updates:', error);
+      setUpdatesLoadError('Updates could not load right now. You can still post a new update.');
     } finally {
       setLoadingUpdates(false);
     }
   };
 
   const handleAddUpdate = async () => {
-    if (!updateText.trim()) return;
+    const trimmedUpdate = updateText.trim();
+    if (!trimmedUpdate) return;
     
     // Double-check authorization before proceeding
     const isAssignee = task.assigneeIds?.includes(user?.uid) || task.type === 'GLOBAL';
     const isCEOOrCoCEO = hasPermission(roleData?.role, 'canUpdateTaskProgress');
     
     if (!isAssignee && !isCEOOrCoCEO) {
-      alert('You must be a task participant or CEO/Co-CEO to post updates on this task.');
+      setUpdateError('You must be a task participant or CEO/Co-CEO to post updates on this task.');
+      return;
+    }
+
+    if (!user?.uid) {
+      setUpdateError('Please sign in again before posting an update.');
       return;
     }
     
     setAddingUpdate(true);
+    setUpdateError(null);
+    setUpdateSuccess(null);
     try {
-      await TasksService.addTaskUpdate(
+      const authorName = user.displayName || roleData?.displayName || roleData?.username || 'Unknown';
+      const authorRole = roleData?.role || 'Member';
+      const updateId = await TasksService.addTaskUpdate(
         task.id,
-        updateText.trim(),
+        trimmedUpdate,
         user.uid,
-        user.displayName || user.username || 'Unknown',
-        roleData?.role || 'Member'
+        authorName,
+        authorRole
       );
+      setTaskUpdates(prev => [
+        {
+          id: updateId,
+          taskId: task.id,
+          updateText: trimmedUpdate,
+          authorId: user.uid,
+          authorName,
+          authorRole,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
       setUpdateText('');
-      await loadTaskUpdates(); // Reload updates
+      setUpdateSuccess('Update posted.');
+      loadTaskUpdates();
     } catch (error) {
       console.error('Failed to add task update:', error);
-      alert('Failed to add update. Please try again.');
+      setUpdateError(error.message || 'Failed to add update. Please try again.');
     } finally {
       setAddingUpdate(false);
     }
@@ -137,7 +183,7 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
       className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto bg-gradient-to-br from-white/5 to-white/2 border border-white/10 rounded-3xl shadow-2xl scrollbar-hide">
+      <div className="relative w-full max-w-3xl max-h-[94dvh] sm:max-h-[88vh] overflow-y-auto bg-gradient-to-br from-white/5 to-white/2 border border-white/10 rounded-3xl shadow-2xl scrollbar-hide">
 
         {/* Header */}
         <div className="sticky top-0 z-10 bg-black/50 backdrop-blur-xl border-b border-white/10 p-4 sm:p-6 flex items-start justify-between gap-4">
@@ -283,52 +329,123 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
 
           {/* Task Updates - available to participants and CEO/Co-CEO */}
           {canAddUpdate && (
-            <div className="bg-white/5 rounded-2xl p-4 sm:p-5 border border-white/10">
-              <h3 className="text-xs sm:text-sm font-bold text-text-muted uppercase tracking-widest mb-3">
-                Share Progress Update
-              </h3>
+            <div className="bg-gradient-to-br from-accent/10 via-white/[0.04] to-cyan-500/10 rounded-2xl p-4 sm:p-5 border border-accent/20">
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-widest flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-accent" />
+                    Add Update
+                  </h3>
+                  <p className="mt-1 text-xs text-text-muted">Log progress, blockers, or review notes for the team.</p>
+                </div>
+                <span className={cn(
+                  "text-[10px] sm:text-xs font-bold rounded-full px-2.5 py-1 border",
+                  updateText.length > 450
+                    ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-300"
+                    : "border-white/10 bg-white/5 text-text-muted"
+                )}>
+                  {updateText.length}/500
+                </span>
+              </div>
+
+              <div className="mb-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+                {UPDATE_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => {
+                      setUpdateText(prompt);
+                      setUpdateError(null);
+                      setUpdateSuccess(null);
+                    }}
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-[11px] font-bold text-text-muted transition hover:border-accent/40 hover:bg-accent/10 hover:text-white"
+                  >
+                    <Sparkles className="h-3 w-3 text-accent" />
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+
               <textarea
                 value={updateText}
-                onChange={(e) => setUpdateText(e.target.value)}
+                onChange={(e) => {
+                  setUpdateText(e.target.value);
+                  setUpdateError(null);
+                  setUpdateSuccess(null);
+                }}
                 placeholder="Share what you're working on, progress made, or any blockers..."
-                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm sm:text-base text-white placeholder-text-muted/50 resize-none focus:outline-none focus:border-accent/50 transition-all"
-                rows={3}
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm sm:text-base text-white placeholder-text-muted/50 resize-none focus:outline-none focus:border-accent/60 focus:ring-2 focus:ring-accent/15 transition-all"
+                rows={4}
                 maxLength={500}
               />
-              <div className="flex justify-between items-center mt-2">
+
+              {(updateError || updateSuccess) && (
+                <div className={cn(
+                  "mt-3 rounded-xl border px-3 py-2 text-xs sm:text-sm",
+                  updateError
+                    ? "border-red-500/30 bg-red-500/10 text-red-300"
+                    : "border-green-500/30 bg-green-500/10 text-green-300"
+                )}>
+                  {updateError || updateSuccess}
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-3">
                 <span className="text-[10px] sm:text-xs text-text-muted">
-                  {updateText.length}/500
+                  Updates are visible to task participants and leaders.
                 </span>
                 <Button
                   onClick={handleAddUpdate}
                   disabled={addingUpdate || !updateText.trim()}
-                  className="text-sm sm:text-base"
+                  className="text-sm sm:text-base sm:min-w-[140px]"
                 >
-                  {addingUpdate ? 'Posting...' : 'Post Update'}
+                  {addingUpdate ? (
+                    'Posting...'
+                  ) : (
+                    <span className="inline-flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      Post Update
+                    </span>
+                  )}
                 </Button>
               </div>
             </div>
           )}
 
           {/* Task Updates History */}
-          <div>
-            <h3 className="text-xs sm:text-sm font-bold text-text-muted uppercase tracking-widest mb-3">
-              Progress Updates
-            </h3>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-xs sm:text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-accent" />
+                Updates
+              </h3>
+              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-bold text-text-muted">
+                {taskUpdates.length}
+              </span>
+            </div>
+            {updatesLoadError && (
+              <div className="mb-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs text-yellow-200">
+                {updatesLoadError}
+              </div>
+            )}
             {loadingUpdates ? (
-              <div className="text-center text-text-muted text-sm py-4">Loading updates...</div>
+              <div className="text-center text-text-muted text-sm py-6">Loading updates...</div>
             ) : taskUpdates.length === 0 ? (
-              <div className="text-center text-text-muted text-sm py-4">No updates yet</div>
+              <div className="rounded-xl border border-dashed border-white/10 bg-black/20 p-6 text-center">
+                <MessageSquare className="mx-auto mb-2 h-8 w-8 text-text-muted" />
+                <p className="text-sm font-bold text-white">No updates yet</p>
+                <p className="mt-1 text-xs text-text-muted">Post the first note to keep the task moving.</p>
+              </div>
             ) : (
-              <div className="space-y-3 max-h-60 overflow-y-auto">
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                 {taskUpdates.map((update) => (
                   <div
                     key={update.id}
-                    className="bg-white/5 border border-white/10 rounded-xl p-3 sm:p-4"
+                    className="bg-black/25 border border-white/10 rounded-xl p-3 sm:p-4 transition hover:border-white/20"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent/20 to-cyan-500/20 flex items-center justify-center">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent/20 to-cyan-500/20 border border-accent/20 flex items-center justify-center">
                           <span className="text-xs font-bold text-accent">
                             {(update.authorName || 'U').charAt(0).toUpperCase()}
                           </span>
@@ -343,13 +460,10 @@ export function TaskDetailModal({ task, onClose, onSubmitProof, onReview, onTask
                         </div>
                       </div>
                       <div className="text-[10px] sm:text-xs text-text-muted">
-                        {update.createdAt?.toDate ? 
-                          new Date(update.createdAt.toDate()).toLocaleDateString() :
-                          new Date(update.createdAt).toLocaleDateString()
-                        }
+                        {formatUpdateDate(update.createdAt)}
                       </div>
                     </div>
-                    <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
+                    <p className="whitespace-pre-wrap text-xs sm:text-sm text-white/80 leading-relaxed">
                       {update.updateText}
                     </p>
                   </div>

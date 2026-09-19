@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { 
-  SendHorizonal, X, Smile, Paperclip, Mic, Image as ImageIcon, 
-  FileText, Film, Radio, Trash2, Loader2, MessageSquareReply, Gamepad2
+  SendHorizonal, X, Smile, Paperclip, FileText, Loader2, MessageSquareReply
 } from 'lucide-react';
 import Button from '@frontend/components/ui/Button';
 
@@ -79,21 +78,12 @@ export function MessageInput({
   replyTo,
   onCancelReply,
   members = [],
-  onShowGames,
 }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const [isCompressing, setIsCompressing] = useState(false);
-  
-  // Voice Recording State
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const recordingTimerRef = useRef(null);
-  const audioStreamRef = useRef(null);
 
   const textareaRef = useRef(null);
   const emojiPickerRef = useRef(null);
@@ -126,20 +116,10 @@ export function MessageInput({
     return () => clearTimeout(debounceTimer);
   }, [text, attachments.length, onTyping]);
 
-  // Clean up recording on unmount
-  useEffect(() => {
-    return () => {
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
-
   const handleEmojiClick = useCallback((emoji) => {
     setText(current => current + emoji);
     textareaRef.current?.focus();
-  }, []);
+  }, [setText]);
 
   const handleFileSelect = useCallback(async (e) => {
     const files = Array.from(e.target.files || []);
@@ -172,99 +152,8 @@ export function MessageInput({
     setAttachments(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  // Start Voice Recording
-  const startVoiceRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioStreamRef.current = stream;
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.start(100);
-      setIsRecording(true);
-      setRecordingDuration(0);
-
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration(prev => prev + 1);
-      }, 1000);
-    } catch (err) {
-      console.error('Microphone access denied or error:', err);
-      alert('Microphone access is needed to record voice notes. Please grant microphone permissions in your browser.');
-    }
-  };
-
-  // Stop & Send Voice Recording
-  const stopVoiceRecording = () => {
-    if (!mediaRecorderRef.current || !isRecording) return;
-    
-    clearInterval(recordingTimerRef.current);
-    const recorder = mediaRecorderRef.current;
-    
-    recorder.onstop = async () => {
-      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      const reader = new FileReader();
-      
-      reader.onloadend = async () => {
-        const audioDataUrl = reader.result;
-        const voiceAttachment = {
-          id: Date.now(),
-          name: `Voice Note (${formatSeconds(recordingDuration)})`,
-          size: audioBlob.size,
-          type: 'audio/webm',
-          url: audioDataUrl,
-          isVoiceNote: true,
-        };
-
-        if (audioStreamRef.current) {
-          audioStreamRef.current.getTracks().forEach(track => track.stop());
-          audioStreamRef.current = null;
-        }
-
-        setIsRecording(false);
-        setRecordingDuration(0);
-
-        setSending(true);
-        try {
-          await onSend('', [], [voiceAttachment]);
-        } finally {
-          setSending(false);
-        }
-      };
-
-      reader.readAsDataURL(audioBlob);
-    };
-
-    recorder.stop();
-  };
-
-  // Cancel Voice Recording
-  const cancelVoiceRecording = () => {
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-    }
-    if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach(track => track.stop());
-      audioStreamRef.current = null;
-    }
-    audioChunksRef.current = [];
-    setIsRecording(false);
-    setRecordingDuration(0);
-  };
-
   const submit = async (event) => {
     event.preventDefault();
-    if (isRecording) {
-      stopVoiceRecording();
-      return;
-    }
     const cleanText = text.trim();
     if (!cleanText && attachments.length === 0) return;
     if (disabled || readOnlyReason || sending || isCompressing) return;
@@ -286,14 +175,8 @@ export function MessageInput({
     textareaRef.current?.focus();
   };
 
-  const formatSeconds = (sec) => {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
   return (
-    <form onSubmit={submit} className="shrink-0 w-full border-t border-white/10 bg-slate-950/95 backdrop-blur-2xl px-2.5 sm:px-4 py-2 sm:py-3 z-20 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+    <form onSubmit={submit} className="shrink-0 w-full border-t border-white/10 bg-zinc-950/95 backdrop-blur-2xl px-3 sm:px-5 py-2.5 sm:py-3 z-20 pb-[max(0.7rem,env(safe-area-inset-bottom))]">
       
       {/* Reply Preview Banner */}
       {replyTo && (
@@ -367,48 +250,9 @@ export function MessageInput({
         </div>
       )}
 
-      {/* Live Voice Recording UI Bar */}
-      {isRecording ? (
-        <div className="flex items-center justify-between gap-2 sm:gap-3 p-2 rounded-2xl bg-red-950/50 border border-red-500/40 animate-fade-in backdrop-blur-xl">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-600 text-white animate-pulse">
-              <Radio className="h-4 w-4 animate-spin" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping shrink-0" />
-                <span className="text-xs font-bold text-red-400 truncate">Recording Voice Note</span>
-              </div>
-              <span className="font-mono text-xs font-bold text-white">{formatSeconds(recordingDuration)}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={cancelVoiceRecording}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition text-xs font-semibold"
-            >
-              <Trash2 className="h-3.5 w-3.5 text-red-400" />
-              <span className="hidden xs:inline">Cancel</span>
-            </button>
-            <button
-              type="button"
-              onClick={stopVoiceRecording}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold text-xs shadow-md shadow-red-600/30 hover:scale-105 transition"
-            >
-              <SendHorizonal className="h-3.5 w-3.5" />
-              <span>Send</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* Standard Message Input Container */
-        <div className="relative flex items-end gap-1.5 sm:gap-2">
+      <div className="relative flex items-end gap-1.5 sm:gap-2">
           
-          {/* Action Buttons: Emoji & Attachment */}
-          <div className="flex items-center gap-0.5 pb-0.5 sm:pb-1">
-            {/* Emoji Trigger */}
+          <div className="flex items-center gap-0.5 pb-1">
             <div className="relative">
               <button
                 type="button"
@@ -447,7 +291,6 @@ export function MessageInput({
               )}
             </div>
 
-            {/* File & Photo Attachment Trigger */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -463,24 +306,10 @@ export function MessageInput({
               multiple
               onChange={handleFileSelect}
               className="hidden"
-              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip"
+              accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip"
             />
-
-            {/* Games Quick Launcher */}
-            {onShowGames && (
-              <button
-                type="button"
-                onClick={onShowGames}
-                className="hidden xs:flex h-9 w-9 items-center justify-center rounded-xl text-purple-400 hover:text-purple-300 hover:bg-purple-500/15 transition border border-transparent"
-                aria-label="Start multiplayer game"
-                title="Play Multiplayer Games"
-              >
-                <Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-            )}
           </div>
 
-          {/* Text Area */}
           <div className="flex-1 relative">
             <textarea
               id="global-chat-message"
@@ -497,39 +326,25 @@ export function MessageInput({
               rows={1}
               maxLength={4000}
               disabled={disabled || !!readOnlyReason || sending || isCompressing}
-              className="w-full min-h-[40px] max-h-32 resize-none rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs sm:text-sm text-white placeholder:text-white/40 outline-none transition focus:border-indigo-500/70 focus:bg-white/10 focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-50"
+              className="w-full min-h-[42px] max-h-32 resize-none rounded-xl border border-white/15 bg-white/[0.07] px-3 sm:px-4 py-2.5 text-sm text-white placeholder:text-white/40 outline-none transition focus:border-cyan-400/60 focus:bg-white/10 focus:ring-2 focus:ring-cyan-400/15 disabled:opacity-50"
             />
           </div>
 
-          {/* Send or Voice Note Button */}
-          <div className="pb-0.5 sm:pb-1">
-            {text.trim() || attachments.length > 0 ? (
-              <Button
-                type="submit"
-                disabled={disabled || !!readOnlyReason || sending || isCompressing}
-                className="h-[40px] px-3.5 sm:px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-lg shadow-indigo-600/30 transition active:scale-95 border border-indigo-400/30"
-                aria-label="Send message"
-              >
-                {sending || isCompressing ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-white" />
-                ) : (
-                  <SendHorizonal className="h-4 w-4 text-white" />
-                )}
-              </Button>
-            ) : (
-              <button
-                type="button"
-                onClick={startVoiceRecording}
-                className="h-[40px] w-[40px] flex items-center justify-center rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 transition active:scale-95"
-                aria-label="Record voice note"
-                title="Hold or Click to Record Voice Note"
-              >
-                <Mic className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-            )}
+          <div className="pb-1">
+            <Button
+              type="submit"
+              disabled={disabled || !!readOnlyReason || sending || isCompressing || (!text.trim() && attachments.length === 0)}
+              className="h-[42px] w-[42px] sm:w-auto sm:px-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:bg-white/10 disabled:text-white/35 disabled:shadow-none text-slate-950 shadow-lg shadow-cyan-950/30 transition active:scale-95 border border-cyan-200/30"
+              aria-label="Send message"
+            >
+              {sending || isCompressing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <SendHorizonal className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         </div>
-      )}
 
     </form>
   );

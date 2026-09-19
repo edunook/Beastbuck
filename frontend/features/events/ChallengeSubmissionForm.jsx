@@ -92,7 +92,7 @@ export default function ChallengeSubmissionForm({ onSubmit, isSubmitting }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-2xl border border-border/60 bg-surface/50 p-6">
+    <form onSubmit={handleSubmit} className="bb-form-safe-bottom space-y-6 rounded-2xl border border-border/60 bg-surface/50 p-6">
       <div>
         <h3 className="mb-1 font-heading text-xl font-bold text-white">Submit Your Entry</h3>
         <p className="text-sm text-text-muted">Showcase your work to the judges.</p>
@@ -151,7 +151,7 @@ export default function ChallengeSubmissionForm({ onSubmit, isSubmitting }) {
           ))}
 
           <label className={`flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border transition-colors ${
-            !isCloudinaryConfigured || uploading ? 'opacity-50 cursor-not-allowed' : 'hover:border-accent hover:bg-accent/5'
+            !isStorageConfigured || uploading ? 'opacity-50 cursor-not-allowed' : 'hover:border-accent hover:bg-accent/5'
           }`}>
             {uploading ? <Loader2 className="h-6 w-6 animate-spin text-accent" /> : <Upload className="h-6 w-6 text-text-muted" />}
             <span className="mt-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">Add</span>
@@ -159,13 +159,13 @@ export default function ChallengeSubmissionForm({ onSubmit, isSubmitting }) {
               type="file"
               multiple
               className="hidden"
-              disabled={!isCloudinaryConfigured || uploading}
+              disabled={!isStorageConfigured || uploading}
               onChange={handleFileSelect}
             />
           </label>
         </div>
-        {!isCloudinaryConfigured && (
-          <p className="mt-2 text-xs text-status-warning">Cloudinary is not configured. Media uploads are disabled.</p>
+        {!isStorageConfigured && (
+          <p className="mt-2 text-xs text-status-warning">Storage is not configured. Media uploads are disabled.</p>
         )}
       </div>
 

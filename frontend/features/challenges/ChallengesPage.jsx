@@ -613,7 +613,7 @@ function CreateChallengeModal({ isOpen, onClose, onSubmit }) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-black/90 backdrop-blur-md animate-fade-in p-0 sm:p-4 md:p-6 overflow-hidden">
-      <div className="relative w-full max-w-4xl max-h-[92dvh] sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl glass-card border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
+      <div className="relative w-full max-w-4xl max-h-[100dvh] sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl glass-card border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
         {/* Sticky Header */}
         <div className="flex-shrink-0 p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-start justify-between gap-3 z-20">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -992,7 +992,7 @@ function CreateChallengeModal({ isOpen, onClose, onSubmit }) {
             </div>
 
             {/* Sticky Action Footer */}
-            <div className="flex-shrink-0 p-3 sm:p-5 border-t border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-center gap-3 z-20">
+            <div className="bb-sticky-action-footer flex-shrink-0 border-t border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-center gap-3 z-20">
               <Button
                 type="button"
                 variant="secondary"
@@ -1083,7 +1083,7 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-black/90 backdrop-blur-md animate-fade-in p-0 sm:p-4 md:p-6 overflow-hidden">
-      <div className="relative w-full max-w-4xl max-h-[94dvh] sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl glass-card border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
+      <div className="relative w-full max-w-4xl max-h-[100dvh] sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl glass-card border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
         {/* Sticky Header */}
         <div className="flex-shrink-0 p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-start justify-between gap-3 z-20">
           <div className="flex items-start gap-3 min-w-0">
@@ -1230,7 +1230,7 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
             </div>
 
             {/* Sticky Action Footer */}
-            <div className="flex-shrink-0 p-3 sm:p-5 border-t border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-center z-20">
+            <div className="bb-sticky-action-footer flex-shrink-0 border-t border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-center z-20">
               <Button onClick={onClose} className="w-full py-2.5 sm:py-3 text-xs sm:text-sm font-bold">
                 Close
               </Button>
@@ -1508,7 +1508,7 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
             </div>
 
             {/* Sticky Bottom Action Footer */}
-            <div className="flex-shrink-0 p-3 sm:p-5 border-t border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-center gap-3 z-20">
+            <div className="bb-sticky-action-footer flex-shrink-0 border-t border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-center gap-3 z-20">
               <Button
                 type="button"
                 variant="secondary"

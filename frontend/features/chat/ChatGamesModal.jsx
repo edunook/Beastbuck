@@ -1,19 +1,32 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { db } from '@services/firebase/config';
 import {
-  addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, query,
-  serverTimestamp, updateDoc, where, limit
+  addDoc, collection, deleteDoc, doc, onSnapshot, query,
+  serverTimestamp, updateDoc, where, limit, deleteField, runTransaction
 } from 'firebase/firestore';
 import {
-  X, Gamepad2, Target, Brain, RefreshCw, Trophy,
-  Send, Users, Zap
+  X, Gamepad2, Target, Brain, RefreshCw,
+  Send, Users, Crosshair, Shield, Move, HeartPulse
 } from 'lucide-react';
-import Button from '@frontend/components/ui/Button';
 
 /* ═══════════════════════════════════════════════════════════════
    GAME DEFINITIONS — Multiplayer Only (2 real players required)
    ═══════════════════════════════════════════════════════════════ */
 const MULTIPLAYER_GAMES = [
+  {
+    id: 'arena',
+    name: 'Blaster Arena',
+    icon: Crosshair,
+    emoji: '🔫🛡️',
+    players: '2-7 Players',
+    maxPlayers: 7,
+    duration: '~8 min',
+    description: 'A tactical squad arena for up to seven fighters with movement, shields, blaster shots, HP, and last-player-standing rounds.',
+    gradient: 'from-rose-600/30 to-fuchsia-700/20',
+    border: 'border-rose-500/40',
+    accent: 'text-rose-300',
+    accentBg: 'bg-rose-500/20',
+  },
   {
     id: 'ttt',
     name: 'Tic-Tac-Toe Duel',
@@ -22,7 +35,7 @@ const MULTIPLAYER_GAMES = [
     players: '2 Players',
     maxPlayers: 2,
     duration: '~2 min',
-    description: 'Classic 3×3 strategy duel. Align three marks before your opponent does!',
+    description: 'Classic 3x3 strategy duel. Align three marks before your opponent does.',
     gradient: 'from-violet-600/30 to-purple-700/20',
     border: 'border-violet-500/40',
     accent: 'text-violet-400',
@@ -30,13 +43,13 @@ const MULTIPLAYER_GAMES = [
   },
   {
     id: 'c4',
-    name: 'Connect Four Duel',
+    name: 'Connect Four Arena',
     icon: Target,
     emoji: '🔴🟡',
     players: '2 Players',
     maxPlayers: 2,
     duration: '~3 min',
-    description: 'Drop discs into the 7-column grid. First to connect four in a row wins!',
+    description: 'A bigger grid strategy battle with live turn pressure and board control.',
     gradient: 'from-blue-600/30 to-cyan-700/20',
     border: 'border-blue-500/40',
     accent: 'text-blue-400',
@@ -49,8 +62,8 @@ const MULTIPLAYER_GAMES = [
     emoji: '✊✋✌️',
     players: '2 Players',
     maxPlayers: 2,
-    duration: '~1 min',
-    description: 'Best of 3 showdown! Choose your weapon simultaneously and outsmart your rival!',
+    duration: '~2 min',
+    description: 'Best-of-5 mind game with hidden choices, instant reveals, and round history.',
     gradient: 'from-amber-600/30 to-orange-700/20',
     border: 'border-amber-500/40',
     accent: 'text-amber-400',
@@ -63,8 +76,8 @@ const MULTIPLAYER_GAMES = [
     emoji: '🧠⚡',
     players: '2 Players',
     maxPlayers: 2,
-    duration: '~3 min',
-    description: 'Race through trivia questions. Both answer each question — most correct wins!',
+    duration: '~4 min',
+    description: 'A randomized 5-question knowledge duel with answer reveals and final scoring.',
     gradient: 'from-emerald-600/30 to-teal-700/20',
     border: 'border-emerald-500/40',
     accent: 'text-emerald-400',
@@ -81,7 +94,40 @@ const TRIVIA_QUESTIONS = [
   { q: 'HTTP status code for "Created"?', options: ['200', '201', '404', '500'], answer: '201' },
   { q: 'What does CSS stand for?', options: ['Computer Style Sheets', 'Cascading Style Sheets', 'Creative Style System', 'Colorful Style Sheets'], answer: 'Cascading Style Sheets' },
   { q: 'Which planet is known as the Red Planet?', options: ['Venus', 'Mars', 'Jupiter', 'Saturn'], answer: 'Mars' },
+  { q: 'What does API stand for?', options: ['Application Programming Interface', 'Applied Program Index', 'Automated Process Input', 'Application Page Instance'], answer: 'Application Programming Interface' },
+  { q: 'Which unit measures electric current?', options: ['Volt', 'Ampere', 'Ohm', 'Watt-hour'], answer: 'Ampere' },
+  { q: 'Which algorithm pattern solves problems by trying all options?', options: ['Backtracking', 'Hashing', 'Caching', 'Compression'], answer: 'Backtracking' },
+  { q: 'Which gas do plants absorb during photosynthesis?', options: ['Oxygen', 'Carbon dioxide', 'Nitrogen', 'Hydrogen'], answer: 'Carbon dioxide' },
+  { q: 'What is the binary value of decimal 5?', options: ['101', '110', '011', '111'], answer: '101' },
+  { q: 'Which HTML tag creates a link?', options: ['<a>', '<linker>', '<href>', '<url>'], answer: '<a>' },
+  { q: 'What is the center of an atom called?', options: ['Electron', 'Nucleus', 'Proton cloud', 'Ion'], answer: 'Nucleus' },
 ];
+
+const TRIVIA_DUEL_LENGTH = 5;
+
+const ARENA_MAX_PLAYERS = 7;
+const PLAYER_ROLES = ['player1', 'player2', 'player3', 'player4', 'player5', 'player6', 'player7'];
+const ARENA_SPAWNS = {
+  player1: 0,
+  player2: 6,
+  player3: 42,
+  player4: 48,
+  player5: 3,
+  player6: 45,
+  player7: 24,
+};
+const ARENA_STYLES = {
+  player1: { label: 'P1', chip: 'bg-violet-500', border: 'border-violet-200', text: 'text-violet-200' },
+  player2: { label: 'P2', chip: 'bg-cyan-500', border: 'border-cyan-200', text: 'text-cyan-200' },
+  player3: { label: 'P3', chip: 'bg-amber-500', border: 'border-amber-200', text: 'text-amber-200' },
+  player4: { label: 'P4', chip: 'bg-emerald-500', border: 'border-emerald-200', text: 'text-emerald-200' },
+  player5: { label: 'P5', chip: 'bg-blue-500', border: 'border-blue-200', text: 'text-blue-200' },
+  player6: { label: 'P6', chip: 'bg-lime-500', border: 'border-lime-200', text: 'text-lime-200' },
+  player7: { label: 'P7', chip: 'bg-pink-500', border: 'border-pink-200', text: 'text-pink-200' },
+};
+const ARENA_MAX_HP = 100;
+const ARENA_SHOT_DAMAGE = 35;
+const ARENA_SHIELD_GAIN = 25;
 
 /* ═══════════════════════════════════════════════════════════════
    GAME LOGIC HELPERS
@@ -89,22 +135,46 @@ const TRIVIA_QUESTIONS = [
 function initialGameState(gameId) {
   console.log('Initializing game state for:', gameId);
   switch (gameId) {
-    case 'ttt':
+    case 'arena': {
+      const arenaState = {
+        boardSize: 7,
+        currentTurn: 'player1',
+        winner: null,
+        round: 1,
+        actionCount: 0,
+        players: {
+          player1: createArenaPlayer('player1'),
+        },
+        log: ['Arena created. Invite up to 6 more players, then start the match.'],
+        lastAction: null,
+      };
+      console.log('Arena initial state:', arenaState);
+      return arenaState;
+    }
+    case 'ttt': {
       const tttState = { board: Array(9).fill(null), currentTurn: 'player1', winner: null };
       console.log('TTT initial state:', tttState);
       return tttState;
-    case 'c4':
-      const c4State = { board: Array(42).fill(null), currentTurn: 'player1', winner: null };
+    }
+    case 'c4': {
+      const c4State = { board: Array(42).fill(null), currentTurn: 'player1', winner: null, moveCount: 0, lastMove: null };
       console.log('C4 initial state:', c4State);
       return c4State;
-    case 'rps':
-      const rpsState = { p1Choice: null, p2Choice: null, round: 1, p1Score: 0, p2Score: 0, bestOf: 3, roundHistory: [] };
+    }
+    case 'rps': {
+      const rpsState = { p1Choice: null, p2Choice: null, round: 1, p1Score: 0, p2Score: 0, bestOf: 5, roundHistory: [] };
       console.log('RPS initial state:', rpsState);
       return rpsState;
-    case 'trivia':
-      const triviaState = { questionIndex: 0, p1Answer: null, p2Answer: null, p1Score: 0, p2Score: 0, questionResults: [] };
+    }
+    case 'trivia': {
+      const questionOrder = TRIVIA_QUESTIONS
+        .map((_, index) => index)
+        .sort(() => Math.random() - 0.5)
+        .slice(0, TRIVIA_DUEL_LENGTH);
+      const triviaState = { questionIndex: 0, questionOrder, p1Answer: null, p2Answer: null, p1Score: 0, p2Score: 0, questionResults: [] };
       console.log('Trivia initial state:', triviaState);
       return triviaState;
+    }
     default:
       console.error('Unknown game ID:', gameId);
       return {};
@@ -147,6 +217,99 @@ function getRPSResult(p1, p2) {
 }
 
 const RPS_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️' };
+const RPS_LABELS = {
+  rock: 'Breaks scissors',
+  paper: 'Covers rock',
+  scissors: 'Cuts paper',
+};
+
+function getTriviaQuestion(gameState) {
+  const questionIndex = gameState?.questionOrder?.[gameState.questionIndex] ?? gameState?.questionIndex ?? 0;
+  return TRIVIA_QUESTIONS[questionIndex] || TRIVIA_QUESTIONS[0];
+}
+
+function getTriviaLength(gameState) {
+  return gameState?.questionOrder?.length || TRIVIA_QUESTIONS.length;
+}
+
+function getGameDefinition(gameId) {
+  return MULTIPLAYER_GAMES.find(game => game.id === gameId) || null;
+}
+
+function isArenaGame(gameId) {
+  return gameId === 'arena';
+}
+
+function createArenaPlayer(role) {
+  return {
+    hp: ARENA_MAX_HP,
+    shield: 0,
+    energy: 3,
+    pos: ARENA_SPAWNS[role] ?? 12,
+    alive: true,
+  };
+}
+
+function getSessionRoles(sessionData, maxPlayers = 2) {
+  return PLAYER_ROLES.slice(0, maxPlayers).filter(role => !!sessionData?.[role]?.uid);
+}
+
+function getNextOpenRole(sessionData, maxPlayers = 2) {
+  return PLAYER_ROLES.slice(0, maxPlayers).find(role => !sessionData?.[role]?.uid) || null;
+}
+
+function getArenaPlayers(sessionData) {
+  const gamePlayers = sessionData?.gameState?.players || {};
+  return getSessionRoles(sessionData, ARENA_MAX_PLAYERS).map(role => ({
+    role,
+    profile: sessionData?.[role],
+    state: gamePlayers[role] || createArenaPlayer(role),
+  }));
+}
+
+function getAliveArenaRoles(players = {}) {
+  return PLAYER_ROLES.filter(role => players[role]?.alive && players[role]?.hp > 0);
+}
+
+function getNextArenaTurn(players = {}, currentRole = 'player1') {
+  const aliveRoles = getAliveArenaRoles(players);
+  if (aliveRoles.length <= 1) return aliveRoles[0] || null;
+
+  const currentIndex = PLAYER_ROLES.indexOf(currentRole);
+  for (let offset = 1; offset <= PLAYER_ROLES.length; offset++) {
+    const role = PLAYER_ROLES[(currentIndex + offset) % PLAYER_ROLES.length];
+    if (aliveRoles.includes(role)) return role;
+  }
+  return aliveRoles[0];
+}
+
+function getArenaWinner(players = {}) {
+  const aliveRoles = getAliveArenaRoles(players);
+  return aliveRoles.length === 1 ? aliveRoles[0] : null;
+}
+
+function getArenaDistance(a, b, boardSize = 7) {
+  const ar = Math.floor(a / boardSize);
+  const ac = a % boardSize;
+  const br = Math.floor(b / boardSize);
+  const bc = b % boardSize;
+  return Math.abs(ar - br) + Math.abs(ac - bc);
+}
+
+function isArenaAdjacent(a, b, boardSize = 7) {
+  return getArenaDistance(a, b, boardSize) === 1;
+}
+
+function isArenaOccupied(players = {}, pos, ignoreRole = null) {
+  return PLAYER_ROLES.some(role => role !== ignoreRole && players[role]?.alive && players[role]?.pos === pos);
+}
+
+function getArenaLogLine(actorName, action, targetName = '') {
+  if (action === 'move') return `${actorName} repositioned for a better angle.`;
+  if (action === 'shield') return `${actorName} raised a shield.`;
+  if (action === 'shot') return `${actorName} blasted ${targetName}.`;
+  return `${actorName} made a move.`;
+}
 
 /* ═══════════════════════════════════════════════════════════════
    FIRESTORE REFS
@@ -154,21 +317,55 @@ const RPS_EMOJI = { rock: '✊', paper: '✋', scissors: '✌️' };
 const gamesCol = () => collection(db, 'gameSessions');
 const gameDocRef = (id) => doc(db, 'gameSessions', id);
 
+async function claimOpenSessionRole(id, userId, displayName) {
+  return runTransaction(db, async (transaction) => {
+    const sessionRef = gameDocRef(id);
+    const sessionSnap = await transaction.get(sessionRef);
+
+    if (!sessionSnap.exists()) throw new Error('This game session no longer exists');
+
+    const sessionData = sessionSnap.data();
+    if (sessionData.status !== 'waiting') throw new Error('This game is no longer available to join');
+    if (PLAYER_ROLES.some(role => sessionData[role]?.uid === userId)) {
+      throw new Error('You are already in this game session');
+    }
+
+    const gameDef = getGameDefinition(sessionData.gameId);
+    const nextRole = getNextOpenRole(sessionData, gameDef?.maxPlayers || 2);
+    if (!nextRole) throw new Error('This game is already full');
+
+    const updates = {
+      [nextRole]: { uid: userId, displayName },
+      updatedAt: serverTimestamp(),
+    };
+    if (isArenaGame(sessionData.gameId)) {
+      updates[`gameState.players.${nextRole}`] = createArenaPlayer(nextRole);
+    } else {
+      updates.status = 'active';
+    }
+
+    transaction.update(sessionRef, updates);
+    return { gameId: sessionData.gameId, role: nextRole };
+  });
+}
+
 /* ═══════════════════════════════════════════════════════════════
    CHAT GAMES MODAL — Real-Time Multiplayer
    ═══════════════════════════════════════════════════════════════ */
-export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general', onSendGameCard, joinSessionId = null }) {
+export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general', onSendGameCard, joinSessionId = null, initialGameId = null }) {
+  const initialSelectedGame = initialGameId ? getGameDefinition(initialGameId) : null;
   // ─── State ───────────────────────────────────────────
-  const [phase, setPhase] = useState(joinSessionId ? 'playing' : 'select'); // 'select' | 'lobby' | 'playing'
-  const [selectedGame, setSelectedGame] = useState(null);
+  const [phase, setPhase] = useState(joinSessionId ? 'playing' : initialSelectedGame ? 'lobby' : 'select'); // 'select' | 'lobby' | 'playing'
+  const [selectedGame, setSelectedGame] = useState(initialSelectedGame);
   const [sessionId, setSessionId] = useState(joinSessionId);
   const [session, setSession] = useState(null);
-  const [myRole, setMyRole] = useState(null); // 'player1' | 'player2'
+  const [myRole, setMyRole] = useState(null);
   const [waitingSessions, setWaitingSessions] = useState([]);
   const [isCreating, setIsCreating] = useState(false);
   const [inviteSent, setInviteSent] = useState(false);
   const [error, setError] = useState(null);
 
+  const currentUserId = currentUser?.uid;
   const currentName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'You';
   const phaseRef = useRef(phase);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
@@ -207,21 +404,17 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
       setSession(data);
       setError(null);
 
+      const currentRole = PLAYER_ROLES.find(role => data[role]?.uid === currentUserId);
+
       // Auto-determine role
-      if (data.player1?.uid === currentUser?.uid) {
-        setMyRole('player1');
-      } else if (data.player2?.uid === currentUser?.uid) {
-        setMyRole('player2');
+      if (currentRole) {
+        setMyRole(currentRole);
       } else if (data.status === 'waiting' && !hasJoined && joinSessionId) {
         // Auto-join for joinSessionId scenario
         hasJoined = true;
         try {
-          await updateDoc(gameDocRef(sessionId), {
-            player2: { uid: currentUser.uid, displayName: currentName },
-            status: 'active',
-            updatedAt: serverTimestamp(),
-          });
-          setMyRole('player2');
+          const joined = await claimOpenSessionRole(sessionId, currentUserId, currentName);
+          setMyRole(joined.role);
         } catch (err) {
           console.error('Auto-join failed:', err);
           setError('Failed to join game session');
@@ -231,7 +424,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
       // Set game definition if not set
       setSelectedGame(prev => {
         if (prev) return prev;
-        return MULTIPLAYER_GAMES.find(g => g.id === data.gameId) || null;
+        return getGameDefinition(data.gameId);
       });
 
       // Transition to playing when active
@@ -244,7 +437,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     });
 
     return unsub;
-  }, [sessionId, currentUser?.uid, currentName, joinSessionId]);
+  }, [sessionId, currentUserId, currentName, joinSessionId]);
 
   // ─── Subscribe to waiting sessions (lobby) ────────────
   useEffect(() => {
@@ -259,6 +452,8 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
           if (s.gameId !== selectedGame.id) return false;
           if (s.player1?.uid === currentUser?.uid) return false; // Don't show own sessions
           if (!s.player1?.uid) return false; // Invalid session
+          const gameDef = getGameDefinition(s.gameId);
+          if (!getNextOpenRole(s, gameDef?.maxPlayers || 2)) return false;
           const created = s.createdAt?.toMillis?.() || 0;
           return created > fifteenMinAgo;
         });
@@ -267,7 +462,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
       console.error('Failed to subscribe to waiting sessions:', err);
     });
     return unsub;
-  }, [phase, selectedGame?.id, activeRoomId, currentUser?.uid]);
+  }, [phase, selectedGame, activeRoomId, currentUser?.uid]);
 
   // ─── Cleanup waiting session on unmount or close ────────────────
   const sessionIdRef = useRef(sessionId);
@@ -333,6 +528,11 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
         status: 'waiting',
         player1: { uid: currentUser.uid, displayName: currentName },
         player2: null,
+        player3: null,
+        player4: null,
+        player5: null,
+        player6: null,
+        player7: null,
         gameState: gameState,
         winner: null,
         createdAt: serverTimestamp(),
@@ -369,35 +569,12 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     try {
       console.log('Joining game session:', id, 'as user:', currentUser.uid);
 
-      // First check if session still exists and is waiting
-      const snap = await getDoc(gameDocRef(id));
-
-      if (!snap.exists()) {
-        setError('This game session no longer exists');
-        return;
-      }
-
-      const sessionData = snap.data();
-      if (sessionData.status !== 'waiting') {
-        setError('This game is no longer available to join');
-        return;
-      }
-
-      if (sessionData.player1?.uid === currentUser?.uid) {
-        setError('You cannot join your own game session');
-        return;
-      }
-
-      await updateDoc(gameDocRef(id), {
-        player2: { uid: currentUser.uid, displayName: currentName },
-        status: 'active',
-        updatedAt: serverTimestamp(),
-      });
+      const joined = await claimOpenSessionRole(id, currentUserId, currentName);
 
       console.log('Successfully joined game session:', id);
       setSessionId(id);
-      setMyRole('player2');
-      setPhase('playing');
+      setMyRole(joined.role);
+      setPhase(isArenaGame(joined.gameId) ? 'lobby' : 'playing');
       setError(null);
     } catch (err) {
       console.error('Failed to join session:', err);
@@ -434,6 +611,33 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     setError(null);
   };
 
+  const handleLeaveWaitingArena = async () => {
+    if (!sessionId || session?.status !== 'waiting' || selectedGame?.id !== 'arena' || !myRole) {
+      handleCancelSession();
+      return;
+    }
+
+    if (myRole === 'player1') {
+      handleCancelSession();
+      return;
+    }
+
+    try {
+      await updateDoc(gameDocRef(sessionId), {
+        [myRole]: null,
+        [`gameState.players.${myRole}`]: deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('Failed to leave arena lobby:', err);
+    }
+
+    setSessionId(null);
+    setSession(null);
+    setMyRole(null);
+    setError(null);
+  };
+
   const handleBackToSelect = () => {
     handleCancelSession();
     setSelectedGame(null);
@@ -450,6 +654,27 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
     setError(null);
   };
 
+  const handleStartArena = async () => {
+    if (!sessionId || selectedGame?.id !== 'arena' || myRole !== 'player1') return;
+    const joinedRoles = getSessionRoles(session, ARENA_MAX_PLAYERS);
+    if (joinedRoles.length < 2) {
+      setError('Blaster Arena needs at least 2 players to start');
+      return;
+    }
+    try {
+      await updateDoc(gameDocRef(sessionId), {
+        status: 'active',
+        'gameState.currentTurn': 'player1',
+        'gameState.log': [`${p1Name} launched the arena match with ${joinedRoles.length} players.`],
+        updatedAt: serverTimestamp(),
+      });
+      setPhase('playing');
+    } catch (err) {
+      console.error('Failed to start arena:', err);
+      setError('Failed to start the arena. Please try again.');
+    }
+  };
+
   // ─── Game Move Handlers ──────────────────────────────
   const gs = session?.gameState;
   const p1Name = session?.player1?.displayName || 'Player 1';
@@ -457,6 +682,87 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
   const opponentName = myRole === 'player1' ? p2Name : p1Name;
   const isMyTurn = gs?.currentTurn === myRole;
   const isFinished = session?.status === 'finished' || !!gs?.winner;
+
+  const commitArenaState = async (players, action, targetRole = null) => {
+    const winner = getArenaWinner(players);
+    const nextTurn = winner ? null : getNextArenaTurn(players, myRole);
+    const actorName = session?.[myRole]?.displayName || currentName;
+    const targetName = targetRole ? session?.[targetRole]?.displayName || ARENA_STYLES[targetRole]?.label : '';
+    const newState = {
+      ...gs,
+      players,
+      currentTurn: nextTurn,
+      winner,
+      round: (gs.round || 1) + 1,
+      actionCount: (gs.actionCount || 0) + 1,
+      lastAction: { actor: myRole, target: targetRole, action },
+      log: [getArenaLogLine(actorName, action, targetName), ...(gs.log || [])].slice(0, 5),
+    };
+    const updates = { gameState: newState, updatedAt: serverTimestamp() };
+    if (winner) updates.status = 'finished';
+    await updateDoc(gameDocRef(sessionId), updates);
+  };
+
+  const handleArenaMove = async (pos) => {
+    if (!gs || selectedGame?.id !== 'arena' || !isMyTurn || !sessionId) return;
+    const players = { ...(gs.players || {}) };
+    const me = { ...(players[myRole] || createArenaPlayer(myRole)) };
+    if (!me.alive || !isArenaAdjacent(me.pos, pos, gs.boardSize) || isArenaOccupied(players, pos, myRole)) return;
+    players[myRole] = { ...me, pos, energy: Math.min(3, (me.energy || 0) + 1) };
+    try {
+      await commitArenaState(players, 'move');
+    } catch (err) {
+      console.error('Failed to move arena player:', err);
+      setError('Failed to move. Please try again.');
+    }
+  };
+
+  const handleArenaShield = async () => {
+    if (!gs || selectedGame?.id !== 'arena' || !isMyTurn || !sessionId) return;
+    const players = { ...(gs.players || {}) };
+    const me = { ...(players[myRole] || createArenaPlayer(myRole)) };
+    if (!me.alive) return;
+    players[myRole] = {
+      ...me,
+      shield: Math.min(60, (me.shield || 0) + ARENA_SHIELD_GAIN),
+      energy: Math.min(3, (me.energy || 0) + 1),
+    };
+    try {
+      await commitArenaState(players, 'shield');
+    } catch (err) {
+      console.error('Failed to shield arena player:', err);
+      setError('Failed to raise shield. Please try again.');
+    }
+  };
+
+  const handleArenaShoot = async (targetRole) => {
+    if (!gs || selectedGame?.id !== 'arena' || !isMyTurn || !sessionId || targetRole === myRole) return;
+    const players = { ...(gs.players || {}) };
+    const me = { ...(players[myRole] || createArenaPlayer(myRole)) };
+    const target = { ...(players[targetRole] || {}) };
+    if (!me.alive || !target.alive) return;
+
+    const distance = getArenaDistance(me.pos, target.pos, gs.boardSize);
+    const damage = Math.max(15, ARENA_SHOT_DAMAGE - Math.max(0, distance - 1) * 8);
+    const shieldAbsorb = Math.min(target.shield || 0, damage);
+    const nextShield = Math.max(0, (target.shield || 0) - shieldAbsorb);
+    const nextHp = Math.max(0, (target.hp || 0) - (damage - shieldAbsorb));
+
+    players[targetRole] = {
+      ...target,
+      shield: nextShield,
+      hp: nextHp,
+      alive: nextHp > 0,
+    };
+    players[myRole] = { ...me, energy: Math.max(0, (me.energy || 0) - 1) };
+
+    try {
+      await commitArenaState(players, 'shot', targetRole);
+    } catch (err) {
+      console.error('Failed to shoot arena player:', err);
+      setError('Failed to fire. Please try again.');
+    }
+  };
 
   // TTT Move
   const handleTTTMove = async (idx) => {
@@ -497,7 +803,14 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
       const isDraw = !won && board.every(c => c !== null);
       const winner = won ? myRole : isDraw ? 'draw' : null;
 
-      const newState = { ...gs, board, currentTurn: myRole === 'player1' ? 'player2' : 'player1', winner };
+      const newState = {
+        ...gs,
+        board,
+        currentTurn: myRole === 'player1' ? 'player2' : 'player1',
+        winner,
+        moveCount: (gs.moveCount || 0) + 1,
+        lastMove: { row, col, mark },
+      };
       const updates = { gameState: newState, updatedAt: serverTimestamp() };
       if (winner) updates.status = 'finished';
       await updateDoc(gameDocRef(sessionId), updates);
@@ -570,10 +883,10 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
   const handleTriviaNext = async () => {
     if (!gs || !gs.p1Answer || !gs.p2Answer || !sessionId) return;
     try {
-      const correct = TRIVIA_QUESTIONS[gs.questionIndex]?.answer;
+      const correct = getTriviaQuestion(gs)?.answer;
       const newP1Score = gs.p1Answer === correct ? gs.p1Score + 1 : gs.p1Score;
       const newP2Score = gs.p2Answer === correct ? gs.p2Score + 1 : gs.p2Score;
-      const isLast = gs.questionIndex + 1 >= TRIVIA_QUESTIONS.length;
+      const isLast = gs.questionIndex + 1 >= getTriviaLength(gs);
 
       const newState = {
         ...gs,
@@ -647,7 +960,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
           {phase === 'select' && (
             <div>
               <p className="text-sm text-white/60 mb-5 text-center">
-                Every game requires another member to join before it starts. Choose a game to create or find a duel!
+                Choose a stronger multiplayer duel. Every arena requires another member to join before it starts.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {MULTIPLAYER_GAMES.map((game) => {
@@ -667,7 +980,10 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                             {game.players}
                           </span>
                         </div>
-                        <div className="text-2xl mb-2">{game.emoji}</div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-2xl">{game.emoji}</span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${game.accent}`}>Power Duel</span>
+                        </div>
                         <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition">{game.name}</h3>
                         <p className="text-xs text-white/60 mt-1 leading-relaxed">{game.description}</p>
                       </div>
@@ -684,51 +1000,147 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
           {/* ═══ PHASE: LOBBY ═══ */}
           {phase === 'lobby' && (
-            <div className="max-w-lg mx-auto">
+            <div className={selectedGame?.id === 'arena' ? 'max-w-3xl mx-auto' : 'max-w-lg mx-auto'}>
 
               {/* Waiting for opponent (session created) */}
               {sessionId && session?.status === 'waiting' && (
-                <div className="text-center py-8">
-                  {/* Radar pulse animation with enhanced highlight */}
-                  <div className="relative w-36 h-36 mx-auto mb-6">
-                    <div className="absolute inset-0 rounded-full border-2 border-indigo-400/50 animate-ping" />
-                    <div className="absolute inset-3 rounded-full border-2 border-indigo-400/40 animate-ping" style={{ animationDelay: '0.5s' }} />
-                    <div className="absolute inset-6 rounded-full border-2 border-indigo-400/30 animate-ping" style={{ animationDelay: '1s' }} />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="h-18 w-18 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-2xl shadow-2xl shadow-indigo-500/50 ring-4 ring-indigo-400/30" style={{ width: 72, height: 72 }}>
-                        {currentName.charAt(0).toUpperCase()}
+                selectedGame?.id === 'arena' ? (() => {
+                  const arenaPlayers = getArenaPlayers(session);
+                  const joinedCount = arenaPlayers.length;
+                  const canStart = myRole === 'player1' && joinedCount >= 2;
+
+                  return (
+                    <div className="py-4">
+                      <div className="mb-5 overflow-hidden rounded-3xl border border-rose-400/30 bg-gradient-to-br from-rose-950/80 via-slate-950 to-cyan-950/70 shadow-2xl shadow-rose-950/30">
+                        <div className="relative h-44 border-b border-white/10 bg-[radial-gradient(circle_at_20%_25%,rgba(244,63,94,0.26),transparent_28%),radial-gradient(circle_at_78%_70%,rgba(34,211,238,0.22),transparent_30%)]">
+                          <div className="absolute inset-x-6 top-8 h-2 rounded-full bg-white/10" />
+                          <div className="absolute bottom-8 left-10 h-2 w-32 rounded-full bg-white/10" />
+                          <div className="absolute right-10 top-20 h-16 w-3 rounded-full bg-white/10" />
+                          {arenaPlayers.map(({ role, profile, state }) => {
+                            const boardSize = session?.gameState?.boardSize || 7;
+                            const row = Math.floor((state.pos || 0) / boardSize);
+                            const col = (state.pos || 0) % boardSize;
+                            const style = ARENA_STYLES[role];
+                            return (
+                              <div
+                                key={role}
+                                className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
+                                style={{ left: `${9 + col * (82 / (boardSize - 1))}%`, top: `${15 + row * (70 / (boardSize - 1))}%` }}
+                              >
+                                <div className={`flex h-10 w-10 items-center justify-center rounded-full border-2 ${style.border} ${style.chip} text-xs font-black text-white shadow-xl shadow-black/50 ring-4 ring-white/10`}>
+                                  {profile?.displayName?.charAt(0)?.toUpperCase() || style.label}
+                                </div>
+                                <span className="rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-bold text-white/80 backdrop-blur">
+                                  {style.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="p-4 text-center">
+                          <h3 className="text-lg font-extrabold text-white">Blaster Arena Lobby</h3>
+                          <p className="mt-1 text-xs text-white/50">
+                            {joinedCount}/{ARENA_MAX_PLAYERS} fighters joined. Start with 2 players or wait for a full squad.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                        {PLAYER_ROLES.map((role) => {
+                          const profile = session?.[role];
+                          const style = ARENA_STYLES[role];
+                          return (
+                            <div key={role} className={`rounded-2xl border p-3 ${profile ? 'border-white/15 bg-white/10' : 'border-dashed border-white/10 bg-white/[0.03]'}`}>
+                              <div className="flex items-center gap-3">
+                                <div className={`flex h-9 w-9 items-center justify-center rounded-full ${profile ? style.chip : 'bg-white/10'} text-xs font-black text-white`}>
+                                  {profile?.displayName?.charAt(0)?.toUpperCase() || '+'}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-xs font-bold text-white">{profile?.displayName || 'Open slot'}</p>
+                                  <p className={`text-[10px] font-bold ${profile ? style.text : 'text-white/30'}`}>{style.label}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-5 flex flex-col items-center gap-3">
+                        {myRole === 'player1' && (
+                          <button
+                            onClick={handleStartArena}
+                            disabled={!canStart}
+                            className={`flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold transition ${
+                              canStart
+                                ? 'border-rose-300 bg-rose-600 text-white shadow-lg shadow-rose-600/30 hover:bg-rose-500'
+                                : 'cursor-not-allowed border-white/10 bg-white/5 text-white/30'
+                            }`}
+                          >
+                            <Crosshair className="h-4 w-4" />
+                            Start Battle
+                          </button>
+                        )}
+
+                        <button
+                          onClick={handleBroadcast}
+                          disabled={inviteSent}
+                          className={`flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-bold transition ${
+                            inviteSent
+                              ? 'border-emerald-400 bg-emerald-600 text-white'
+                              : 'border-cyan-400 bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 hover:bg-cyan-500'
+                          }`}
+                        >
+                          <Send className="h-4 w-4" />
+                          {inviteSent ? 'Challenge Posted!' : 'Broadcast Arena Invite'}
+                        </button>
+
+                        <button onClick={handleLeaveWaitingArena} className="text-xs text-white/40 transition hover:text-white/70">
+                          {myRole === 'player1' ? 'Cancel Arena' : 'Leave Lobby'}
+                        </button>
                       </div>
                     </div>
-                    {/* Your Game badge */}
-                    <div className="absolute -top-2 -right-2 px-3 py-1 rounded-full bg-indigo-500 border-2 border-indigo-300 text-[10px] font-bold text-white shadow-lg">
-                      Your Game
+                  );
+                })() : (
+                  <div className="text-center py-8">
+                    <div className="relative w-36 h-36 mx-auto mb-6">
+                      <div className="absolute inset-0 rounded-full border-2 border-indigo-400/50 animate-ping" />
+                      <div className="absolute inset-3 rounded-full border-2 border-indigo-400/40 animate-ping" style={{ animationDelay: '0.5s' }} />
+                      <div className="absolute inset-6 rounded-full border-2 border-indigo-400/30 animate-ping" style={{ animationDelay: '1s' }} />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-18 w-18 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-2xl shadow-2xl shadow-indigo-500/50 ring-4 ring-indigo-400/30" style={{ width: 72, height: 72 }}>
+                          {currentName.charAt(0).toUpperCase()}
+                        </div>
+                      </div>
+                      <div className="absolute -top-2 -right-2 px-3 py-1 rounded-full bg-indigo-500 border-2 border-indigo-300 text-[10px] font-bold text-white shadow-lg">
+                        Your Game
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white mb-1">Searching for Opponent…</h3>
+                    <p className="text-xs text-white/50 mb-6">
+                      Another member needs to join this <strong className="text-indigo-300">{selectedGame?.name}</strong> duel before the game starts.
+                    </p>
+
+                    <div className="flex flex-col gap-3 items-center">
+                      <button
+                        onClick={handleBroadcast}
+                        disabled={inviteSent}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition border ${
+                          inviteSent
+                            ? 'bg-emerald-600 border-emerald-400 text-white'
+                            : 'bg-indigo-600 hover:bg-indigo-500 border-indigo-400 text-white shadow-lg shadow-indigo-600/30'
+                        }`}
+                      >
+                        <Send className="h-4 w-4" />
+                        {inviteSent ? '✓ Challenge Posted to Chat!' : '🚀 Broadcast Challenge to Chat'}
+                      </button>
+
+                      <button onClick={() => { handleCancelSession(); }} className="text-xs text-white/40 hover:text-white/70 transition mt-2">
+                        Cancel
+                      </button>
                     </div>
                   </div>
-
-                  <h3 className="text-lg font-bold text-white mb-1">Searching for Opponent…</h3>
-                  <p className="text-xs text-white/50 mb-6">
-                    Another member needs to join this <strong className="text-indigo-300">{selectedGame?.name}</strong> duel before the game starts.
-                  </p>
-
-                  <div className="flex flex-col gap-3 items-center">
-                    <button
-                      onClick={handleBroadcast}
-                      disabled={inviteSent}
-                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition border ${
-                        inviteSent
-                          ? 'bg-emerald-600 border-emerald-400 text-white'
-                          : 'bg-indigo-600 hover:bg-indigo-500 border-indigo-400 text-white shadow-lg shadow-indigo-600/30'
-                      }`}
-                    >
-                      <Send className="h-4 w-4" />
-                      {inviteSent ? '✓ Challenge Posted to Chat!' : '🚀 Broadcast Challenge to Chat'}
-                    </button>
-
-                    <button onClick={() => { handleCancelSession(); }} className="text-xs text-white/40 hover:text-white/70 transition mt-2">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
+                )
               )}
 
               {/* No session yet — Create or Join */}
@@ -830,9 +1242,10 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
           {/* ═══ PHASE: PLAYING ═══ */}
           {phase === 'playing' && session && gs && (
-            <div className="max-w-xl mx-auto">
+            <div className={selectedGame?.id === 'arena' ? 'max-w-3xl mx-auto' : 'max-w-xl mx-auto'}>
 
               {/* Player Bar */}
+              {selectedGame?.id !== 'arena' && (
               <div className="flex items-center justify-between mb-5 p-3 rounded-2xl border border-white/10 bg-white/5">
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition ${
                   gs.currentTurn === 'player1' && !isFinished ? 'bg-violet-600/30 border border-violet-400/50 shadow-lg shadow-violet-500/10' : ''
@@ -866,6 +1279,172 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                   </div>
                 </div>
               </div>
+              )}
+
+              {/* ─── BLASTER ARENA ─── */}
+              {selectedGame?.id === 'arena' && !isFinished && (() => {
+                const arenaPlayers = getArenaPlayers(session);
+                const me = gs.players?.[myRole];
+                const myIsAlive = !!me?.alive;
+                const activeName = session?.[gs.currentTurn]?.displayName || ARENA_STYLES[gs.currentTurn]?.label || 'Fighter';
+                const boardSize = gs.boardSize || 7;
+                const moveTargets = me
+                  ? [
+                      { label: 'Up', pos: me.pos - boardSize },
+                      { label: 'Left', pos: me.pos - 1 },
+                      { label: 'Right', pos: me.pos + 1 },
+                      { label: 'Down', pos: me.pos + boardSize },
+                    ].filter(move => {
+                      if (move.pos < 0 || move.pos >= boardSize * boardSize) return false;
+                      if (move.label === 'Left' && me.pos % boardSize === 0) return false;
+                      if (move.label === 'Right' && me.pos % boardSize === boardSize - 1) return false;
+                      return !isArenaOccupied(gs.players, move.pos, myRole);
+                    })
+                  : [];
+                const targetPlayers = arenaPlayers.filter(({ role, state }) => role !== myRole && state.alive);
+
+                return (
+                  <div className="space-y-4">
+                    <div className={`rounded-2xl border px-4 py-3 text-center text-xs font-bold ${
+                      isMyTurn && myIsAlive
+                        ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
+                        : 'border-white/10 bg-white/5 text-white/50'
+                    }`}>
+                      {isMyTurn && myIsAlive ? 'Your combat turn: move, shield, or fire.' : `${activeName} is taking the next combat action.`}
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      {arenaPlayers.map(({ role, profile, state }) => {
+                        const style = ARENA_STYLES[role];
+                        const hpPercent = Math.max(0, Math.min(100, state.hp || 0));
+                        const shieldPercent = Math.max(0, Math.min(100, ((state.shield || 0) / 60) * 100));
+                        return (
+                          <div key={role} className={`rounded-2xl border p-3 ${gs.currentTurn === role ? 'border-white/40 bg-white/12' : 'border-white/10 bg-white/5'} ${!state.alive ? 'opacity-45 grayscale' : ''}`}>
+                            <div className="mb-2 flex items-center gap-2">
+                              <div className={`flex h-8 w-8 items-center justify-center rounded-full ${style.chip} text-[10px] font-black text-white`}>
+                                {profile?.displayName?.charAt(0)?.toUpperCase() || style.label}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-bold text-white">{profile?.displayName || style.label}</p>
+                                <p className={`text-[10px] font-bold ${style.text}`}>{state.alive ? `${style.label} active` : 'Knocked out'}</p>
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                                <div className="h-full rounded-full bg-rose-400" style={{ width: `${hpPercent}%` }} />
+                              </div>
+                              <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                                <div className="h-full rounded-full bg-cyan-300" style={{ width: `${shieldPercent}%` }} />
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-white/45">
+                              <span>HP {state.hp}</span>
+                              <span>Shield {state.shield || 0}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="relative h-[360px] overflow-hidden rounded-3xl border border-rose-300/25 bg-gradient-to-br from-slate-950 via-rose-950/50 to-cyan-950/70 shadow-2xl shadow-rose-950/30">
+                      <div className="absolute inset-0 opacity-30" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px)', backgroundSize: `${100 / boardSize}% ${100 / boardSize}%` }} />
+                      <div className="absolute left-[8%] top-[18%] h-16 w-28 rounded-full border border-white/10 bg-white/5 blur-[1px]" />
+                      <div className="absolute bottom-[14%] right-[12%] h-20 w-20 rounded-3xl border border-cyan-200/10 bg-cyan-300/10 rotate-12" />
+                      <div className="absolute left-[40%] top-[42%] h-24 w-5 rounded-full border border-rose-100/15 bg-rose-300/10 -rotate-12" />
+                      <div className="absolute inset-x-10 bottom-8 h-1 rounded-full bg-cyan-300/20 shadow-lg shadow-cyan-300/30" />
+
+                      {arenaPlayers.map(({ role, profile, state }) => {
+                        const style = ARENA_STYLES[role];
+                        const row = Math.floor((state.pos || 0) / boardSize);
+                        const col = (state.pos || 0) % boardSize;
+                        const lastActor = gs.lastAction?.actor === role;
+                        const lastTarget = gs.lastAction?.target === role;
+                        return (
+                          <div
+                            key={role}
+                            className={`absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center transition-all duration-500 ${!state.alive ? 'opacity-35 grayscale' : ''}`}
+                            style={{ left: `${9 + col * (82 / (boardSize - 1))}%`, top: `${12 + row * (76 / (boardSize - 1))}%` }}
+                          >
+                            <div className={`relative flex h-12 w-12 items-center justify-center rounded-full border-2 ${style.border} ${style.chip} text-sm font-black text-white shadow-2xl shadow-black/70 ${gs.currentTurn === role ? 'ring-4 ring-white/30' : ''} ${lastActor ? 'scale-110' : ''}`}>
+                              {profile?.displayName?.charAt(0)?.toUpperCase() || style.label}
+                              {lastTarget && <span className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-rose-200 shadow-lg shadow-rose-300/80" />}
+                            </div>
+                            <div className="mt-1 rounded-full border border-white/10 bg-black/60 px-2 py-0.5 text-[10px] font-black text-white backdrop-blur">
+                              {style.label}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <h4 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/50">
+                          <Move className="h-4 w-4" />
+                          Movement
+                        </h4>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {moveTargets.map(move => (
+                            <button
+                              key={`${move.label}-${move.pos}`}
+                              onClick={() => handleArenaMove(move.pos)}
+                              disabled={!isMyTurn || !myIsAlive}
+                              className="rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:border-cyan-300/50 hover:bg-cyan-300/15 disabled:cursor-not-allowed disabled:opacity-35"
+                            >
+                              {move.label}
+                            </button>
+                          ))}
+                          {moveTargets.length === 0 && (
+                            <div className="col-span-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-center text-xs text-white/40">
+                              No open move lanes
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <h4 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/50">
+                          <Crosshair className="h-4 w-4" />
+                          Combat
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={handleArenaShield}
+                            disabled={!isMyTurn || !myIsAlive}
+                            className="flex items-center gap-1.5 rounded-xl border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-xs font-bold text-cyan-100 transition hover:bg-cyan-300/20 disabled:cursor-not-allowed disabled:opacity-35"
+                          >
+                            <Shield className="h-4 w-4" />
+                            Shield
+                          </button>
+                          {targetPlayers.map(({ role, profile, state }) => (
+                            <button
+                              key={role}
+                              onClick={() => handleArenaShoot(role)}
+                              disabled={!isMyTurn || !myIsAlive}
+                              className="flex items-center gap-1.5 rounded-xl border border-rose-300/30 bg-rose-500/15 px-3 py-2 text-xs font-bold text-rose-100 transition hover:bg-rose-500/25 disabled:cursor-not-allowed disabled:opacity-35"
+                            >
+                              <Crosshair className="h-4 w-4" />
+                              {profile?.displayName || ARENA_STYLES[role].label} · {getArenaDistance(me?.pos ?? 0, state.pos, gs.boardSize)} tiles
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                      <h4 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-white/40">
+                        <HeartPulse className="h-4 w-4" />
+                        Combat Feed
+                      </h4>
+                      <div className="space-y-1">
+                        {(gs.log || []).map((line, index) => (
+                          <p key={`${line}-${index}`} className="text-xs text-white/60">{line}</p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Score Bar (RPS & Trivia) */}
               {(selectedGame?.id === 'rps' || selectedGame?.id === 'trivia') && (
@@ -876,7 +1455,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                 </div>
               )}
 
-              {/* Turn Indicator (TTT & C4) */}
+              {/* Turn Indicator */}
               {!isFinished && (selectedGame?.id === 'ttt' || selectedGame?.id === 'c4') && (
                 <div className={`text-center text-xs font-bold mb-4 py-2 rounded-xl border transition-all duration-300 ${
                   isMyTurn
@@ -910,38 +1489,48 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
               {/* ─── C4 BOARD ─── */}
               {selectedGame?.id === 'c4' && !isFinished && (
-                <div className="bg-blue-900/80 p-3 rounded-2xl border border-blue-500/40 w-fit mx-auto shadow-2xl mb-5">
-                  <div className="grid grid-cols-7 gap-1.5 mb-1">
+                <div className="mx-auto mb-5 w-fit rounded-3xl border border-cyan-400/30 bg-gradient-to-b from-blue-950 via-blue-900 to-slate-950 p-3 shadow-2xl shadow-cyan-950/40">
+                  <div className="mb-3 grid grid-cols-3 gap-2 text-center text-[10px] font-bold uppercase tracking-wider text-white/50">
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1">Moves {gs.moveCount || 0}</div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1">Grid 7x6</div>
+                    <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1">Connect 4</div>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1.5 mb-2">
                     {Array(7).fill(null).map((_, col) => (
                       <button
                         key={col}
                         onClick={() => handleC4Drop(col)}
                         disabled={!isMyTurn || isFinished}
-                        className={`p-1 rounded-lg text-[10px] font-bold transition ${
-                          isMyTurn ? 'hover:bg-white/10 text-blue-300 cursor-pointer' : 'text-blue-800 cursor-not-allowed'
+                        className={`rounded-xl border px-1 py-1.5 text-xs font-black transition ${
+                          isMyTurn ? 'border-cyan-400/30 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/20 cursor-pointer' : 'border-white/5 bg-white/5 text-white/20 cursor-not-allowed'
                         }`}
+                        title={`Drop in column ${col + 1}`}
                       >
-                        ↓
+                        {col + 1}
                       </button>
                     ))}
                   </div>
-                  <div className="grid grid-cols-7 gap-1.5">
+                  <div className="grid grid-cols-7 gap-1.5 rounded-2xl border border-blue-300/20 bg-blue-950/80 p-2">
                     {Array(6).fill(null).map((_, row) =>
                       Array(7).fill(null).map((_, col) => {
                         const cell = gs.board[row * 7 + col];
+                        const isLastMove = gs.lastMove?.row === row && gs.lastMove?.col === col;
                         return (
                           <div
                             key={`${row}-${col}`}
-                            className={`h-9 w-9 sm:h-10 sm:w-10 rounded-full border transition-all duration-300 ${
-                              cell === 'Red' ? 'bg-rose-500 border-rose-300 shadow-lg shadow-rose-500/50' :
-                              cell === 'Yellow' ? 'bg-amber-400 border-amber-200 shadow-lg shadow-amber-400/50' :
-                              'bg-slate-950 border-blue-800'
-                            }`}
+                            className={`h-9 w-9 sm:h-11 sm:w-11 rounded-full border transition-all duration-300 ${
+                              cell === 'Red' ? 'bg-rose-500 border-rose-200 shadow-lg shadow-rose-500/50' :
+                              cell === 'Yellow' ? 'bg-amber-400 border-amber-100 shadow-lg shadow-amber-400/50' :
+                              'bg-slate-950 border-blue-800 shadow-inner'
+                            } ${isLastMove ? 'ring-2 ring-white/80 scale-105' : ''}`}
                           />
                         );
                       })
                     )}
                   </div>
+                  <p className="mt-3 text-center text-[11px] font-semibold text-cyan-100/70">
+                    {isMyTurn ? 'Pick a column and pressure the center.' : `${opponentName} is choosing a column.`}
+                  </p>
                 </div>
               )}
 
@@ -954,8 +1543,8 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
                 return (
                   <div className="space-y-5">
-                    <div className="text-center text-xs font-bold text-indigo-300 mb-2">
-                      Round {gs.round} of {gs.bestOf}
+                    <div className="text-center text-xs font-bold text-amber-300 mb-2">
+                      Mind duel round {gs.round} of {gs.bestOf}
                     </div>
 
                     {bothChosen ? (
@@ -978,23 +1567,25 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                           {result === myRole ? '🎉 You Win This Round!' : result === 'draw' ? "🤝 It's a Tie!" : '😔 You Lost This Round'}
                         </div>
                         <button onClick={handleRPSNextRound} className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition border border-indigo-400 shadow-lg shadow-indigo-600/30 active:scale-95">
-                          Next Round →
+                          {gs.round >= gs.bestOf ? 'Finish Match' : 'Next Round →'}
                         </button>
                       </div>
                     ) : (
                       /* ── Choosing phase ── */
                       <div className="space-y-4">
-                        <div className="p-4 rounded-2xl border border-white/10 bg-white/5">
-                          <h4 className="text-xs font-bold text-violet-300 mb-3">Your Move:</h4>
+                        <div className="p-4 rounded-2xl border border-amber-400/20 bg-amber-500/5">
+                          <h4 className="text-xs font-bold text-amber-300 mb-3">Lock your move:</h4>
                           {!myChoice ? (
                             <div className="flex justify-center gap-3">
                               {['rock', 'paper', 'scissors'].map(item => (
                                 <button
                                   key={item}
                                   onClick={() => handleRPSChoice(item)}
-                                  className="p-4 rounded-2xl border border-white/15 bg-white/10 hover:bg-white/20 hover:border-indigo-400 transition-all duration-200 text-3xl hover:scale-110 active:scale-95"
+                                  className="group min-w-[82px] rounded-2xl border border-white/15 bg-white/10 p-3 hover:bg-amber-400/15 hover:border-amber-300/60 transition-all duration-200 hover:scale-105 active:scale-95"
                                 >
-                                  {RPS_EMOJI[item]}
+                                  <div className="text-3xl">{RPS_EMOJI[item]}</div>
+                                  <div className="mt-1 text-[10px] font-bold capitalize text-white">{item}</div>
+                                  <div className="text-[9px] text-white/40 group-hover:text-amber-100/70">{RPS_LABELS[item]}</div>
                                 </button>
                               ))}
                             </div>
@@ -1013,6 +1604,19 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                             {oppChoice ? '✓ Opponent has chosen! Make your move!' : myChoice ? 'Waiting for opponent…' : 'Both players choose simultaneously'}
                           </p>
                         </div>
+
+                        {(gs.roundHistory || []).length > 0 && (
+                          <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                            <h4 className="mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">Round History</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {gs.roundHistory.map(round => (
+                                <span key={round.round} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-white/70">
+                                  R{round.round}: {RPS_EMOJI[round.p1Choice]} vs {RPS_EMOJI[round.p2Choice]} {round.winner === 'draw' ? 'draw' : round.winner === myRole ? 'win' : 'loss'}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1020,19 +1624,23 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
               })()}
 
               {/* ─── TRIVIA DUEL ─── */}
-              {selectedGame?.id === 'trivia' && !isFinished && gs.questionIndex < TRIVIA_QUESTIONS.length && (() => {
-                const currentQ = TRIVIA_QUESTIONS[gs.questionIndex];
+              {selectedGame?.id === 'trivia' && !isFinished && gs.questionIndex < getTriviaLength(gs) && (() => {
+                const currentQ = getTriviaQuestion(gs);
                 const myAnswer = myRole === 'player1' ? gs.p1Answer : gs.p2Answer;
                 const oppAnswer = myRole === 'player1' ? gs.p2Answer : gs.p1Answer;
                 const bothAnswered = gs.p1Answer && gs.p2Answer;
+                const totalQuestions = getTriviaLength(gs);
 
                 return (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between text-xs font-bold text-indigo-300 border-b border-white/10 pb-2">
-                      <span>Question {gs.questionIndex + 1} of {TRIVIA_QUESTIONS.length}</span>
+                      <span>Question {gs.questionIndex + 1} of {totalQuestions}</span>
+                      <span className="text-emerald-300">Randomized set</span>
                     </div>
 
-                    <p className="text-base font-bold text-white py-2">{currentQ.q}</p>
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 p-4">
+                      <p className="text-base font-bold text-white">{currentQ.q}</p>
+                    </div>
 
                     {!myAnswer ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1040,7 +1648,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                           <button
                             key={opt}
                             onClick={() => handleTriviaAnswer(opt)}
-                            className="p-3 rounded-xl border border-white/15 bg-white/10 hover:border-indigo-400 hover:bg-white/20 text-xs font-semibold text-white text-left transition active:scale-[0.98]"
+                            className="p-3 rounded-xl border border-white/15 bg-white/10 hover:border-emerald-400 hover:bg-emerald-400/10 text-xs font-semibold text-white text-left transition active:scale-[0.98]"
                           >
                             {opt}
                           </button>
@@ -1076,7 +1684,7 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
                             onClick={handleTriviaNext}
                             className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition border border-indigo-400 shadow-lg shadow-indigo-600/30 active:scale-95"
                           >
-                            {gs.questionIndex + 1 >= TRIVIA_QUESTIONS.length ? 'See Final Results' : 'Next Question →'}
+                            {gs.questionIndex + 1 >= totalQuestions ? 'See Final Results' : 'Next Question →'}
                           </button>
                         </div>
                       </div>
@@ -1087,34 +1695,47 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
 
               {/* ─── GAME OVER ─── */}
               {isFinished && (
-                <div className="text-center py-6">
-                  <div className="text-6xl mb-4 animate-bounce">🏆</div>
-                  <h3 className="text-xl font-extrabold text-white mb-1">
-                    {gs.winner === 'draw'
-                      ? "It's a Draw!"
-                      : gs.winner === myRole
-                        ? '🎉 You Win!'
-                        : `${opponentName} Wins!`}
-                  </h3>
-                  {gs.winner && gs.winner !== 'draw' && (
-                    <p className="text-sm text-white/60 mb-1">
-                      Winner: <strong>{gs.winner === 'player1' ? p1Name : p2Name}</strong>
-                    </p>
-                  )}
-                  {(selectedGame?.id === 'rps' || selectedGame?.id === 'trivia') && (
-                    <p className="text-xs text-indigo-300 mb-4">
-                      Final Score: {p1Name} <strong>{gs.p1Score}</strong> — <strong>{gs.p2Score}</strong> {p2Name}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-center gap-3 mt-5">
-                    <button onClick={handleNewGame} className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition border border-indigo-400 shadow-lg shadow-indigo-600/30 active:scale-95 flex items-center gap-1.5">
-                      <RefreshCw className="h-4 w-4" /> New Duel
-                    </button>
-                    <button onClick={handleBackToSelect} className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-bold transition border border-white/15 active:scale-95">
-                      Back to Games
-                    </button>
-                  </div>
-                </div>
+                (() => {
+                  const winnerName = gs.winner && gs.winner !== 'draw'
+                    ? session?.[gs.winner]?.displayName || (gs.winner === 'player1' ? p1Name : p2Name)
+                    : null;
+
+                  return (
+                    <div className="text-center py-6">
+                      <div className="text-6xl mb-4 animate-bounce">🏆</div>
+                      <h3 className="text-xl font-extrabold text-white mb-1">
+                        {gs.winner === 'draw'
+                          ? "It's a Draw!"
+                          : gs.winner === myRole
+                            ? '🎉 You Win!'
+                            : `${winnerName || opponentName} Wins!`}
+                      </h3>
+                      {winnerName && (
+                        <p className="text-sm text-white/60 mb-1">
+                          Winner: <strong>{winnerName}</strong>
+                        </p>
+                      )}
+                      {(selectedGame?.id === 'rps' || selectedGame?.id === 'trivia') && (
+                        <p className="text-xs text-indigo-300 mb-4">
+                          Final Score: {p1Name} <strong>{gs.p1Score}</strong> — <strong>{gs.p2Score}</strong> {p2Name}
+                        </p>
+                      )}
+                      {selectedGame?.id === 'arena' && (
+                        <p className="text-xs text-rose-200/70 mb-4">
+                          Blaster Arena ended after {gs.actionCount || 0} combat actions.
+                        </p>
+                      )}
+                      <div className="flex items-center justify-center gap-3 mt-5">
+                        <button onClick={handleNewGame} className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition border border-indigo-400 shadow-lg shadow-indigo-600/30 active:scale-95 flex items-center gap-1.5">
+                          <RefreshCw className="h-4 w-4" /> New Duel
+                        </button>
+                        <button onClick={handleBackToSelect} className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-bold transition border border-white/15 active:scale-95">
+                          Back to Games
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
               )}
 
             </div>

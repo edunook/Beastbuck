@@ -168,6 +168,24 @@ export const SUPPORTED_REACTIONS = [
   { key: 'smile', emoji: '\u{1F604}', label: 'Smile' },
 ];
 
+export const CHAT_MESSAGE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function getMessageCreatedAtMillis(createdAt) {
+  if (!createdAt) return null;
+  if (createdAt?.toMillis) return createdAt.toMillis();
+  if (createdAt?.toDate) return createdAt.toDate().getTime();
+  if (typeof createdAt === 'number') return createdAt;
+
+  const parsedTime = new Date(createdAt).getTime();
+  return Number.isNaN(parsedTime) ? null : parsedTime;
+}
+
+export function isMessageWithinRetention(message, now = Date.now()) {
+  const messageTime = getMessageCreatedAtMillis(message?.createdAt);
+  if (!messageTime || messageTime <= 0) return true;
+  return messageTime >= now - CHAT_MESSAGE_RETENTION_MS;
+}
+
 function roomsRef() {
   return collection(db, 'chatRooms');
 }
@@ -256,35 +274,16 @@ export const ChatService = {
       limitToLast(messageLimit),
     );
 
-    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
     return onSnapshot(
       q,
       (snap) => {
         const now = Date.now();
-        const cutoffTime = now - SEVEN_DAYS_MS;
-
         const messages = snap.docs
           .map(messageDoc => ({
             id: messageDoc.id,
             ...messageDoc.data(),
           }))
-          .filter(msg => {
-            if (msg.pinned) return true; // keep pinned announcements if needed
-            if (!msg.createdAt) return true;
-            let msgTime = 0;
-            if (msg.createdAt?.toMillis) {
-              msgTime = msg.createdAt.toMillis();
-            } else if (msg.createdAt?.toDate) {
-              msgTime = msg.createdAt.toDate().getTime();
-            } else if (typeof msg.createdAt === 'number') {
-              msgTime = msg.createdAt;
-            } else {
-              msgTime = new Date(msg.createdAt).getTime();
-            }
-            if (isNaN(msgTime) || msgTime <= 0) return true;
-            return msgTime >= cutoffTime;
-          });
+          .filter(msg => isMessageWithinRetention(msg, now));
 
         onMessages(messages);
       },

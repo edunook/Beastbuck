@@ -18,6 +18,19 @@ function sortTasks(tasks) {
   });
 }
 
+function toMillis(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (typeof value.toDate === 'function') return value.toDate().getTime();
+  if (typeof value.seconds === 'number') return value.seconds * 1000;
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function sortTaskUpdates(updates) {
+  return [...updates].sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+}
+
 export const TasksService = {
   /**
    * Fetch relevant tasks for a user (Global + assigned)
@@ -239,11 +252,10 @@ export const TasksService = {
   async getTaskUpdates(taskId) {
     const q = query(
       collection(db, 'taskUpdates'),
-      where('taskId', '==', taskId),
-      orderBy('createdAt', 'desc')
+      where('taskId', '==', taskId)
     );
     const snap = await getDocs(q);
-    return mapDocs(snap);
+    return sortTaskUpdates(mapDocs(snap));
   },
 
   /**
@@ -261,13 +273,12 @@ export const TasksService = {
     for (const chunk of chunks) {
       const q = query(
         collection(db, 'taskUpdates'),
-        where('taskId', 'in', chunk),
-        orderBy('createdAt', 'desc')
+        where('taskId', 'in', chunk)
       );
       const snap = await getDocs(q);
       allUpdates.push(...mapDocs(snap));
     }
     
-    return allUpdates;
+    return sortTaskUpdates(allUpdates);
   },
 };

@@ -58,7 +58,7 @@ export default function AppShell({ secondaryNav = null }) {
             id="main-content"
             className={cn(
               "flex-1 w-full min-w-0 overflow-x-hidden relative z-0",
-              isFunFlixRoute ? "pt-0 pb-0" : "pb-20 md:pb-0 pt-16"
+              isFunFlixRoute ? "pt-0 pb-0" : "bb-main-safe-bottom pt-16"
             )}
             tabIndex={-1}
           >

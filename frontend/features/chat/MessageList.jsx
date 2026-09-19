@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle, memo } from 'react';
-import { MessageCircle, Megaphone, ChevronDown, Inbox, Search } from 'lucide-react';
+import { MessageCircle, Megaphone, ChevronDown } from 'lucide-react';
 import { SkeletonChat } from '@frontend/components/ui/UIElements';
 import { MessageItem, DateSeparator } from './MessageItem';
 
@@ -84,7 +84,6 @@ export const MessageList = memo(forwardRef(function MessageList({
     return groups;
   }, [displayedMessages]);
 
-  const roomName = currentRoom?.name || currentRoom?.id || 'general';
   const isAnnouncement = currentRoom?.type === 'announcement' || currentRoom?.id === 'announcements';
 
   if (loading) {
@@ -105,12 +104,12 @@ export const MessageList = memo(forwardRef(function MessageList({
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-1 sm:px-3 py-4 space-y-1 custom-scrollbar"
+        className="flex-1 overflow-y-auto px-2 sm:px-4 py-3 sm:py-4 space-y-1 custom-scrollbar"
       >
         {/* Welcome Banner when few or no messages */}
         {displayedMessages.length === 0 ? (
           <div className="flex h-full min-h-[300px] flex-col items-center justify-center p-6 text-center animate-fade-in">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/20 to-purple-500/10 shadow-xl shadow-indigo-500/10 text-indigo-400">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/25 bg-cyan-500/10 shadow-xl shadow-cyan-950/30 text-cyan-300">
               {isAnnouncement ? <Megaphone className="h-8 w-8" /> : <MessageCircle className="h-8 w-8" />}
             </div>
             
@@ -124,23 +123,10 @@ export const MessageList = memo(forwardRef(function MessageList({
                 : 'Connect, collaborate, and share with fellow BeastBuck creators.'}
             </p>
 
-            {!searchQuery && (
-              <p className="text-[11px] text-indigo-400/80 mt-3 font-semibold">
-                👋 Send a message below to start the conversation!
-              </p>
-            )}
+            {!searchQuery && <p className="text-[11px] text-cyan-300/80 mt-3 font-semibold">Send a message below to start the conversation.</p>}
           </div>
         ) : (
           <>
-            {/* Top Header Marker */}
-            <div className="px-3 sm:px-4 pt-2 sm:pt-4 pb-4 sm:pb-6 text-left border-b border-white/5 mb-2 sm:mb-3">
-              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 mb-2">
-                {isAnnouncement ? <Megaphone className="h-5 w-5 sm:h-6 sm:w-6" /> : <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />}
-              </div>
-              <h2 className="text-sm sm:text-lg font-bold text-white">Welcome to Community Chat!</h2>
-              <p className="text-[11px] sm:text-xs text-white/50">Connect, collaborate, and share with fellow BeastBuck creators.</p>
-            </div>
-
             {/* Message Stream */}
             {groupedMessages.map((item) => {
               if (item.type === 'separator') {

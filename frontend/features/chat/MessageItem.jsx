@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   MoreVertical, MessageSquareReply, Pin, Trash2, Bookmark, BookmarkCheck,
-  Edit3, Check, X, Paperclip, Flag, Play, Pause, Volume2, Smile
+  Edit3, Check, X, Paperclip, Flag, Play, Pause, Volume2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { SUPPORTED_REACTIONS } from '@services/firestore/chat';
@@ -335,7 +335,7 @@ export const MessageItem = memo(function MessageItem({
   };
 
   return (
-    <article className={`relative group/msg flex items-end gap-2 my-1.5 px-2 sm:px-4 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
+    <article className={`relative group/msg flex items-end gap-2 my-1.5 px-1 sm:px-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'}`}>
       
       {/* Real Avatar */}
       {!isOwnMessage && showAvatar && (
@@ -355,14 +355,14 @@ export const MessageItem = memo(function MessageItem({
       )}
 
       {/* Message Bubble Container */}
-      <div className={`relative max-w-[88%] sm:max-w-[75%] flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
+      <div className={`relative max-w-[86%] min-[420px]:max-w-[82%] sm:max-w-[72%] lg:max-w-[64%] flex flex-col ${isOwnMessage ? 'items-end' : 'items-start'}`}>
         
         {/* Main Message Bubble */}
         <div 
           className={`relative rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm shadow-md transition-all ${
             isOwnMessage 
-              ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white rounded-br-xs shadow-indigo-950/40' 
-              : 'bg-slate-900/90 border border-white/10 text-slate-100 rounded-bl-xs backdrop-blur-xl hover:border-white/15'
+              ? 'bg-cyan-500 text-slate-950 rounded-br-md shadow-cyan-950/30'
+              : 'bg-zinc-900/95 border border-white/10 text-zinc-100 rounded-bl-md backdrop-blur-xl hover:border-white/15'
           }`}
         >
           {/* Header Row: Sender Name, Role Badge, Time & Menu Trigger */}
@@ -371,7 +371,7 @@ export const MessageItem = memo(function MessageItem({
               <span 
                 onClick={() => onShowProfile?.(message.senderId, senderDisplayName)}
                 className={`font-bold truncate cursor-pointer hover:underline ${
-                  isOwnMessage ? 'text-indigo-200' : 'text-indigo-400'
+                  isOwnMessage ? 'text-slate-800' : 'text-cyan-300'
                 }`}
               >
                 {isOwnMessage ? 'You' : senderDisplayName}
@@ -382,14 +382,14 @@ export const MessageItem = memo(function MessageItem({
                   message.senderRole === 'Admin' || message.senderRole === 'Leader'
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                     : isOwnMessage
-                      ? 'bg-white/15 text-white/80'
+                      ? 'bg-slate-950/10 text-slate-800'
                       : 'bg-white/10 text-white/50'
                 }`}>
                   {message.senderRole}
                 </span>
               )}
 
-              <span className={isOwnMessage ? 'text-white/60 text-[10px]' : 'text-white/40 text-[10px]'}>
+              <span className={isOwnMessage ? 'text-slate-800/60 text-[10px]' : 'text-white/40 text-[10px]'}>
                 {timeStr}
               </span>
 
@@ -402,7 +402,7 @@ export const MessageItem = memo(function MessageItem({
               type="button"
               ref={menuButtonRef}
               onClick={handleMenuToggle}
-              className="p-1 rounded-md text-white/50 hover:text-white hover:bg-white/15 transition active:scale-95 ml-1"
+              className={`p-1 rounded-md transition active:scale-95 ml-1 ${isOwnMessage ? 'text-slate-800/55 hover:text-slate-950 hover:bg-slate-950/10' : 'text-white/50 hover:text-white hover:bg-white/15'}`}
               aria-label="Message options"
               title="Actions"
             >
@@ -414,13 +414,13 @@ export const MessageItem = memo(function MessageItem({
           {message.replyTo && (
             <div className={`mb-2 rounded-lg border-l-2 px-2.5 py-1 text-xs ${
               isOwnMessage 
-                ? 'border-indigo-300 bg-white/10 text-indigo-100' 
+                ? 'border-slate-950/25 bg-slate-950/10 text-slate-900'
                 : 'border-indigo-400 bg-black/40 text-slate-300'
             }`}>
-              <div className="font-semibold text-[10px] text-white/70">
+              <div className={`font-semibold text-[10px] ${isOwnMessage ? 'text-slate-800/70' : 'text-white/70'}`}>
                 Replying to {message.replyTo.senderName || 'Member'}
               </div>
-              <p className="truncate text-white/80">{message.replyTo.text}</p>
+              <p className={isOwnMessage ? 'truncate text-slate-900/80' : 'truncate text-white/80'}>{message.replyTo.text}</p>
             </div>
           )}
 
@@ -455,7 +455,7 @@ export const MessageItem = memo(function MessageItem({
           ) : (
             <>
               {message.text && (
-                <p className="whitespace-pre-wrap break-words leading-relaxed text-xs sm:text-sm">
+                <p className="whitespace-pre-wrap break-words leading-relaxed text-sm">
                   {renderTextWithMentions(message.text, message.mentions)}
                   {message.edited && <span className="text-[9px] opacity-60 ml-1.5 italic">(edited)</span>}
                 </p>

@@ -110,7 +110,7 @@ export default function MobileBottomNav() {
           })}
         </div>
 
-        <div className="h-safe-area-bottom" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }} />
+        <div className="h-safe-area-bottom" />
       </nav>
 
       <style>{`

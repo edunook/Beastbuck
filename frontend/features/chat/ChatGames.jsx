@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { Gamepad2, Trophy, Zap, MessageSquare, Target, Flame, Brain, Sparkles, Users, Clock, Star, Play } from 'lucide-react';
+import { Gamepad2, Trophy, Zap, MessageSquare, Target, Brain, Users, Clock, Play, Crosshair } from 'lucide-react';
 import { PageContainer } from '@frontend/components/layout/LayoutWrappers';
 import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent } from '@frontend/components/ui/Card';
@@ -15,15 +15,17 @@ export default function ChatGames() {
   const [selectedGameId, setSelectedGameId] = useState(null);
 
   const games = [
-    { id: 'ttt', name: 'Tic Tac Toe Duel', icon: Target, color: 'cyan', description: 'Real-time 2-player strategic grid duel', players: '2 Players', duration: '2 min', xp: 75 },
-    { id: 'c4', name: 'Connect Four Duel', icon: Target, color: 'blue', description: 'Real-time 4-in-a-row drop battle', players: '2 Players', duration: '3 min', xp: 100 },
-    { id: 'rps', name: 'Rock Paper Scissors', icon: Gamepad2, color: 'purple', description: 'Best of 3 live simultaneous showdown', players: '2 Players', duration: '1 min', xp: 50 },
-    { id: 'trivia', name: 'Trivia Duel', icon: Brain, color: 'emerald', description: 'Real-time speed knowledge race', players: '2 Players', duration: '3 min', xp: 150 },
+    { id: 'arena', name: 'Blaster Arena', icon: Crosshair, color: 'rose', description: '2-7 player tactical 2D battle with HP, shields, movement, and blaster shots', players: '2-7 Players', duration: '8 min', xp: 300 },
+    { id: 'ttt', name: 'Tic-Tac-Toe Duel', icon: Target, color: 'cyan', description: 'Classic real-time 2-player strategy duel', players: '2 Players', duration: '2 min', xp: 75 },
+    { id: 'c4', name: 'Connect Four Arena', icon: Target, color: 'blue', description: 'Bigger 4-in-a-row strategy battle with live board control', players: '2 Players', duration: '3 min', xp: 100 },
+    { id: 'rps', name: 'Rock Paper Scissors', icon: Gamepad2, color: 'purple', description: 'Best-of-5 hidden-choice showdown with round history', players: '2 Players', duration: '2 min', xp: 80 },
+    { id: 'trivia', name: 'Trivia Duel', icon: Brain, color: 'emerald', description: 'Randomized 5-question knowledge duel with final scoring', players: '2 Players', duration: '4 min', xp: 150 },
   ];
 
   const getColorClass = (color) => {
     const colors = {
       purple: 'bg-gradient-to-br from-purple-500/25 via-purple-500/15 to-violet-500/10 border-purple-500/40 text-purple-400 shadow-purple-500/50',
+      rose: 'bg-gradient-to-br from-rose-500/25 via-fuchsia-500/15 to-cyan-500/10 border-rose-500/40 text-rose-300 shadow-rose-500/50',
       cyan: 'bg-gradient-to-br from-cyan-500/25 via-cyan-500/15 to-sky-500/10 border-cyan-500/40 text-cyan-400 shadow-cyan-500/50',
       emerald: 'bg-gradient-to-br from-emerald-500/25 via-emerald-500/15 to-green-500/10 border-emerald-500/40 text-emerald-400 shadow-emerald-500/50',
       blue: 'bg-gradient-to-br from-blue-500/25 via-blue-500/15 to-sky-500/10 border-blue-500/40 text-blue-400 shadow-blue-500/50',
@@ -116,6 +118,7 @@ export default function ChatGames() {
           }}
           currentUser={user}
           activeRoomId="general"
+          initialGameId={selectedGameId}
           onSendGameCard={() => {
             navigate('/chat');
           }}
@@ -124,4 +127,3 @@ export default function ChatGames() {
     </PageContainer>
   );
 }
-

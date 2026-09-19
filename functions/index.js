@@ -5,6 +5,94 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const db = admin.firestore();
+const CHAT_MESSAGE_RETENTION_DAYS = 7;
+const CHAT_MESSAGE_RETENTION_MS = CHAT_MESSAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+const CHAT_CLEANUP_BATCH_SIZE = 450;
+const DEFAULT_CHAT_ROOM_IDS = [
+  'general',
+  'announcements',
+  'questions',
+  'help',
+  'resources',
+  'ideas',
+  'feedback',
+  'projects',
+  'research',
+  'random',
+  'introductions',
+  'events',
+  'challenges',
+  'media-sharing',
+  'career-advice',
+  'experiments',
+  'products',
+  'coding',
+  'science'
+];
+
+function chatMessageCutoffDate(now = Date.now()) {
+  return new Date(now - CHAT_MESSAGE_RETENTION_MS);
+}
+
+async function deleteExpiredMessagesForRoom(roomId, cutoffDate) {
+  let deletedCount = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const oldMessages = await db
+      .collection('chatRooms')
+      .doc(roomId)
+      .collection('messages')
+      .where('createdAt', '<', cutoffDate)
+      .orderBy('createdAt', 'asc')
+      .limit(CHAT_CLEANUP_BATCH_SIZE)
+      .get();
+
+    if (oldMessages.empty) {
+      hasMore = false;
+      break;
+    }
+
+    const batch = db.batch();
+    for (const messageDoc of oldMessages.docs) {
+      batch.delete(messageDoc.ref);
+    }
+
+    await batch.commit();
+    deletedCount += oldMessages.size;
+    console.log(`[Chat Cleanup] Deleted ${oldMessages.size} expired messages from room #${roomId}`);
+
+    hasMore = oldMessages.size === CHAT_CLEANUP_BATCH_SIZE;
+  }
+
+  return deletedCount;
+}
+
+async function cleanupExpiredChatMessages() {
+  const cutoffDate = chatMessageCutoffDate();
+  console.log(
+    `[Chat Cleanup] Deleting chat room messages older than ${CHAT_MESSAGE_RETENTION_DAYS} days. Cutoff: ${cutoffDate.toISOString()}`
+  );
+
+  const roomsSnapshot = await db.collection('chatRooms').get();
+  const roomIds = Array.from(new Set([
+    ...DEFAULT_CHAT_ROOM_IDS,
+    ...roomsSnapshot.docs.map(roomDoc => roomDoc.id)
+  ]));
+
+  let totalDeleted = 0;
+
+  for (const roomId of roomIds) {
+    try {
+      totalDeleted += await deleteExpiredMessagesForRoom(roomId, cutoffDate);
+    } catch (roomError) {
+      console.warn(`[Chat Cleanup] Failed to clean room #${roomId}:`, roomError.message);
+    }
+  }
+
+  console.log(`[Chat Cleanup] Completed. Total expired chat messages deleted: ${totalDeleted}`);
+  return totalDeleted;
+}
 
 // Helper function to regenerate portfolio for a user
 async function regeneratePortfolioForUser(uid) {
@@ -210,118 +298,12 @@ exports.mediaApi = mediaFunctions.mediaApi;
 exports.cleanupStaleUploads = mediaFunctions.cleanupStaleUploads;
 
 // Scheduled cleanup for chat messages older than 7 days
-exports.cleanupOldChatMessages = onSchedule('every 24 hours', async () => {
-  const db = admin.firestore();
-  const cutoffDate = new Date();
-  cutoffDate.setDate(cutoffDate.getDate() - 7); // 7 days ago
-
-  const DEFAULT_ROOM_IDS = [
-    'general',
-    'announcements',
-    'questions',
-    'help',
-    'resources',
-    'ideas',
-    'feedback',
-    'projects',
-    'research',
-    'random',
-    'introductions',
-    'events',
-    'challenges',
-    'media-sharing',
-    'career-advice',
-    'experiments',
-    'products',
-    'coding',
-    'science'
-  ];
-
+exports.cleanupOldChatMessages = onSchedule('every 60 minutes', async () => {
   try {
-    console.log('[Chat Cleanup] Starting cleanup of messages older than 7 days (cutoff:', cutoffDate.toISOString(), ')...');
-
-    // Get all custom chat rooms in addition to default rooms
-    const roomsSnapshot = await db.collection('chatRooms').get();
-    const allRoomIds = Array.from(new Set([
-      ...DEFAULT_ROOM_IDS,
-      ...roomsSnapshot.docs.map(doc => doc.id)
-    ]));
-
-    let totalDeleted = 0;
-
-    // 1. Process room by room
-    for (const roomId of allRoomIds) {
-      try {
-        let hasMore = true;
-        while (hasMore) {
-          const oldMessages = await db
-            .collection('chatRooms')
-            .doc(roomId)
-            .collection('messages')
-            .where('createdAt', '<', cutoffDate)
-            .limit(500)
-            .get();
-
-          if (oldMessages.empty) {
-            hasMore = false;
-            break;
-          }
-
-          const batch = db.batch();
-          for (const doc of oldMessages.docs) {
-            batch.delete(doc.ref);
-          }
-
-          await batch.commit();
-          totalDeleted += oldMessages.size;
-          console.log(`[Chat Cleanup] Deleted batch of ${oldMessages.size} messages from room #${roomId}`);
-
-          if (oldMessages.size < 500) {
-            hasMore = false;
-          }
-        }
-      } catch (roomError) {
-        console.warn(`[Chat Cleanup] Note for room ${roomId}:`, roomError.message);
-      }
-    }
-
-    // 2. Global collectionGroup fallback to catch any orphaned/nested message subcollections
-    try {
-      let groupHasMore = true;
-      while (groupHasMore) {
-        const groupMessages = await db
-          .collectionGroup('messages')
-          .where('createdAt', '<', cutoffDate)
-          .limit(500)
-          .get();
-
-        if (groupMessages.empty) {
-          groupHasMore = false;
-          break;
-        }
-
-        const batch = db.batch();
-        for (const doc of groupMessages.docs) {
-          batch.delete(doc.ref);
-        }
-        await batch.commit();
-        totalDeleted += groupMessages.size;
-        console.log(`[Chat Cleanup] Deleted global batch of ${groupMessages.size} old messages`);
-
-        if (groupMessages.size < 500) {
-          groupHasMore = false;
-        }
-      }
-    } catch (groupError) {
-      console.warn('[Chat Cleanup] CollectionGroup check:', groupError.message);
-    }
-
-    console.log(`[Chat Cleanup] Completed successfully. Total messages deleted: ${totalDeleted}`);
+    await cleanupExpiredChatMessages();
     return null;
-
   } catch (error) {
     console.error('[Chat Cleanup] Fatal error:', error);
     throw error;
   }
 });
-

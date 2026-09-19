@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { AlertCircle, X, Pin, Settings, Flag } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
-import { ChatService } from '@services/firestore/chat';
+import { ChatService, isMessageWithinRetention } from '@services/firestore/chat';
 import { UsersService } from '@services/firestore/users';
 import { hasPermission } from '@shared/permissions/permissions';
 import { ChatHeader, MemberListModal } from './ChatHeader';
@@ -67,26 +67,12 @@ const ChatPage = React.memo(function ChatPage() {
     
     const unsubscribe = ChatService.subscribeToRoomMessages(CHAT_ROOM_ID, {
       onMessages: (nextMessages) => {
-        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-        const cutoffTime = Date.now() - SEVEN_DAYS_MS;
+        const now = Date.now();
 
         setMessages(
           nextMessages.filter(m => {
             if (m.archived || m.deleted) return false;
-            if (m.pinned) return true;
-            if (!m.createdAt) return true;
-            let msgTime = 0;
-            if (m.createdAt?.toMillis) {
-              msgTime = m.createdAt.toMillis();
-            } else if (m.createdAt?.toDate) {
-              msgTime = m.createdAt.toDate().getTime();
-            } else if (typeof m.createdAt === 'number') {
-              msgTime = m.createdAt;
-            } else {
-              msgTime = new Date(m.createdAt).getTime();
-            }
-            if (isNaN(msgTime) || msgTime <= 0) return true;
-            return msgTime >= cutoffTime;
+            return isMessageWithinRetention(m, now);
           })
         );
         setLoading(false);
@@ -402,13 +388,13 @@ const ChatPage = React.memo(function ChatPage() {
   }, [handleMediaOpen]);
 
   return (
-    <div className="flex h-[calc(100dvh-4rem-4.5rem)] sm:h-[calc(100dvh-4.5rem)] w-full flex-col p-0 sm:p-2 md:p-3 overflow-hidden select-none">
+    <div className="flex h-[calc(100dvh-4rem-4.5rem)] sm:h-[calc(100dvh-4.5rem)] w-full flex-col overflow-hidden bg-zinc-950 p-0 sm:p-2 md:p-3 select-none">
       
       {/* Outer Shell Glass Container */}
-      <div className="mx-auto flex min-h-0 w-full max-w-[1500px] flex-1 overflow-hidden rounded-none sm:rounded-2xl md:rounded-3xl border-0 sm:border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur-3xl">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1320px] flex-1 overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-white/10 bg-zinc-950 shadow-2xl backdrop-blur-3xl">
         
         {/* Main Conversation Area */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,1))]">
           
           {/* Header */}
           <ChatHeader
@@ -474,7 +460,6 @@ const ChatPage = React.memo(function ChatPage() {
             replyTo={replyTarget}
             onCancelReply={() => setReplyTarget(null)}
             members={members}
-            onShowGames={() => setShowGamesModal(true)}
           />
         </div>
 

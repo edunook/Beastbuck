@@ -29,3 +29,50 @@
     backdrop-filter: blur(12px);
   }
 }
+
+:root {
+  --bb-mobile-bottom-nav-height: 5rem;
+  --bb-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-safe {
+  padding-bottom: max(0.5rem, var(--bb-safe-area-bottom));
+}
+
+.pb-safe-bottom {
+  padding-bottom: max(1.5rem, var(--bb-safe-area-bottom));
+}
+
+.h-safe-area-bottom {
+  height: var(--bb-safe-area-bottom);
+}
+
+.bb-main-safe-bottom {
+  padding-bottom: calc(var(--bb-mobile-bottom-nav-height) + max(1.25rem, var(--bb-safe-area-bottom)));
+}
+
+.bb-page-safe-bottom {
+  padding-bottom: calc(var(--bb-mobile-bottom-nav-height) + max(1.5rem, var(--bb-safe-area-bottom)));
+}
+
+.bb-sticky-action-footer {
+  padding: 0.75rem;
+  padding-bottom: calc(0.75rem + max(0.5rem, var(--bb-safe-area-bottom)));
+}
+
+.bb-form-safe-bottom {
+  margin-bottom: max(1.5rem, var(--bb-safe-area-bottom));
+}
+
+@media (min-width: 640px) {
+  .bb-sticky-action-footer {
+    padding: 1.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .bb-main-safe-bottom,
+  .bb-page-safe-bottom {
+    padding-bottom: 2rem;
+  }
+}
