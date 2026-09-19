@@ -37,6 +37,33 @@
           }
         }
       }
+    },
+    "battleRuntime": {
+      "$matchId": {
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists() && newData.child('meta').child('hostId').val() == auth.uid",
+        "meta": {
+          "hostId": {
+            ".write": "auth != null && ((!data.exists() && newData.val() == auth.uid) || data.val() == auth.uid || (data.val() == null && newData.val() == auth.uid && root.child('battleRuntime').child($matchId).child('presence').child(auth.uid).exists()))"
+          },
+          "$field": {
+            ".write": "auth != null && data.parent().child('hostId').val() == auth.uid"
+          }
+        },
+        "state": {
+          ".write": "auth != null && data.parent().child('meta').child('hostId').val() == auth.uid"
+        },
+        "inputs": {
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid"
+          }
+        },
+        "presence": {
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid"
+          }
+        }
+      }
     }
   }
 }

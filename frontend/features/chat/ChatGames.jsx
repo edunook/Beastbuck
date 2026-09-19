@@ -7,6 +7,7 @@ import { PageHeader } from '@frontend/components/ui/UIElements';
 import { Card, CardContent } from '@frontend/components/ui/Card';
 import Button from '@frontend/components/ui/Button';
 import { ChatGamesModal } from './ChatGamesModal';
+import { BATTLE_GAME_ID } from './games/beastbuck-battle/constants';
 
 export default function ChatGames() {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ export default function ChatGames() {
   const [selectedGameId, setSelectedGameId] = useState(null);
 
   const games = [
-    { id: 'arena', name: 'Blaster Arena', icon: Crosshair, color: 'rose', description: '2-7 player tactical 2D battle with HP, shields, movement, and blaster shots', players: '2-7 Players', duration: '8 min', xp: 300 },
+    { id: BATTLE_GAME_ID, name: 'BeastBuck Battle Arena', icon: Crosshair, color: 'rose', description: 'Real-time 2D arena combat with jet movement, live projectiles, respawns, and pickups.', players: '2-7 Players', duration: '3 min', xp: 300 },
     { id: 'ttt', name: 'Tic-Tac-Toe Duel', icon: Target, color: 'cyan', description: 'Classic real-time 2-player strategy duel', players: '2 Players', duration: '2 min', xp: 75 },
     { id: 'c4', name: 'Connect Four Arena', icon: Target, color: 'blue', description: 'Bigger 4-in-a-row strategy battle with live board control', players: '2 Players', duration: '3 min', xp: 100 },
     { id: 'rps', name: 'Rock Paper Scissors', icon: Gamepad2, color: 'purple', description: 'Best-of-5 hidden-choice showdown with round history', players: '2 Players', duration: '2 min', xp: 80 },
@@ -24,11 +25,11 @@ export default function ChatGames() {
 
   const getColorClass = (color) => {
     const colors = {
-      purple: 'bg-gradient-to-br from-purple-500/25 via-purple-500/15 to-violet-500/10 border-purple-500/40 text-purple-400 shadow-purple-500/50',
-      rose: 'bg-gradient-to-br from-rose-500/25 via-fuchsia-500/15 to-cyan-500/10 border-rose-500/40 text-rose-300 shadow-rose-500/50',
-      cyan: 'bg-gradient-to-br from-cyan-500/25 via-cyan-500/15 to-sky-500/10 border-cyan-500/40 text-cyan-400 shadow-cyan-500/50',
-      emerald: 'bg-gradient-to-br from-emerald-500/25 via-emerald-500/15 to-green-500/10 border-emerald-500/40 text-emerald-400 shadow-emerald-500/50',
-      blue: 'bg-gradient-to-br from-blue-500/25 via-blue-500/15 to-sky-500/10 border-blue-500/40 text-blue-400 shadow-blue-500/50',
+      purple: 'bg-gradient-to-br from-amber-100 via-amber-50 to-white border-amber-200 text-amber-700 shadow-amber-200/50',
+      rose: 'bg-gradient-to-br from-rose-100 via-orange-50 to-white border-rose-200 text-rose-700 shadow-rose-200/50',
+      cyan: 'bg-gradient-to-br from-cyan-100 via-sky-50 to-white border-cyan-200 text-cyan-700 shadow-cyan-200/50',
+      emerald: 'bg-gradient-to-br from-emerald-100 via-teal-50 to-white border-emerald-200 text-emerald-700 shadow-emerald-200/50',
+      blue: 'bg-gradient-to-br from-sky-100 via-blue-50 to-white border-sky-200 text-sky-700 shadow-sky-200/50',
     };
     return colors[color] || colors.purple;
   };
@@ -47,14 +48,14 @@ export default function ChatGames() {
       />
 
       <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-2 text-white/70 text-sm">
+        <div className="flex items-center gap-2 text-[#39728d] text-sm">
           <Trophy className="h-4 w-4 text-accent" />
           <span>Earn XP & rank up on the chat leaderboard with every victory!</span>
         </div>
         <Button
           variant="secondary"
           onClick={() => navigate('/chat')}
-          className="bg-white/10 hover:bg-white/20 text-white border-white/20 text-sm"
+          className="bg-white hover:bg-sky-50 text-[#164661] border-sky-200 text-sm"
         >
           <MessageSquare className="h-4 w-4 mr-2" />
           Open Chat Rooms
@@ -67,7 +68,7 @@ export default function ChatGames() {
           return (
             <Card 
               key={game.id} 
-              className="border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-white/10 hover:border-accent/50 hover:shadow-2xl hover:shadow-accent/20 transition-all duration-300 hover:scale-[1.02] backdrop-blur-2xl cursor-pointer group flex flex-col justify-between"
+              className="border-sky-200 bg-white hover:border-cyan-300 hover:shadow-2xl hover:shadow-sky-200/50 transition-all duration-300 hover:scale-[1.02] backdrop-blur-2xl cursor-pointer group flex flex-col justify-between"
             >
               <CardContent className="p-6 flex flex-col h-full justify-between">
                 <div>
@@ -76,17 +77,17 @@ export default function ChatGames() {
                     <div className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-accent animate-ping opacity-50" />
                     <div className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-accent shadow-lg shadow-accent/50" />
                   </div>
-                  <h3 className="font-bold text-white mb-2 text-lg group-hover:text-accent transition-colors">{game.name}</h3>
-                  <p className="text-white/60 text-sm mb-5 leading-relaxed">{game.description}</p>
+                  <h3 className="font-bold text-[#164661] mb-2 text-lg group-hover:text-cyan-700 transition-colors">{game.name}</h3>
+                  <p className="text-[#4b7d94] text-sm mb-5 leading-relaxed">{game.description}</p>
                 </div>
                 
                 <div>
                   <div className="flex items-center justify-between gap-2 mb-5 text-xs">
-                    <div className="flex items-center gap-1.5 text-white/50">
+                    <div className="flex items-center gap-1.5 text-[#7299aa]">
                       <Users className="h-3.5 w-3.5" />
                       <span>{game.players}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-white/50">
+                    <div className="flex items-center gap-1.5 text-[#7299aa]">
                       <Clock className="h-3.5 w-3.5" />
                       <span>{game.duration}</span>
                     </div>
@@ -98,7 +99,7 @@ export default function ChatGames() {
 
                   <Button
                     onClick={() => handlePlayNow(game.id)}
-                    className="w-full bg-gradient-to-r from-accent to-purple-600 hover:from-accent/90 hover:to-purple-600/90 border border-accent/40 shadow-lg shadow-accent/30 transition-all duration-200 hover:scale-102"
+                    className="w-full bg-cyan-500 hover:bg-cyan-600 border border-cyan-400 text-white shadow-lg shadow-cyan-500/25 transition-all duration-200 hover:scale-102"
                   >
                     <Play className="h-4 w-4 mr-2" />
                     Play Duel Now
@@ -119,9 +120,6 @@ export default function ChatGames() {
           currentUser={user}
           activeRoomId="general"
           initialGameId={selectedGameId}
-          onSendGameCard={() => {
-            navigate('/chat');
-          }}
         />
       )}
     </PageContainer>

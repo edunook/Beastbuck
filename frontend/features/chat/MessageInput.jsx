@@ -176,22 +176,22 @@ export function MessageInput({
   };
 
   return (
-    <form onSubmit={submit} className="shrink-0 w-full border-t border-cyan-100/15 bg-[#18375a]/96 shadow-[0_-16px_40px_rgba(7,24,39,0.18)] backdrop-blur-2xl px-3 sm:px-5 py-2.5 sm:py-3 z-20 pb-[max(0.7rem,env(safe-area-inset-bottom))]">
+    <form onSubmit={submit} className="shrink-0 w-full border-t border-sky-200 bg-[#e8f7ff]/96 shadow-[0_-16px_40px_rgba(43,111,140,0.12)] backdrop-blur-2xl px-3 sm:px-5 py-2.5 sm:py-3 z-20 pb-[max(0.7rem,env(safe-area-inset-bottom))]">
       
       {/* Reply Preview Banner */}
       {replyTo && (
         <div className="mb-2 flex items-center justify-between gap-2.5 rounded-xl border border-cyan-100/25 bg-cyan-100/10 px-3 py-1.5 animate-fade-in">
           <div className="min-w-0 flex-1 flex items-center gap-2">
             <MessageSquareReply className="h-3.5 w-3.5 text-cyan-100 shrink-0" />
-            <span className="text-xs text-cyan-100 font-semibold truncate">
-              Replying to <span className="text-white">{replyTo.senderName || 'Member'}</span>:
+            <span className="text-xs text-cyan-700 font-semibold truncate">
+              Replying to <span className="text-[#164661]">{replyTo.senderName || 'Member'}</span>:
             </span>
-            <span className="text-xs text-cyan-50/70 truncate">{replyTo.text}</span>
+            <span className="text-xs text-[#4b7d94] truncate">{replyTo.text}</span>
           </div>
           <button 
             type="button" 
             onClick={onCancelReply} 
-            className="p-1 rounded-lg text-cyan-50/55 hover:text-white hover:bg-cyan-50/12 transition"
+            className="p-1 rounded-lg text-[#7299aa] hover:text-[#164661] hover:bg-sky-100 transition"
             aria-label="Cancel reply"
           >
             <X className="h-3.5 w-3.5" />
@@ -212,13 +212,13 @@ export function MessageInput({
                 </div>
               )}
               <div className="min-w-0 max-w-[100px] sm:max-w-[160px]">
-                <p className="text-xs font-semibold text-cyan-50 truncate">{att.name}</p>
-                <p className="text-[9px] text-cyan-50/55">{(att.size / 1024).toFixed(0)} KB</p>
+                <p className="text-xs font-semibold text-[#164661] truncate">{att.name}</p>
+                <p className="text-[9px] text-[#7299aa]">{(att.size / 1024).toFixed(0)} KB</p>
               </div>
               <button
                 type="button"
                 onClick={() => removeAttachment(att.id)}
-                className="p-1 rounded-full bg-[#0d2338]/80 text-cyan-50/75 hover:text-white hover:bg-rose-600 transition"
+                className="p-1 rounded-full bg-sky-100 text-[#39728d] hover:text-white hover:bg-rose-500 transition"
                 aria-label="Remove attachment"
               >
                 <X className="h-3 w-3" />
@@ -230,13 +230,13 @@ export function MessageInput({
 
       {/* Mentions Auto-Suggest Dropdown */}
       {mentionOptions.length > 0 && (
-        <div className="mb-2 max-h-40 overflow-y-auto rounded-2xl border border-cyan-100/15 bg-[#173150]/98 shadow-2xl shadow-[#071827]/35 p-1.5 custom-scrollbar animate-fade-in backdrop-blur-2xl">
+        <div className="mb-2 max-h-40 overflow-y-auto rounded-2xl border border-sky-200 bg-white/98 shadow-2xl shadow-sky-900/15 p-1.5 custom-scrollbar animate-fade-in backdrop-blur-2xl">
           {mentionOptions.map(member => (
             <button
               key={member.id}
               type="button"
               onClick={() => insertMention(member)}
-              className="flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs text-cyan-50 hover:bg-cyan-50/10 transition"
+              className="flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs text-[#164661] hover:bg-sky-50 transition"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <div className="h-6 w-6 rounded-full bg-cyan-100/15 text-cyan-100 flex items-center justify-center font-bold text-[10px]">
@@ -244,7 +244,7 @@ export function MessageInput({
                 </div>
                 <span className="font-semibold truncate">@{getUsername(member).toLowerCase()}</span>
               </div>
-              <span className="text-[10px] text-cyan-50/45 uppercase">{member.role || 'Member'}</span>
+              <span className="text-[10px] text-[#7299aa] uppercase">{member.role || 'Member'}</span>
             </button>
           ))}
         </div>
@@ -259,8 +259,8 @@ export function MessageInput({
                 onClick={() => setShowEmojiPicker(s => !s)}
                 className={`h-9 w-9 flex items-center justify-center rounded-xl border transition ${
                   showEmojiPicker
-                    ? 'bg-cyan-100/18 border-cyan-100/35 text-cyan-50'
-                    : 'border-transparent text-cyan-50/65 hover:text-white hover:bg-cyan-50/10'
+                    ? 'bg-cyan-100 border-cyan-300 text-cyan-800'
+                    : 'border-transparent text-[#39728d] hover:text-[#164661] hover:bg-sky-100'
                 }`}
                 aria-label="Insert emoji"
                 title="Emojis"
@@ -272,9 +272,9 @@ export function MessageInput({
               {showEmojiPicker && (
                 <div
                   ref={emojiPickerRef}
-                  className="absolute bottom-full left-0 mb-2 w-72 max-w-[calc(100vw-20px)] rounded-2xl border border-cyan-100/15 bg-[#173150]/98 shadow-2xl shadow-[#071827]/35 p-3 z-50 animate-fade-in backdrop-blur-2xl"
+                  className="absolute bottom-full left-0 mb-2 w-72 max-w-[calc(100vw-20px)] rounded-2xl border border-sky-200 bg-white/98 shadow-2xl shadow-sky-900/15 p-3 z-50 animate-fade-in backdrop-blur-2xl"
                 >
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-50/55 mb-2">Quick Emojis</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#7299aa] mb-2">Quick Emojis</div>
                   <div className="grid grid-cols-8 gap-1">
                     {QUICK_EMOJIS.map(emoji => (
                       <button
@@ -294,7 +294,7 @@ export function MessageInput({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="h-9 w-9 flex items-center justify-center rounded-xl text-cyan-50/65 hover:text-white hover:bg-cyan-50/10 transition border border-transparent"
+              className="h-9 w-9 flex items-center justify-center rounded-xl text-[#39728d] hover:text-[#164661] hover:bg-sky-100 transition border border-transparent"
               aria-label="Attach photo or file"
               title="Attach Image or File"
             >
@@ -326,7 +326,7 @@ export function MessageInput({
               rows={1}
               maxLength={4000}
               disabled={disabled || !!readOnlyReason || sending || isCompressing}
-              className="w-full min-h-[42px] max-h-32 resize-none rounded-xl border border-cyan-100/18 bg-[#102d4a]/72 px-3 sm:px-4 py-2.5 text-sm text-cyan-50 placeholder:text-cyan-50/45 outline-none transition focus:border-cyan-200/70 focus:bg-[#123758] focus:ring-2 focus:ring-cyan-200/15 disabled:opacity-50"
+              className="w-full min-h-[42px] max-h-32 resize-none rounded-xl border border-sky-200 bg-white px-3 sm:px-4 py-2.5 text-sm text-[#164661] placeholder:text-[#7299aa] outline-none transition focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-200/30 disabled:opacity-50"
             />
           </div>
 
@@ -334,7 +334,7 @@ export function MessageInput({
             <Button
               type="submit"
               disabled={disabled || !!readOnlyReason || sending || isCompressing || (!text.trim() && attachments.length === 0)}
-              className="h-[42px] w-[42px] sm:w-auto sm:px-4 rounded-xl bg-cyan-200 hover:bg-cyan-100 disabled:bg-cyan-50/10 disabled:text-cyan-50/35 disabled:shadow-none text-[#0b253d] shadow-lg shadow-[#071827]/25 transition active:scale-95 border border-cyan-50/45"
+              className="h-[42px] w-[42px] sm:w-auto sm:px-4 rounded-xl bg-cyan-500 hover:bg-cyan-600 disabled:bg-sky-100 disabled:text-[#7299aa] disabled:shadow-none text-white shadow-lg shadow-cyan-600/20 transition active:scale-95 border border-cyan-400"
               aria-label="Send message"
             >
               {sending || isCompressing ? (

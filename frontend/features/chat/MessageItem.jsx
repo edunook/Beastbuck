@@ -33,7 +33,7 @@ export function MemberAvatar({ photoURL, name = 'Member', size = 'md', className
 
   if (photoURL && !imgError) {
     return (
-      <div className={`relative shrink-0 rounded-full overflow-hidden bg-[#173150] border border-cyan-100/15 shadow-md flex items-center justify-center ${baseSize} ${className}`}>
+      <div className={`relative shrink-0 rounded-full overflow-hidden bg-sky-100 border border-sky-200 shadow-md flex items-center justify-center ${baseSize} ${className}`}>
         <img
           src={photoURL}
           alt={name}
@@ -140,8 +140,8 @@ function AudioVoicePlayer({ src, name, isOwnMessage }) {
   return (
     <div className={`mt-2 flex items-center gap-2.5 rounded-2xl p-2.5 sm:p-3 border backdrop-blur-xl max-w-xs transition ${
       isOwnMessage 
-              ? 'bg-cyan-50/20 border-cyan-50/25 text-white shadow-md'
-        : 'bg-[#12304d]/75 border-cyan-100/12 text-cyan-50 shadow-sm'
+              ? 'bg-cyan-50 border-cyan-200 text-[#164661] shadow-md'
+        : 'bg-white border-sky-200 text-[#164661] shadow-sm'
     }`}>
       <audio 
         ref={audioRef} 
@@ -169,14 +169,14 @@ function AudioVoicePlayer({ src, name, isOwnMessage }) {
               <div
                 key={i}
                 className={`w-1 rounded-full transition-all duration-150 ${
-                  isActive ? 'bg-cyan-400' : 'bg-white/30'
+                  isActive ? 'bg-cyan-500' : 'bg-sky-200'
                 } ${isPlaying && isActive ? 'animate-pulse' : ''}`}
                 style={{ height: `${h}%` }}
               />
             );
           })}
         </div>
-        <div className="flex items-center justify-between text-[10px] text-white/60">
+        <div className="flex items-center justify-between text-[10px] text-[#4b7d94]">
           <span>{isPlaying ? formatSeconds(currentTime) : (formatSeconds(duration) || name || 'Voice Note')}</span>
           <span className="flex items-center gap-1">
             <Volume2 className="h-2.5 w-2.5 opacity-60" />
@@ -325,10 +325,10 @@ export const MessageItem = memo(function MessageItem({
       }
 
       return (
-        <div key={idx} className="mt-2 rounded-xl border border-cyan-100/12 bg-[#102d4a]/72 p-2.5 flex items-center gap-2 max-w-xs shadow-sm">
-          <Paperclip className="h-4 w-4 text-cyan-50/65 shrink-0" />
-          <span className="text-xs text-cyan-50 truncate flex-1">{file.name}</span>
-          <span className="text-[10px] text-cyan-50/45">{(file.size / 1024).toFixed(0)}KB</span>
+        <div key={idx} className="mt-2 rounded-xl border border-sky-200 bg-sky-50 p-2.5 flex items-center gap-2 max-w-xs shadow-sm">
+          <Paperclip className="h-4 w-4 text-[#39728d] shrink-0" />
+          <span className="text-xs text-[#164661] truncate flex-1">{file.name}</span>
+          <span className="text-[10px] text-[#7299aa]">{(file.size / 1024).toFixed(0)}KB</span>
         </div>
       );
     });
@@ -362,7 +362,7 @@ export const MessageItem = memo(function MessageItem({
           className={`relative rounded-2xl px-3.5 py-2.5 text-xs sm:text-sm shadow-md transition-all ${
             isOwnMessage 
               ? 'bg-gradient-to-br from-cyan-200 to-emerald-200 text-[#0b253d] rounded-br-md shadow-[#071827]/25'
-              : 'bg-[#173150]/92 border border-cyan-100/12 text-cyan-50 rounded-bl-md backdrop-blur-xl hover:border-cyan-100/20'
+              : 'bg-white/92 border border-sky-200 text-[#164661] rounded-bl-md backdrop-blur-xl hover:border-sky-300'
           }`}
         >
           {/* Header Row: Sender Name, Role Badge, Time & Menu Trigger */}
@@ -371,7 +371,7 @@ export const MessageItem = memo(function MessageItem({
               <span 
                 onClick={() => onShowProfile?.(message.senderId, senderDisplayName)}
                 className={`font-bold truncate cursor-pointer hover:underline ${
-                  isOwnMessage ? 'text-[#0b253d]' : 'text-cyan-100'
+                  isOwnMessage ? 'text-[#0b253d]' : 'text-cyan-700'
                 }`}
               >
                 {isOwnMessage ? 'You' : senderDisplayName}
@@ -383,13 +383,13 @@ export const MessageItem = memo(function MessageItem({
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                     : isOwnMessage
                       ? 'bg-[#0b253d]/10 text-[#0b253d]'
-                      : 'bg-cyan-100/10 text-cyan-50/60'
+              : 'bg-sky-100 text-[#4b7d94]'
                 }`}>
                   {message.senderRole}
                 </span>
               )}
 
-              <span className={isOwnMessage ? 'text-[#0b253d]/60 text-[10px]' : 'text-cyan-50/45 text-[10px]'}>
+              <span className={isOwnMessage ? 'text-[#0b253d]/60 text-[10px]' : 'text-[#7299aa] text-[10px]'}>
                 {timeStr}
               </span>
 
@@ -402,7 +402,7 @@ export const MessageItem = memo(function MessageItem({
               type="button"
               ref={menuButtonRef}
               onClick={handleMenuToggle}
-              className={`p-1 rounded-md transition active:scale-95 ml-1 ${isOwnMessage ? 'text-[#0b253d]/55 hover:text-[#0b253d] hover:bg-[#0b253d]/10' : 'text-cyan-50/55 hover:text-white hover:bg-cyan-50/14'}`}
+              className={`p-1 rounded-md transition active:scale-95 ml-1 ${isOwnMessage ? 'text-[#0b253d]/55 hover:text-[#0b253d] hover:bg-[#0b253d]/10' : 'text-[#7299aa] hover:text-[#164661] hover:bg-sky-100'}`}
               aria-label="Message options"
               title="Actions"
             >
@@ -415,12 +415,12 @@ export const MessageItem = memo(function MessageItem({
             <div className={`mb-2 rounded-lg border-l-2 px-2.5 py-1 text-xs ${
               isOwnMessage 
                 ? 'border-[#0b253d]/25 bg-[#0b253d]/10 text-[#0b253d]'
-                : 'border-cyan-200 bg-[#0f2943]/70 text-cyan-50/80'
+                : 'border-cyan-300 bg-sky-50 text-[#39728d]'
             }`}>
-              <div className={`font-semibold text-[10px] ${isOwnMessage ? 'text-[#0b253d]/70' : 'text-cyan-50/75'}`}>
+              <div className={`font-semibold text-[10px] ${isOwnMessage ? 'text-[#0b253d]/70' : 'text-[#39728d]'}`}>
                 Replying to {message.replyTo.senderName || 'Member'}
               </div>
-              <p className={isOwnMessage ? 'truncate text-[#0b253d]/80' : 'truncate text-cyan-50/80'}>{message.replyTo.text}</p>
+              <p className={isOwnMessage ? 'truncate text-[#0b253d]/80' : 'truncate text-[#4b7d94]'}>{message.replyTo.text}</p>
             </div>
           )}
 
@@ -434,7 +434,7 @@ export const MessageItem = memo(function MessageItem({
                   if (e.key === 'Enter') handleEditSubmit();
                   if (e.key === 'Escape') setIsEditing(false);
                 }}
-                className="flex-1 rounded-lg border border-cyan-100/30 bg-[#0f2943]/80 px-2 py-1 text-xs text-cyan-50 outline-none focus:border-cyan-200"
+                className="flex-1 rounded-lg border border-sky-200 bg-white px-2 py-1 text-xs text-[#164661] outline-none focus:border-cyan-400"
                 autoFocus
               />
               <button 
@@ -446,7 +446,7 @@ export const MessageItem = memo(function MessageItem({
               </button>
               <button 
                 onClick={() => setIsEditing(false)} 
-                className="p-1 rounded bg-white/10 text-white/60 hover:text-white transition"
+                className="p-1 rounded bg-sky-100 text-[#7299aa] hover:text-[#164661] transition"
                 title="Cancel"
               >
                 <X className="h-3.5 w-3.5" />
@@ -489,8 +489,8 @@ export const MessageItem = memo(function MessageItem({
                     onClick={() => onToggleReaction?.(message, r.key, isUserActive)}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition ${
                       isUserActive 
-                        ? 'bg-cyan-100/25 border-cyan-100/45 text-white'
-                        : 'bg-[#102d4a]/60 border-cyan-100/12 text-cyan-50/75 hover:bg-cyan-50/10'
+                        ? 'bg-cyan-100 border-cyan-300 text-cyan-800'
+                        : 'bg-sky-50 border-sky-200 text-[#39728d] hover:bg-sky-100'
                     }`}
                   >
                     <span>{r.emoji}</span>
@@ -509,7 +509,7 @@ export const MessageItem = memo(function MessageItem({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[9999] w-48 rounded-2xl border border-cyan-100/15 bg-[#173150] shadow-2xl shadow-[#071827]/40 p-1.5 backdrop-blur-2xl animate-fade-in"
+            className="fixed z-[9999] w-48 rounded-2xl border border-sky-200 bg-white shadow-2xl shadow-sky-900/15 p-1.5 backdrop-blur-2xl animate-fade-in"
             style={{
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`
@@ -540,7 +540,7 @@ export const MessageItem = memo(function MessageItem({
             <button
               type="button"
               onClick={() => { onReply?.(message); setShowMenu(false); }}
-              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-cyan-50/80 hover:text-white hover:bg-cyan-50/10 rounded-lg transition"
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-[#39728d] hover:text-[#164661] hover:bg-sky-50 rounded-lg transition"
             >
               <MessageSquareReply className="h-3.5 w-3.5 text-indigo-400" />
               <span>Reply</span>
@@ -549,7 +549,7 @@ export const MessageItem = memo(function MessageItem({
             <button
               type="button"
               onClick={() => { onBookmark?.(message); setShowMenu(false); }}
-              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-cyan-50/80 hover:text-white hover:bg-cyan-50/10 rounded-lg transition"
+              className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-[#39728d] hover:text-[#164661] hover:bg-sky-50 rounded-lg transition"
             >
               <Bookmark className="h-3.5 w-3.5 text-cyan-400" />
               <span>{message.bookmarked ? 'Unbookmark' : 'Bookmark'}</span>
@@ -559,7 +559,7 @@ export const MessageItem = memo(function MessageItem({
               <button
                 type="button"
                 onClick={() => { onTogglePin?.(message); setShowMenu(false); }}
-                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-cyan-50/80 hover:text-white hover:bg-cyan-50/10 rounded-lg transition"
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-[#39728d] hover:text-[#164661] hover:bg-sky-50 rounded-lg transition"
               >
                 <Pin className="h-3.5 w-3.5 text-amber-400" />
                 <span>{message.pinned ? 'Unpin' : 'Pin to Top'}</span>
@@ -570,7 +570,7 @@ export const MessageItem = memo(function MessageItem({
               <button
                 type="button"
                 onClick={() => { setIsEditing(true); setShowMenu(false); }}
-                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-cyan-50/80 hover:text-white hover:bg-cyan-50/10 rounded-lg transition"
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-medium text-[#39728d] hover:text-[#164661] hover:bg-sky-50 rounded-lg transition"
               >
                 <Edit3 className="h-3.5 w-3.5 text-emerald-400" />
                 <span>Edit</span>
@@ -613,7 +613,7 @@ export function DateSeparator({ date }) {
   return (
     <div className="flex items-center gap-3 py-3 px-4 my-1 select-none">
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-100/18 to-transparent" />
-      <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-50/55 bg-[#173150]/88 px-3 py-1 rounded-full border border-cyan-100/12 backdrop-blur-md shadow-sm">
+      <span className="text-[10px] font-bold uppercase tracking-widest text-[#4b7d94] bg-white/88 px-3 py-1 rounded-full border border-sky-200 backdrop-blur-md shadow-sm">
         {formatted}
       </span>
       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-cyan-100/18 to-transparent" />

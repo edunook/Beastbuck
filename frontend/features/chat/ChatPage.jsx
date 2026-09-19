@@ -30,12 +30,21 @@ const ChatPage = React.memo(function ChatPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showGamesModal, setShowGamesModal] = useState(false);
   const [joinGameSessionId, setJoinGameSessionId] = useState(null);
+  const [joinGameId, setJoinGameId] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMessage, setReportMessage] = useState(null);
   const [reportReason, setReportReason] = useState('');
   const [showMediaHub, setShowMediaHub] = useState(false);
   const [selectedDrawerMember, setSelectedDrawerMember] = useState(null);
   const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    const battleId = new URLSearchParams(window.location.search).get('battle');
+    if (!battleId) return;
+    setJoinGameSessionId(battleId);
+    setJoinGameId('battle-arena-v2');
+    setShowGamesModal(true);
+  }, []);
   const [optimisticMessages, setOptimisticMessages] = useState([]);
   
   // Search in chat
@@ -381,6 +390,7 @@ const ChatPage = React.memo(function ChatPage() {
     if (content?.type === 'game') {
       const sessId = content.sessionId || content.gameSessionId || null;
       setJoinGameSessionId(sessId);
+      setJoinGameId(content.gameId || null);
       setShowGamesModal(true);
     } else if (content?.url) {
       handleMediaOpen(content.url);
@@ -388,13 +398,13 @@ const ChatPage = React.memo(function ChatPage() {
   }, [handleMediaOpen]);
 
   return (
-    <div className="flex h-[calc(100dvh-4rem-4.5rem)] sm:h-[calc(100dvh-4.5rem)] w-full flex-col overflow-hidden bg-[linear-gradient(135deg,#0f2743_0%,#172f4f_42%,#123a47_100%)] p-0 sm:p-2 md:p-3 select-none">
+    <div className="flex h-[calc(100dvh-4rem-4.5rem)] sm:h-[calc(100dvh-4.5rem)] w-full flex-col overflow-hidden bg-[linear-gradient(135deg,#e7f8ff_0%,#dcf5ee_42%,#e8efff_100%)] p-0 sm:p-2 md:p-3 select-none">
       
       {/* Outer Shell Glass Container */}
-      <div className="mx-auto flex min-h-0 w-full max-w-[1320px] flex-1 overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-cyan-100/15 bg-[#132844]/90 shadow-2xl shadow-[#071827]/40 backdrop-blur-3xl">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1320px] flex-1 overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-sky-200 bg-white/90 shadow-2xl shadow-sky-900/15 backdrop-blur-3xl">
         
         {/* Main Conversation Area */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(29,55,91,0.98),rgba(18,46,72,0.97)_46%,rgba(13,38,53,0.99))]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(247,253,255,0.98),rgba(237,249,253,0.97)_46%,rgba(243,251,255,0.99))]">
           
           {/* Header */}
           <ChatHeader
@@ -468,7 +478,7 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Full-screen Lightbox Media Viewer */}
       {showMediaViewer && mediaViewerSrc && (
         <div 
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex items-center justify-center animate-fade-in p-4" 
+          className="fixed inset-0 z-50 bg-[#164661]/75 backdrop-blur-xl flex items-center justify-center animate-fade-in p-4"
           onClick={handleMediaClose}
         >
           <button 
@@ -500,22 +510,22 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Pinned Messages Modal */}
       {showPinnedModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in" 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#164661]/40 backdrop-blur-sm p-4 animate-fade-in"
           onClick={() => setShowPinnedModal(false)}
         >
           <Card 
-            className="max-w-xl w-full max-h-[80vh] overflow-hidden rounded-2xl border-cyan-100/15 bg-[#173150] shadow-2xl shadow-[#071827]/40"
+            className="max-w-xl w-full max-h-[80vh] overflow-hidden rounded-2xl border-sky-200 bg-white shadow-2xl shadow-sky-900/15"
             onClick={(e) => e.stopPropagation()}
           >
-            <CardHeader className="border-b border-cyan-100/10 pb-3">
-              <CardTitle className="flex items-center justify-between text-white text-base">
+            <CardHeader className="border-b border-sky-100 pb-3">
+              <CardTitle className="flex items-center justify-between text-[#164661] text-base">
                 <div className="flex items-center gap-2">
                   <Pin className="h-4 w-4 text-amber-400" />
                   <span>Pinned Messages</span>
                 </div>
                 <button 
                   onClick={() => setShowPinnedModal(false)} 
-                  className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition"
+                  className="p-1 rounded-lg hover:bg-sky-100 text-[#7299aa] hover:text-[#164661] transition"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -527,11 +537,11 @@ const ChatPage = React.memo(function ChatPage() {
                   <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-100/10 text-cyan-100/60">
                     <Pin className="h-5 w-5" />
                   </div>
-                  <p className="text-xs text-cyan-50/60">No pinned messages yet</p>
+                  <p className="text-xs text-[#7299aa]">No pinned messages yet</p>
                 </div>
               ) : (
                 currentPinnedMessages.map((msg) => (
-                  <div key={msg.id} className="p-3 rounded-xl bg-cyan-100/8 border border-cyan-100/10 hover:border-cyan-300/40 transition">
+                  <div key={msg.id} className="p-3 rounded-xl bg-sky-50 border border-sky-100 hover:border-cyan-300 transition">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-bold text-indigo-400 text-xs">{msg.senderName || 'Member'}</span>
                       {canManageAnnouncements && (
@@ -543,7 +553,7 @@ const ChatPage = React.memo(function ChatPage() {
                         </button>
                       )}
                     </div>
-                    <p className="text-xs text-white leading-relaxed">{msg.text}</p>
+                    <p className="text-xs text-[#164661] leading-relaxed">{msg.text}</p>
                   </div>
                 ))
               )}
@@ -558,10 +568,12 @@ const ChatPage = React.memo(function ChatPage() {
           onClose={() => {
             setShowGamesModal(false);
             setJoinGameSessionId(null);
+            setJoinGameId(null);
           }}
           currentUser={user}
           activeRoomId={CHAT_ROOM_ID}
           joinSessionId={joinGameSessionId}
+          joinGameId={joinGameId}
           onSendGameCard={async (gameCardData) => {
             try {
               await ChatService.sendMessage({
@@ -631,39 +643,39 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Chat Settings Modal */}
       {showSettings && (
         <div 
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#071827]/75 backdrop-blur-md p-0 sm:p-4 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#164661]/35 backdrop-blur-md p-0 sm:p-4 animate-fade-in"
           onClick={() => setShowSettings(false)}
         >
           <Card 
-            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-cyan-100/15 bg-[#173150]/98 shadow-2xl shadow-[#071827]/40 p-5 animate-slide-up"
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-sky-200 bg-white/98 shadow-2xl shadow-sky-900/15 p-5 animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
-            <div className="w-12 h-1 rounded-full bg-cyan-50/20 mx-auto mb-3 sm:hidden" />
+            <div className="w-12 h-1 rounded-full bg-sky-200 mx-auto mb-3 sm:hidden" />
 
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-cyan-100" />
-                <h3 className="text-sm font-bold text-cyan-50">Chat Preferences</h3>
+                <Settings className="h-5 w-5 text-cyan-600" />
+                <h3 className="text-sm font-bold text-[#164661]">Chat Preferences</h3>
               </div>
-              <button onClick={() => setShowSettings(false)} className="p-1 rounded-lg text-cyan-50/60 hover:text-white">
+              <button onClick={() => setShowSettings(false)} className="p-1 rounded-lg text-[#7299aa] hover:text-[#164661]">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-cyan-50">Compact Message Mode</span>
+                <span className="text-xs font-semibold text-[#164661]">Compact Message Mode</span>
                 <button 
                   onClick={() => setChatSettings(s => ({ ...s, compactMode: !s.compactMode }))}
-                  className={`relative w-10 h-5 rounded-full transition ${chatSettings.compactMode ? 'bg-cyan-300' : 'bg-cyan-50/20'}`}
+                  className={`relative w-10 h-5 rounded-full transition ${chatSettings.compactMode ? 'bg-cyan-500' : 'bg-sky-200'}`}
                 >
                   <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition transform ${chatSettings.compactMode ? 'translate-x-5' : ''}`} />
                 </button>
               </div>
 
               <div>
-                <span className="text-xs font-semibold text-cyan-50 block mb-2">Message Font Size</span>
+                <span className="text-xs font-semibold text-[#164661] block mb-2">Message Font Size</span>
                 <div className="flex gap-2">
                   {['small', 'medium', 'large'].map(size => (
                     <button
@@ -671,8 +683,8 @@ const ChatPage = React.memo(function ChatPage() {
                       onClick={() => setChatSettings(s => ({ ...s, fontSize: size }))}
                       className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold capitalize transition ${
                         chatSettings.fontSize === size
-                          ? 'border-cyan-200 bg-cyan-100/18 text-white'
-                          : 'border-cyan-100/12 bg-cyan-50/8 text-cyan-50/65 hover:text-white'
+                          ? 'border-cyan-400 bg-cyan-100 text-cyan-800'
+                          : 'border-sky-200 bg-sky-50 text-[#4b7d94] hover:text-[#164661]'
                       }`}
                     >
                       {size}
@@ -681,7 +693,7 @@ const ChatPage = React.memo(function ChatPage() {
                 </div>
               </div>
 
-              <p className="text-[10px] text-cyan-50/45 text-center pt-2">Preferences are active in real time.</p>
+              <p className="text-[10px] text-[#7299aa] text-center pt-2">Preferences are active in real time.</p>
             </div>
           </Card>
         </div>
@@ -690,28 +702,28 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Report Modal */}
       {showReportModal && reportMessage && (
         <div 
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#071827]/75 backdrop-blur-md p-0 sm:p-4 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#164661]/35 backdrop-blur-md p-0 sm:p-4 animate-fade-in"
           onClick={() => setShowReportModal(false)}
         >
           <Card 
-            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-cyan-100/15 bg-[#173150]/98 shadow-2xl shadow-[#071827]/40 p-5 animate-slide-up"
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-sky-200 bg-white/98 shadow-2xl shadow-sky-900/15 p-5 animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
-            <div className="w-12 h-1 rounded-full bg-cyan-50/20 mx-auto mb-3 sm:hidden" />
+            <div className="w-12 h-1 rounded-full bg-sky-200 mx-auto mb-3 sm:hidden" />
 
-            <div className="flex items-center gap-2 text-cyan-50 mb-3">
+            <div className="flex items-center gap-2 text-[#164661] mb-3">
               <Flag className="h-4 w-4 text-amber-400" />
               <h3 className="text-sm font-bold">Report Message</h3>
             </div>
-            <p className="text-xs text-cyan-50/70 mb-3">
+            <p className="text-xs text-[#4b7d94] mb-3">
               Flag this message to BeastBuck moderators for community safety review.
             </p>
             <textarea
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
               placeholder="Describe the issue or violation..."
-              className="w-full rounded-xl border border-cyan-100/15 bg-[#102d4a]/72 px-3 py-2 text-xs text-cyan-50 outline-none focus:border-cyan-200 mb-4"
+              className="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-[#164661] outline-none focus:border-cyan-400 mb-4"
               rows={3}
             />
             <div className="flex gap-2">
@@ -723,7 +735,7 @@ const ChatPage = React.memo(function ChatPage() {
               </Button>
               <button 
                 onClick={() => setShowReportModal(false)} 
-                className="flex-1 px-3 py-1.5 rounded-xl border border-cyan-100/15 text-xs text-cyan-50/70 hover:bg-cyan-50/10"
+                className="flex-1 px-3 py-1.5 rounded-xl border border-sky-200 text-xs text-[#39728d] hover:bg-sky-50"
               >
                 Cancel
               </button>

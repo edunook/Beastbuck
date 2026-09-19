@@ -1091,7 +1091,90 @@ service cloud.firestore {
     }
 
     // ----------------------------------------
-    // GAME SESSIONS (Multiplayer Games)
+    // BEASTBUCK BATTLE ARENA V2
+    // Persistent lobby and result data only. Fast match simulation lives in
+    // Realtime Database, where only the elected host may write snapshots.
+    // ----------------------------------------
+    match /battleMatches/{matchId} {
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated()
+                    && request.resource.data.keys().hasOnly([
+                      'gameId',
+                      'version',
+                      'hostId',
+                      'hostName',
+                      'roomId',
+                      'status',
+                      'gameMode',
+                      'mapId',
+                      'durationSec',
+                      'maxPlayers',
+                      'participantIds',
+                      'createdAt'
+                    ])
+                    && request.resource.data.gameId == 'battle-arena-v2'
+                    && request.resource.data.version == 2
+                    && request.resource.data.hostId == request.auth.uid
+                    && request.resource.data.status == 'waiting'
+                    && request.resource.data.gameMode == 'free-for-all'
+                    && request.resource.data.mapId == 'neon-foundry'
+                    && request.resource.data.durationSec in [180, 240, 300]
+                    && request.resource.data.maxPlayers == 7
+                    && request.resource.data.participantIds == [request.auth.uid];
+
+      // The owner progresses a match and persists its compact final result.
+      // Participants cannot write scores, kills, or winners directly.
+      allow update: if isAuthenticated()
+                    && resource.data.hostId == request.auth.uid
+                    && request.resource.data.hostId == resource.data.hostId
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      'status',
+                      'countdownAt',
+                      'startedAtClient',
+                      'startedAt',
+                      'winnerId',
+                      'result',
+                      'endedAt'
+                    ]);
+
+      // A lobby join reserves exactly one slot atomically. The matching
+      // participant document must be created in the same transaction below.
+      allow update: if isAuthenticated()
+                    && resource.data.status == 'waiting'
+                    && request.resource.data.status == 'waiting'
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantIds'])
+                    && request.resource.data.participantIds.size() == resource.data.participantIds.size() + 1
+                    && request.resource.data.participantIds.hasAll(resource.data.participantIds)
+                    && request.resource.data.participantIds.hasAll([request.auth.uid])
+                    && request.resource.data.participantIds.size() <= resource.data.maxPlayers;
+
+      allow delete: if isAuthenticated()
+                    && resource.data.hostId == request.auth.uid
+                    && resource.data.status == 'waiting';
+
+      match /participants/{userId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+                      && request.auth.uid == userId
+                      && get(/databases/$(database)/documents/battleMatches/$(matchId)).data.status == 'waiting'
+                      && getAfter(/databases/$(database)/documents/battleMatches/$(matchId)).data.participantIds.hasAll([request.auth.uid])
+                      && request.resource.data.keys().hasOnly([
+                        'uid', 'displayName', 'color', 'joinedAtClient'
+                      ])
+                      && request.resource.data.uid == request.auth.uid
+                      && request.resource.data.displayName is string
+                      && request.resource.data.color is string
+                      && request.resource.data.joinedAtClient is number;
+        allow update: if false;
+        allow delete: if isAuthenticated()
+                      && request.auth.uid == userId
+                      && get(/databases/$(database)/documents/battleMatches/$(matchId)).data.status == 'waiting';
+      }
+    }
+
+    // ----------------------------------------
+    // GAME SESSIONS (Legacy Multiplayer Games)
     // ----------------------------------------
     match /gameSessions/{sessionId} {
       function hasPlayer2() {
