@@ -339,7 +339,9 @@ async function claimOpenSessionRole(id, userId, displayName) {
       updatedAt: serverTimestamp(),
     };
     if (isArenaGame(sessionData.gameId)) {
-      updates[`gameState.players.${nextRole}`] = createArenaPlayer(nextRole);
+      if (nextRole !== 'player2') {
+        updates[`gameState.players.${nextRole}`] = createArenaPlayer(nextRole);
+      }
     } else {
       updates.status = 'active';
     }
@@ -528,11 +530,6 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
         status: 'waiting',
         player1: { uid: currentUser.uid, displayName: currentName },
         player2: null,
-        player3: null,
-        player4: null,
-        player5: null,
-        player6: null,
-        player7: null,
         gameState: gameState,
         winner: null,
         createdAt: serverTimestamp(),
@@ -662,9 +659,15 @@ export function ChatGamesModal({ onClose, currentUser, activeRoomId = 'general',
       return;
     }
     try {
+      const arenaPlayers = joinedRoles.reduce((players, role) => {
+        players[role] = session?.gameState?.players?.[role] || createArenaPlayer(role);
+        return players;
+      }, {});
+
       await updateDoc(gameDocRef(sessionId), {
         status: 'active',
         'gameState.currentTurn': 'player1',
+        'gameState.players': arenaPlayers,
         'gameState.log': [`${p1Name} launched the arena match with ${joinedRoles.length} players.`],
         updatedAt: serverTimestamp(),
       });

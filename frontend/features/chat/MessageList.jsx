@@ -91,14 +91,14 @@ export const MessageList = memo(forwardRef(function MessageList({
       <div className="flex min-h-0 flex-1 items-center justify-center p-6">
         <div className="flex flex-col items-center gap-3">
           <SkeletonChat />
-          <p className="text-xs text-white/40 animate-pulse">Loading channel messages...</p>
+          <p className="text-xs text-cyan-50/55 animate-pulse">Loading channel messages...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col">
+    <div className="relative flex-1 min-h-0 overflow-hidden flex flex-col bg-[radial-gradient(circle_at_12%_0%,rgba(125,211,252,0.13),transparent_28%),radial-gradient(circle_at_92%_20%,rgba(52,211,153,0.09),transparent_32%)]">
       
       {/* Scrollable Message Container */}
       <div
@@ -109,21 +109,21 @@ export const MessageList = memo(forwardRef(function MessageList({
         {/* Welcome Banner when few or no messages */}
         {displayedMessages.length === 0 ? (
           <div className="flex h-full min-h-[300px] flex-col items-center justify-center p-6 text-center animate-fade-in">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/25 bg-cyan-500/10 shadow-xl shadow-cyan-950/30 text-cyan-300">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-100/25 bg-cyan-100/12 shadow-xl shadow-[#071827]/25 text-cyan-100">
               {isAnnouncement ? <Megaphone className="h-8 w-8" /> : <MessageCircle className="h-8 w-8" />}
             </div>
             
-            <h2 className="text-lg font-bold text-white mb-1">
+            <h2 className="text-lg font-bold text-cyan-50 mb-1">
               {searchQuery ? 'No matching messages' : 'Welcome to Community Chat!'}
             </h2>
             
-            <p className="max-w-md text-xs sm:text-sm text-white/50 leading-relaxed">
+            <p className="max-w-md text-xs sm:text-sm text-cyan-50/60 leading-relaxed">
               {searchQuery 
                 ? `No messages matched "${searchQuery}". Try a different keyword.`
                 : 'Connect, collaborate, and share with fellow BeastBuck creators.'}
             </p>
 
-            {!searchQuery && <p className="text-[11px] text-cyan-300/80 mt-3 font-semibold">Send a message below to start the conversation.</p>}
+            {!searchQuery && <p className="text-[11px] text-cyan-100/85 mt-3 font-semibold">Send a message below to start the conversation.</p>}
           </div>
         ) : (
           <>
@@ -165,11 +165,11 @@ export const MessageList = memo(forwardRef(function MessageList({
 
         {/* Typing Indicators */}
         {typingUsers.length > 0 && (
-          <div className="px-3 sm:px-4 py-1.5 flex items-center gap-2 text-xs text-indigo-300 animate-fade-in">
+          <div className="px-3 sm:px-4 py-1.5 flex items-center gap-2 text-xs text-cyan-100 animate-fade-in">
             <span className="flex gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-200 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-200 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-200 animate-bounce" style={{ animationDelay: '300ms' }} />
             </span>
             <span className="truncate text-[11px]">
               {typingUsers.map(u => u.userName).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
@@ -185,7 +185,7 @@ export const MessageList = memo(forwardRef(function MessageList({
         <button
           type="button"
           onClick={scrollToBottom}
-          className="absolute bottom-3 right-3 sm:bottom-4 sm:right-6 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-600 text-white shadow-xl shadow-indigo-600/40 hover:bg-indigo-500 transition active:scale-95 text-xs font-semibold animate-fade-in border border-indigo-400/40 backdrop-blur-md"
+          className="absolute bottom-3 right-3 sm:bottom-4 sm:right-6 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-300 text-[#0b253d] shadow-xl shadow-[#071827]/30 hover:bg-cyan-200 transition active:scale-95 text-xs font-bold animate-fade-in border border-cyan-50/50 backdrop-blur-md"
         >
           <span>Latest</span>
           <ChevronDown className="h-3.5 w-3.5" />

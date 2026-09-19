@@ -1094,6 +1094,50 @@ service cloud.firestore {
     // GAME SESSIONS (Multiplayer Games)
     // ----------------------------------------
     match /gameSessions/{sessionId} {
+      function hasPlayer2() {
+        return resource.data.player2 != null;
+      }
+
+      function hasPlayer3() {
+        return resource.data.keys().hasAny(['player3']) && resource.data.player3 != null;
+      }
+
+      function hasPlayer4() {
+        return resource.data.keys().hasAny(['player4']) && resource.data.player4 != null;
+      }
+
+      function hasPlayer5() {
+        return resource.data.keys().hasAny(['player5']) && resource.data.player5 != null;
+      }
+
+      function hasPlayer6() {
+        return resource.data.keys().hasAny(['player6']) && resource.data.player6 != null;
+      }
+
+      function hasPlayer7() {
+        return resource.data.keys().hasAny(['player7']) && resource.data.player7 != null;
+      }
+
+      function isPlayer3Open() {
+        return !resource.data.keys().hasAny(['player3']) || resource.data.player3 == null;
+      }
+
+      function isPlayer4Open() {
+        return !resource.data.keys().hasAny(['player4']) || resource.data.player4 == null;
+      }
+
+      function isPlayer5Open() {
+        return !resource.data.keys().hasAny(['player5']) || resource.data.player5 == null;
+      }
+
+      function isPlayer6Open() {
+        return !resource.data.keys().hasAny(['player6']) || resource.data.player6 == null;
+      }
+
+      function isPlayer7Open() {
+        return !resource.data.keys().hasAny(['player7']) || resource.data.player7 == null;
+      }
+
       // Any authenticated user can read game sessions
       allow read: if isAuthenticated();
 
@@ -1120,23 +1164,23 @@ service cloud.firestore {
                     && request.resource.data.status in ['waiting', 'active', 'finished']
                     && request.resource.data.player1.uid == request.auth.uid
                     && request.resource.data.player2 == null
-                    && request.resource.data.player3 == null
-                    && request.resource.data.player4 == null
-                    && request.resource.data.player5 == null
-                    && request.resource.data.player6 == null
-                    && request.resource.data.player7 == null
+                    && (!request.resource.data.keys().hasAny(['player3']) || request.resource.data.player3 == null)
+                    && (!request.resource.data.keys().hasAny(['player4']) || request.resource.data.player4 == null)
+                    && (!request.resource.data.keys().hasAny(['player5']) || request.resource.data.player5 == null)
+                    && (!request.resource.data.keys().hasAny(['player6']) || request.resource.data.player6 == null)
+                    && (!request.resource.data.keys().hasAny(['player7']) || request.resource.data.player7 == null)
                     && request.resource.data.winner == null;
 
       // Joined players can update shared game state once they are in the session
       allow update: if isAuthenticated()
                     && (
                       resource.data.player1.uid == request.auth.uid ||
-                      (resource.data.player2 != null && resource.data.player2.uid == request.auth.uid) ||
-                      (resource.data.player3 != null && resource.data.player3.uid == request.auth.uid) ||
-                      (resource.data.player4 != null && resource.data.player4.uid == request.auth.uid) ||
-                      (resource.data.player5 != null && resource.data.player5.uid == request.auth.uid) ||
-                      (resource.data.player6 != null && resource.data.player6.uid == request.auth.uid) ||
-                      (resource.data.player7 != null && resource.data.player7.uid == request.auth.uid)
+                      (hasPlayer2() && resource.data.player2.uid == request.auth.uid) ||
+                      (hasPlayer3() && resource.data.player3.uid == request.auth.uid) ||
+                      (hasPlayer4() && resource.data.player4.uid == request.auth.uid) ||
+                      (hasPlayer5() && resource.data.player5.uid == request.auth.uid) ||
+                      (hasPlayer6() && resource.data.player6.uid == request.auth.uid) ||
+                      (hasPlayer7() && resource.data.player7.uid == request.auth.uid)
                     )
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                       'gameState',
@@ -1150,37 +1194,37 @@ service cloud.firestore {
                     && resource.data.status == 'waiting'
                     && (
                       (
-                        resource.data.player2 != null
+                        hasPlayer2()
                         && resource.data.player2.uid == request.auth.uid
                         && request.resource.data.player2 == null
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player2', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player3 != null
+                        hasPlayer3()
                         && resource.data.player3.uid == request.auth.uid
                         && request.resource.data.player3 == null
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player3', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player4 != null
+                        hasPlayer4()
                         && resource.data.player4.uid == request.auth.uid
                         && request.resource.data.player4 == null
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player4', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player5 != null
+                        hasPlayer5()
                         && resource.data.player5.uid == request.auth.uid
                         && request.resource.data.player5 == null
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player5', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player6 != null
+                        hasPlayer6()
                         && resource.data.player6.uid == request.auth.uid
                         && request.resource.data.player6 == null
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player6', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player7 != null
+                        hasPlayer7()
                         && resource.data.player7.uid == request.auth.uid
                         && request.resource.data.player7 == null
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player7', 'gameState', 'updatedAt'])
@@ -1192,11 +1236,11 @@ service cloud.firestore {
                     && resource.data.status == 'waiting'
                     && resource.data.player1.uid != request.auth.uid
                     && (resource.data.player2 == null || resource.data.player2.uid != request.auth.uid)
-                    && (resource.data.player3 == null || resource.data.player3.uid != request.auth.uid)
-                    && (resource.data.player4 == null || resource.data.player4.uid != request.auth.uid)
-                    && (resource.data.player5 == null || resource.data.player5.uid != request.auth.uid)
-                    && (resource.data.player6 == null || resource.data.player6.uid != request.auth.uid)
-                    && (resource.data.player7 == null || resource.data.player7.uid != request.auth.uid)
+                    && (isPlayer3Open() || resource.data.player3.uid != request.auth.uid)
+                    && (isPlayer4Open() || resource.data.player4.uid != request.auth.uid)
+                    && (isPlayer5Open() || resource.data.player5.uid != request.auth.uid)
+                    && (isPlayer6Open() || resource.data.player6.uid != request.auth.uid)
+                    && (isPlayer7Open() || resource.data.player7.uid != request.auth.uid)
                     && (
                       (
                         resource.data.player2 == null
@@ -1211,31 +1255,31 @@ service cloud.firestore {
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player2', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player3 == null
+                        isPlayer3Open()
                         && request.resource.data.player3 != null
                         && request.resource.data.player3.uid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player3', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player4 == null
+                        isPlayer4Open()
                         && request.resource.data.player4 != null
                         && request.resource.data.player4.uid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player4', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player5 == null
+                        isPlayer5Open()
                         && request.resource.data.player5 != null
                         && request.resource.data.player5.uid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player5', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player6 == null
+                        isPlayer6Open()
                         && request.resource.data.player6 != null
                         && request.resource.data.player6.uid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player6', 'gameState', 'updatedAt'])
                       ) ||
                       (
-                        resource.data.player7 == null
+                        isPlayer7Open()
                         && request.resource.data.player7 != null
                         && request.resource.data.player7.uid == request.auth.uid
                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['player7', 'gameState', 'updatedAt'])
