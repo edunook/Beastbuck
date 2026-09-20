@@ -176,22 +176,22 @@ export function MessageInput({
   };
 
   return (
-    <form onSubmit={submit} className="shrink-0 w-full border-t border-sky-200 bg-[#e8f7ff]/96 shadow-[0_-16px_40px_rgba(43,111,140,0.12)] backdrop-blur-2xl px-3 sm:px-5 py-2.5 sm:py-3 z-20 pb-[max(0.7rem,env(safe-area-inset-bottom))]">
+    <form onSubmit={submit} className="shrink-0 w-full border-t border-violet-800/50 bg-[#1e1438]/96 shadow-[0_-16px_40px_rgba(109,40,217,0.15)] backdrop-blur-2xl px-3 sm:px-5 py-2.5 sm:py-3 z-20 pb-[max(0.7rem,env(safe-area-inset-bottom))]">
       
       {/* Reply Preview Banner */}
       {replyTo && (
-        <div className="mb-2 flex items-center justify-between gap-2.5 rounded-xl border border-cyan-100/25 bg-cyan-100/10 px-3 py-1.5 animate-fade-in">
+        <div className="mb-2 flex items-center justify-between gap-2.5 rounded-xl border border-violet-700/40 bg-violet-900/25 px-3 py-1.5 animate-fade-in">
           <div className="min-w-0 flex-1 flex items-center gap-2">
-            <MessageSquareReply className="h-3.5 w-3.5 text-cyan-100 shrink-0" />
-            <span className="text-xs text-cyan-700 font-semibold truncate">
-              Replying to <span className="text-[#164661]">{replyTo.senderName || 'Member'}</span>:
+            <MessageSquareReply className="h-3.5 w-3.5 text-violet-400 shrink-0" />
+            <span className="text-xs text-violet-400 font-semibold truncate">
+              Replying to <span className="text-violet-200">{replyTo.senderName || 'Member'}</span>:
             </span>
-            <span className="text-xs text-[#4b7d94] truncate">{replyTo.text}</span>
+            <span className="text-xs text-violet-500 truncate">{replyTo.text}</span>
           </div>
           <button 
             type="button" 
             onClick={onCancelReply} 
-            className="p-1 rounded-lg text-[#7299aa] hover:text-[#164661] hover:bg-sky-100 transition"
+            className="p-1 rounded-lg text-violet-500 hover:text-violet-200 hover:bg-violet-800/40 transition"
             aria-label="Cancel reply"
           >
             <X className="h-3.5 w-3.5" />
@@ -203,22 +203,22 @@ export function MessageInput({
       {attachments.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-2 animate-fade-in max-h-28 overflow-y-auto custom-scrollbar">
           {attachments.map(att => (
-            <div key={att.id} className="relative group flex items-center gap-2 rounded-xl border border-cyan-100/15 bg-cyan-100/10 p-1.5 pr-2.5 shadow-md backdrop-blur-md">
+            <div key={att.id} className="relative group flex items-center gap-2 rounded-xl border border-violet-700/40 bg-violet-900/30 p-1.5 pr-2.5 shadow-md backdrop-blur-md">
               {att.type?.startsWith('image/') ? (
                 <img src={att.url} alt={att.name} className="h-9 w-9 rounded-lg object-cover" />
               ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-100/15 text-cyan-100">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-800/40 text-violet-300">
                   <FileText className="h-4 w-4" />
                 </div>
               )}
               <div className="min-w-0 max-w-[100px] sm:max-w-[160px]">
-                <p className="text-xs font-semibold text-[#164661] truncate">{att.name}</p>
-                <p className="text-[9px] text-[#7299aa]">{(att.size / 1024).toFixed(0)} KB</p>
+                <p className="text-xs font-semibold text-violet-200 truncate">{att.name}</p>
+                <p className="text-[9px] text-violet-500">{(att.size / 1024).toFixed(0)} KB</p>
               </div>
               <button
                 type="button"
                 onClick={() => removeAttachment(att.id)}
-                className="p-1 rounded-full bg-sky-100 text-[#39728d] hover:text-white hover:bg-rose-500 transition"
+                className="p-1 rounded-full bg-violet-800/40 text-violet-400 hover:text-white hover:bg-rose-600/60 transition"
                 aria-label="Remove attachment"
               >
                 <X className="h-3 w-3" />
@@ -230,21 +230,21 @@ export function MessageInput({
 
       {/* Mentions Auto-Suggest Dropdown */}
       {mentionOptions.length > 0 && (
-        <div className="mb-2 max-h-40 overflow-y-auto rounded-2xl border border-sky-200 bg-white/98 shadow-2xl shadow-sky-900/15 p-1.5 custom-scrollbar animate-fade-in backdrop-blur-2xl">
+        <div className="mb-2 max-h-40 overflow-y-auto rounded-2xl border border-violet-700/50 bg-[#1e1438]/98 shadow-2xl shadow-violet-900/40 p-1.5 custom-scrollbar animate-fade-in backdrop-blur-2xl">
           {mentionOptions.map(member => (
             <button
               key={member.id}
               type="button"
               onClick={() => insertMention(member)}
-              className="flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs text-[#164661] hover:bg-sky-50 transition"
+              className="flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-1.5 text-left text-xs text-violet-200 hover:bg-violet-900/50 transition"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <div className="h-6 w-6 rounded-full bg-cyan-100/15 text-cyan-100 flex items-center justify-center font-bold text-[10px]">
+                <div className="h-6 w-6 rounded-full bg-violet-800/50 text-violet-300 flex items-center justify-center font-bold text-[10px]">
                   {(member.displayName || member.username || 'M')[0]?.toUpperCase()}
                 </div>
                 <span className="font-semibold truncate">@{getUsername(member).toLowerCase()}</span>
               </div>
-              <span className="text-[10px] text-[#7299aa] uppercase">{member.role || 'Member'}</span>
+              <span className="text-[10px] text-violet-500 uppercase">{member.role || 'Member'}</span>
             </button>
           ))}
         </div>
@@ -259,8 +259,8 @@ export function MessageInput({
                 onClick={() => setShowEmojiPicker(s => !s)}
                 className={`h-9 w-9 flex items-center justify-center rounded-xl border transition ${
                   showEmojiPicker
-                    ? 'bg-cyan-100 border-cyan-300 text-cyan-800'
-                    : 'border-transparent text-[#39728d] hover:text-[#164661] hover:bg-sky-100'
+                    ? 'bg-violet-700/60 border-violet-500/60 text-violet-200'
+                    : 'border-transparent text-violet-500 hover:text-violet-200 hover:bg-violet-800/40'
                 }`}
                 aria-label="Insert emoji"
                 title="Emojis"
@@ -272,16 +272,16 @@ export function MessageInput({
               {showEmojiPicker && (
                 <div
                   ref={emojiPickerRef}
-                  className="absolute bottom-full left-0 mb-2 w-72 max-w-[calc(100vw-20px)] rounded-2xl border border-sky-200 bg-white/98 shadow-2xl shadow-sky-900/15 p-3 z-50 animate-fade-in backdrop-blur-2xl"
+                  className="absolute bottom-full left-0 mb-2 w-72 max-w-[calc(100vw-20px)] rounded-2xl border border-violet-700/50 bg-[#1e1438]/98 shadow-2xl shadow-violet-900/50 p-3 z-50 animate-fade-in backdrop-blur-2xl"
                 >
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#7299aa] mb-2">Quick Emojis</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-violet-500 mb-2">Quick Emojis</div>
                   <div className="grid grid-cols-8 gap-1">
                     {QUICK_EMOJIS.map(emoji => (
                       <button
                         key={emoji}
                         type="button"
                         onClick={() => handleEmojiClick(emoji)}
-                        className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-sm sm:text-base hover:bg-cyan-50/15 hover:scale-125 transition active:scale-95"
+                        className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg text-sm sm:text-base hover:bg-violet-800/40 hover:scale-125 transition active:scale-95"
                       >
                         {emoji}
                       </button>
@@ -294,7 +294,7 @@ export function MessageInput({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="h-9 w-9 flex items-center justify-center rounded-xl text-[#39728d] hover:text-[#164661] hover:bg-sky-100 transition border border-transparent"
+              className="h-9 w-9 flex items-center justify-center rounded-xl text-violet-500 hover:text-violet-200 hover:bg-violet-800/40 transition border border-transparent"
               aria-label="Attach photo or file"
               title="Attach Image or File"
             >
@@ -326,7 +326,7 @@ export function MessageInput({
               rows={1}
               maxLength={4000}
               disabled={disabled || !!readOnlyReason || sending || isCompressing}
-              className="w-full min-h-[42px] max-h-32 resize-none rounded-xl border border-sky-200 bg-white px-3 sm:px-4 py-2.5 text-sm text-[#164661] placeholder:text-[#7299aa] outline-none transition focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-200/30 disabled:opacity-50"
+              className="w-full min-h-[42px] max-h-32 resize-none rounded-xl border border-violet-700/50 bg-violet-900/50 px-3 sm:px-4 py-2.5 text-sm text-violet-100 placeholder:text-violet-600 outline-none transition focus:border-violet-500 focus:bg-[#231845] focus:ring-2 focus:ring-violet-500/20 disabled:opacity-50"
             />
           </div>
 
@@ -334,7 +334,7 @@ export function MessageInput({
             <Button
               type="submit"
               disabled={disabled || !!readOnlyReason || sending || isCompressing || (!text.trim() && attachments.length === 0)}
-              className="h-[42px] w-[42px] sm:w-auto sm:px-4 rounded-xl bg-cyan-500 hover:bg-cyan-600 disabled:bg-sky-100 disabled:text-[#7299aa] disabled:shadow-none text-white shadow-lg shadow-cyan-600/20 transition active:scale-95 border border-cyan-400"
+              className="h-[42px] w-[42px] sm:w-auto sm:px-4 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:bg-violet-900/40 disabled:text-violet-700 disabled:shadow-none text-white shadow-lg shadow-violet-700/30 transition active:scale-95 border border-violet-500/60"
               aria-label="Send message"
             >
               {sending || isCompressing ? (

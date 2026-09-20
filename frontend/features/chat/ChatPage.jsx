@@ -398,13 +398,13 @@ const ChatPage = React.memo(function ChatPage() {
   }, [handleMediaOpen]);
 
   return (
-    <div className="flex h-[calc(100dvh-4rem-4.5rem)] sm:h-[calc(100dvh-4.5rem)] w-full flex-col overflow-hidden bg-[linear-gradient(135deg,#e7f8ff_0%,#dcf5ee_42%,#e8efff_100%)] p-0 sm:p-2 md:p-3 select-none">
+    <div className="flex h-[calc(100dvh-4rem-4.5rem)] sm:h-[calc(100dvh-4.5rem)] w-full flex-col overflow-hidden bg-[linear-gradient(135deg,#180e38_0%,#231845_40%,#231645_100%)] p-0 sm:p-2 md:p-3 select-none">
       
       {/* Outer Shell Glass Container */}
-      <div className="mx-auto flex min-h-0 w-full max-w-[1320px] flex-1 overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-sky-200 bg-white/90 shadow-2xl shadow-sky-900/15 backdrop-blur-3xl">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1320px] flex-1 overflow-hidden rounded-none sm:rounded-2xl border-0 sm:border border-violet-700/50 bg-[#1e1438]/90 shadow-2xl shadow-violet-900/40 backdrop-blur-3xl">
         
         {/* Main Conversation Area */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(247,253,255,0.98),rgba(237,249,253,0.97)_46%,rgba(243,251,255,0.99))]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(22,14,48,0.99),rgba(20,12,44,0.98)_46%,rgba(18,11,40,0.99))]">
           
           {/* Header */}
           <ChatHeader
@@ -426,7 +426,7 @@ const ChatPage = React.memo(function ChatPage() {
 
           {/* Error Banner */}
           {error && (
-            <div className="mx-3 mt-2 flex items-center justify-between gap-2 rounded-xl border border-rose-300/30 bg-rose-950/35 px-3.5 py-2 text-xs text-rose-100 animate-fade-in shrink-0">
+            <div className="mx-3 mt-2 flex items-center justify-between gap-2 rounded-xl border border-rose-500/30 bg-rose-950/50 px-3.5 py-2 text-xs text-rose-200 animate-fade-in shrink-0">
               <div className="flex items-center gap-2 min-w-0">
                 <AlertCircle className="h-4 w-4 shrink-0 text-rose-300" />
                 <span className="truncate">{error}</span>
@@ -478,7 +478,7 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Full-screen Lightbox Media Viewer */}
       {showMediaViewer && mediaViewerSrc && (
         <div 
-          className="fixed inset-0 z-50 bg-[#164661]/75 backdrop-blur-xl flex items-center justify-center animate-fade-in p-4"
+          className="fixed inset-0 z-50 bg-[#1e1438]/85 backdrop-blur-xl flex items-center justify-center animate-fade-in p-4"
           onClick={handleMediaClose}
         >
           <button 
@@ -510,22 +510,22 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Pinned Messages Modal */}
       {showPinnedModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#164661]/40 backdrop-blur-sm p-4 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#1e1438]/70 backdrop-blur-md p-4 animate-fade-in"
           onClick={() => setShowPinnedModal(false)}
         >
           <Card 
-            className="max-w-xl w-full max-h-[80vh] overflow-hidden rounded-2xl border-sky-200 bg-white shadow-2xl shadow-sky-900/15"
+            className="max-w-xl w-full max-h-[80vh] overflow-hidden rounded-2xl border-violet-800/50 bg-[#1e1438] shadow-2xl shadow-violet-900/50"
             onClick={(e) => e.stopPropagation()}
           >
-            <CardHeader className="border-b border-sky-100 pb-3">
-              <CardTitle className="flex items-center justify-between text-[#164661] text-base">
+            <CardHeader className="border-b border-violet-800/40 pb-3">
+              <CardTitle className="flex items-center justify-between text-violet-100 text-base">
                 <div className="flex items-center gap-2">
                   <Pin className="h-4 w-4 text-amber-400" />
                   <span>Pinned Messages</span>
                 </div>
                 <button 
                   onClick={() => setShowPinnedModal(false)} 
-                  className="p-1 rounded-lg hover:bg-sky-100 text-[#7299aa] hover:text-[#164661] transition"
+                  className="p-1 rounded-lg hover:bg-violet-900/50 text-violet-400 hover:text-violet-200 transition"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -534,16 +534,16 @@ const ChatPage = React.memo(function ChatPage() {
             <CardContent className="overflow-y-auto max-h-[60vh] p-4 space-y-2.5 custom-scrollbar">
               {currentPinnedMessages.length === 0 ? (
                 <div className="py-12 text-center">
-                  <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-100/10 text-cyan-100/60">
+                  <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-violet-900/30 text-violet-400/60">
                     <Pin className="h-5 w-5" />
                   </div>
-                  <p className="text-xs text-[#7299aa]">No pinned messages yet</p>
+                  <p className="text-xs text-violet-400">No pinned messages yet</p>
                 </div>
               ) : (
                 currentPinnedMessages.map((msg) => (
-                  <div key={msg.id} className="p-3 rounded-xl bg-sky-50 border border-sky-100 hover:border-cyan-300 transition">
+                  <div key={msg.id} className="p-3 rounded-xl bg-violet-900/20 border border-violet-800/40 hover:border-violet-600/60 transition">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-bold text-indigo-400 text-xs">{msg.senderName || 'Member'}</span>
+                      <span className="font-bold text-violet-300 text-xs">{msg.senderName || 'Member'}</span>
                       {canManageAnnouncements && (
                         <button
                           onClick={() => handleTogglePin(msg)}
@@ -553,7 +553,7 @@ const ChatPage = React.memo(function ChatPage() {
                         </button>
                       )}
                     </div>
-                    <p className="text-xs text-[#164661] leading-relaxed">{msg.text}</p>
+                    <p className="text-xs text-violet-200 leading-relaxed">{msg.text}</p>
                   </div>
                 ))
               )}
@@ -643,39 +643,39 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Chat Settings Modal */}
       {showSettings && (
         <div 
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#164661]/35 backdrop-blur-md p-0 sm:p-4 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#1e1438]/70 backdrop-blur-md p-0 sm:p-4 animate-fade-in"
           onClick={() => setShowSettings(false)}
         >
           <Card 
-            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-sky-200 bg-white/98 shadow-2xl shadow-sky-900/15 p-5 animate-slide-up"
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-violet-800/50 bg-[#1e1438] shadow-2xl shadow-violet-900/50 p-5 animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
-            <div className="w-12 h-1 rounded-full bg-sky-200 mx-auto mb-3 sm:hidden" />
+            <div className="w-12 h-1 rounded-full bg-violet-700/50 mx-auto mb-3 sm:hidden" />
 
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-cyan-600" />
-                <h3 className="text-sm font-bold text-[#164661]">Chat Preferences</h3>
+                <Settings className="h-5 w-5 text-violet-400" />
+                <h3 className="text-sm font-bold text-violet-100">Chat Preferences</h3>
               </div>
-              <button onClick={() => setShowSettings(false)} className="p-1 rounded-lg text-[#7299aa] hover:text-[#164661]">
+              <button onClick={() => setShowSettings(false)} className="p-1 rounded-lg text-violet-500 hover:text-violet-200 hover:bg-violet-900/50">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#164661]">Compact Message Mode</span>
+                <span className="text-xs font-semibold text-violet-200">Compact Message Mode</span>
                 <button 
                   onClick={() => setChatSettings(s => ({ ...s, compactMode: !s.compactMode }))}
-                  className={`relative w-10 h-5 rounded-full transition ${chatSettings.compactMode ? 'bg-cyan-500' : 'bg-sky-200'}`}
+                  className={`relative w-10 h-5 rounded-full transition ${chatSettings.compactMode ? 'bg-violet-500' : 'bg-violet-900/60'}`}
                 >
                   <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition transform ${chatSettings.compactMode ? 'translate-x-5' : ''}`} />
                 </button>
               </div>
 
               <div>
-                <span className="text-xs font-semibold text-[#164661] block mb-2">Message Font Size</span>
+                <span className="text-xs font-semibold text-violet-200 block mb-2">Message Font Size</span>
                 <div className="flex gap-2">
                   {['small', 'medium', 'large'].map(size => (
                     <button
@@ -683,8 +683,8 @@ const ChatPage = React.memo(function ChatPage() {
                       onClick={() => setChatSettings(s => ({ ...s, fontSize: size }))}
                       className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold capitalize transition ${
                         chatSettings.fontSize === size
-                          ? 'border-cyan-400 bg-cyan-100 text-cyan-800'
-                          : 'border-sky-200 bg-sky-50 text-[#4b7d94] hover:text-[#164661]'
+                          ? 'border-violet-500 bg-violet-900/60 text-violet-200'
+                          : 'border-violet-800/50 bg-violet-900/40 text-violet-400 hover:text-violet-200'
                       }`}
                     >
                       {size}
@@ -693,7 +693,7 @@ const ChatPage = React.memo(function ChatPage() {
                 </div>
               </div>
 
-              <p className="text-[10px] text-[#7299aa] text-center pt-2">Preferences are active in real time.</p>
+              <p className="text-[10px] text-violet-500 text-center pt-2">Preferences are active in real time.</p>
             </div>
           </Card>
         </div>
@@ -702,40 +702,40 @@ const ChatPage = React.memo(function ChatPage() {
       {/* Report Modal */}
       {showReportModal && reportMessage && (
         <div 
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#164661]/35 backdrop-blur-md p-0 sm:p-4 animate-fade-in"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#1e1438]/70 backdrop-blur-md p-0 sm:p-4 animate-fade-in"
           onClick={() => setShowReportModal(false)}
         >
           <Card 
-            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-sky-200 bg-white/98 shadow-2xl shadow-sky-900/15 p-5 animate-slide-up"
+            className="w-full max-w-sm rounded-t-3xl sm:rounded-2xl border border-violet-800/50 bg-[#1e1438] shadow-2xl shadow-violet-900/50 p-5 animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
-            <div className="w-12 h-1 rounded-full bg-sky-200 mx-auto mb-3 sm:hidden" />
+            <div className="w-12 h-1 rounded-full bg-violet-700/50 mx-auto mb-3 sm:hidden" />
 
-            <div className="flex items-center gap-2 text-[#164661] mb-3">
+            <div className="flex items-center gap-2 text-violet-100 mb-3">
               <Flag className="h-4 w-4 text-amber-400" />
               <h3 className="text-sm font-bold">Report Message</h3>
             </div>
-            <p className="text-xs text-[#4b7d94] mb-3">
+            <p className="text-xs text-violet-400 mb-3">
               Flag this message to BeastBuck moderators for community safety review.
             </p>
             <textarea
               value={reportReason}
               onChange={(e) => setReportReason(e.target.value)}
               placeholder="Describe the issue or violation..."
-              className="w-full rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-[#164661] outline-none focus:border-cyan-400 mb-4"
+              className="w-full rounded-xl border border-violet-800/50 bg-violet-900/40 px-3 py-2 text-xs text-violet-200 placeholder:text-violet-600 outline-none focus:border-violet-500 mb-4"
               rows={3}
             />
             <div className="flex gap-2">
               <Button 
                 onClick={handleReportSubmit} 
-                className="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1.5"
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-1.5"
               >
                 Submit Report
               </Button>
               <button 
                 onClick={() => setShowReportModal(false)} 
-                className="flex-1 px-3 py-1.5 rounded-xl border border-sky-200 text-xs text-[#39728d] hover:bg-sky-50"
+                className="flex-1 px-3 py-1.5 rounded-xl border border-violet-800/50 text-xs text-violet-400 hover:bg-violet-900/30 hover:text-violet-200 transition"
               >
                 Cancel
               </button>
@@ -754,8 +754,8 @@ const ChatPage = React.memo(function ChatPage() {
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 10px; }
-        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.22); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.25); border-radius: 10px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.45); }
       `}</style>
     </div>
   );
