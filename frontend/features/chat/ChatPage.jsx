@@ -13,6 +13,7 @@ import { ChatNotificationCenter } from './ChatNotifications';
 import { MediaHub } from './MediaHub';
 import { MemberProfileDrawer } from './MemberProfileDrawer';
 import { ChatGamesModal } from './ChatGamesModal';
+import { createPortal } from 'react-dom';
 
 const CHAT_ROOM_ID = 'general';
 
@@ -562,42 +563,51 @@ const ChatPage = React.memo(function ChatPage() {
         </div>
       )}
 
-      {/* Chat Games (Multiplayer) Modal */}
-      {showGamesModal && (
-        <ChatGamesModal
-          onClose={() => {
-            setShowGamesModal(false);
-            setJoinGameSessionId(null);
-            setJoinGameId(null);
-          }}
-          currentUser={user}
-          activeRoomId={CHAT_ROOM_ID}
-          joinSessionId={joinGameSessionId}
-          joinGameId={joinGameId}
-          onSendGameCard={async (gameCardData) => {
-            try {
-              await ChatService.sendMessage({
-                roomId: CHAT_ROOM_ID,
-                roomType: 'public',
-                senderId: user?.uid,
-                senderName: memberName,
-                senderRole: memberRole,
-                text: `🎮 Started a live ${gameCardData.title} match! Click to play!`,
-                sharedContent: {
-                  type: 'game',
-                  title: gameCardData.title,
-                  description: gameCardData.description,
-                  gameId: gameCardData.gameId,
-                  sessionId: gameCardData.sessionId,
-                  author: memberName,
-                  icon: '🎮',
-                }
-              });
-            } catch (err) {
-              console.error('Failed to post game card:', err);
-            }
-          }}
-        />
+      {/* Chat Games — rendered in a body-level portal so parent elements
+          cannot intercept keyboard events. The overlay sits at z-[9999]. */}
+      {showGamesModal && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] bg-[#0e0820]/95 backdrop-blur-md overflow-hidden touch-none"
+          // Stop ALL key events from bubbling further up the portal DOM
+          onKeyDown={(e) => e.stopPropagation()}
+          onKeyUp={(e) => e.stopPropagation()}
+        >
+          <ChatGamesModal
+            onClose={() => {
+              setShowGamesModal(false);
+              setJoinGameSessionId(null);
+              setJoinGameId(null);
+            }}
+            currentUser={user}
+            activeRoomId={CHAT_ROOM_ID}
+            joinSessionId={joinGameSessionId}
+            joinGameId={joinGameId}
+            onSendGameCard={async (gameCardData) => {
+              try {
+                await ChatService.sendMessage({
+                  roomId: CHAT_ROOM_ID,
+                  roomType: 'public',
+                  senderId: user?.uid,
+                  senderName: memberName,
+                  senderRole: memberRole,
+                  text: `🎮 Started a live ${gameCardData.title} match! Click to play!`,
+                  sharedContent: {
+                    type: 'game',
+                    title: gameCardData.title,
+                    description: gameCardData.description,
+                    gameId: gameCardData.gameId,
+                    sessionId: gameCardData.sessionId,
+                    author: memberName,
+                    icon: '🎮',
+                  }
+                });
+              } catch (err) {
+                console.error('Failed to post game card:', err);
+              }
+            }}
+          />
+        </div>,
+        document.body
       )}
 
       {/* Media & Files Hub Modal */}

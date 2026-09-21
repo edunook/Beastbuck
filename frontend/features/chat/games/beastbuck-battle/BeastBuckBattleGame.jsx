@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Crosshair, Pause, Shield, Volume2, VolumeX, Zap } from 'lucide-react';
+import { Crosshair, Keyboard, Maximize2, Minimize2, Pause, Shield, Volume2, VolumeX, Zap } from 'lucide-react';
 import { getBattleMap } from './ArenaMap';
 import { BattleAudio } from './BattleAudio';
 import { BattleEngine, interpolatePlayer, predictLocalPlayer } from './GameEngine';
@@ -170,58 +170,170 @@ function drawWorld(context, canvas, state, map, camera, localId) {
   });
 }
 
-function TouchControls({ inputRef }) {
-  const joyRef = useRef(null);
-  const fireRef = useRef(null);
-  const pointers = useRef({ move: null, fire: null, jump: null });
+// ─── Joystick radius constants ────────────────────────────────────────────────
+const JOY_RADIUS = 56;   // half of the 112px joystick ring
+const THUMB_MAX  = 44;   // max pixel displacement of the thumb inside the ring
 
-  const updateMove = useCallback((event) => {
+function TouchControls({ inputRef }) {
+  const joyRef  = useRef(null);
+  const fireRef = useRef(null);
+
+  // Simple active-booleans instead of pointer ID tracking.
+  // setPointerCapture already routes all subsequent pointer events for that
+  // touch to this element, so we only need to know "is a finger down?"
+  const joyActive  = useRef(false);
+  const fireActive = useRef(false);
+
+  const [thumbPos, setThumbPos] = useState({ x: 0, y: 0 });
+  const [thumbDown, setThumbDown] = useState(false); // true while finger is held
+  const [firing, setFiring]   = useState(false);
+  const [jumping, setJumping] = useState(false);
+
+  // ── Move joystick ──────────────────────────────────────────────────────────
+  const computeJoy = useCallback((event) => {
     const box = joyRef.current?.getBoundingClientRect();
-    if (!box || event.pointerId !== pointers.current.move) return;
-    const x = clamp((event.clientX - (box.left + box.width / 2)) / (box.width / 2), -1, 1);
-    inputRef.current?.setTouchMove(x);
+    if (!box) return;
+    const cx = box.left + box.width  / 2;
+    const cy = box.top  + box.height / 2;
+    const rawX = event.clientX - cx;
+    const rawY = event.clientY - cy;
+    const dist  = Math.hypot(rawX, rawY);
+    // Normalised horizontal value [-1, 1]; 6 px dead-zone
+    const nx = dist < 6 ? 0 : clamp(rawX / JOY_RADIUS, -1, 1);
+    // Visual thumb: clamp to THUMB_MAX radius
+    const scale = Math.min(1, dist / JOY_RADIUS);
+    const angle = Math.atan2(rawY, rawX);
+    setThumbPos({
+      x: Math.cos(angle) * scale * THUMB_MAX,
+      y: Math.sin(angle) * scale * THUMB_MAX,
+    });
+    inputRef.current?.setTouchMove(nx);
   }, [inputRef]);
 
-  const updateFire = useCallback((event) => {
+  const handleJoyDown = useCallback((e) => {
+    joyActive.current = true;
+    setThumbDown(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    computeJoy(e);
+  }, [computeJoy]);
+
+  const handleJoyMove = useCallback((e) => {
+    if (!joyActive.current) return;
+    computeJoy(e);
+  }, [computeJoy]);
+
+  const handleJoyUp = useCallback(() => {
+    joyActive.current = false;
+    setThumbDown(false);
+    setThumbPos({ x: 0, y: 0 });
+    inputRef.current?.setTouchMove(0);
+  }, [inputRef]);
+
+  // ── Fire pad ───────────────────────────────────────────────────────────────
+  const computeFire = useCallback((event) => {
     const box = fireRef.current?.getBoundingClientRect();
-    if (!box || event.pointerId !== pointers.current.fire) return;
-    const x = event.clientX - (box.left + box.width / 2);
-    const y = event.clientY - (box.top + box.height / 2);
+    if (!box) return;
+    const x = event.clientX - (box.left + box.width  / 2);
+    const y = event.clientY - (box.top  + box.height / 2);
     inputRef.current?.setTouchFire(true, { x, y });
   }, [inputRef]);
 
+  const handleFireDown = useCallback((e) => {
+    fireActive.current = true;
+    setFiring(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    computeFire(e);
+  }, [computeFire]);
+
+  const handleFireMove = useCallback((e) => {
+    if (!fireActive.current) return;
+    computeFire(e);
+  }, [computeFire]);
+
+  const handleFireUp = useCallback(() => {
+    fireActive.current = false;
+    setFiring(false);
+    inputRef.current?.setTouchFire(false);
+  }, [inputRef]);
+
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between px-[max(1rem,env(safe-area-inset-left))] pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between
+      px-[max(1.25rem,env(safe-area-inset-left))] pb-[max(1.25rem,env(safe-area-inset-bottom))] md:hidden">
+
+      {/* ── Left: Move joystick ── */}
       <div
         ref={joyRef}
-        className="pointer-events-auto flex h-28 w-28 items-center justify-center rounded-full border border-cyan-300/35 bg-[#071d35]/80 shadow-lg shadow-cyan-950/30 touch-none"
-        onPointerDown={(event) => { pointers.current.move = event.pointerId; event.currentTarget.setPointerCapture(event.pointerId); updateMove(event); }}
-        onPointerMove={updateMove}
-        onPointerUp={(event) => { if (pointers.current.move === event.pointerId) { pointers.current.move = null; inputRef.current?.setTouchMove(0); } }}
-        onPointerCancel={() => { pointers.current.move = null; inputRef.current?.setTouchMove(0); }}
+        style={{ width: JOY_RADIUS * 2, height: JOY_RADIUS * 2 }}
+        className="pointer-events-auto relative flex items-center justify-center touch-none
+          rounded-full border-2 border-violet-400/30 bg-[#1e1438]/75
+          shadow-[0_0_24px_rgba(139,92,246,0.25)] backdrop-blur-sm select-none"
+        onPointerDown={handleJoyDown}
+        onPointerMove={handleJoyMove}
+        onPointerUp={handleJoyUp}
+        onPointerCancel={handleJoyUp}
       >
-        <div className="h-12 w-12 rounded-full border border-cyan-200/70 bg-cyan-400/25" />
-      </div>
-      <div className="pointer-events-auto flex items-end gap-3">
-        <button
-          type="button"
-          aria-label="Jet boost"
-          className="flex h-16 w-16 touch-none items-center justify-center rounded-full border border-amber-300/45 bg-amber-500/20 text-amber-100 shadow-lg shadow-amber-950/30"
-          onPointerDown={(event) => { pointers.current.jump = event.pointerId; event.currentTarget.setPointerCapture(event.pointerId); inputRef.current?.setTouchJump(true); }}
-          onPointerUp={() => inputRef.current?.setTouchJump(false)}
-          onPointerCancel={() => inputRef.current?.setTouchJump(false)}
-        >
-          <Zap className="h-7 w-7" />
-        </button>
+        {/* Outer ring */}
+        <div className="absolute inset-0 rounded-full border border-violet-500/20" />
+        {/* Guide cross */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+          <div className="h-full w-px bg-violet-300" />
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+          <div className="h-px w-full bg-violet-300" />
+        </div>
+        {/* Tracking thumb knob — translates smoothly to follow the finger */}
         <div
-          ref={fireRef}
-          className="flex h-28 w-28 touch-none items-center justify-center rounded-full border border-rose-300/45 bg-rose-500/20 text-rose-100 shadow-lg shadow-rose-950/30"
-          onPointerDown={(event) => { pointers.current.fire = event.pointerId; event.currentTarget.setPointerCapture(event.pointerId); updateFire(event); }}
-          onPointerMove={updateFire}
-          onPointerUp={(event) => { if (pointers.current.fire === event.pointerId) { pointers.current.fire = null; inputRef.current?.setTouchFire(false); } }}
-          onPointerCancel={() => { pointers.current.fire = null; inputRef.current?.setTouchFire(false); }}
-        >
-          <Crosshair className="h-9 w-9" />
+          style={{
+            transform: `translate(${thumbPos.x}px, ${thumbPos.y}px)`,
+            transition: thumbDown ? 'none' : 'transform 0.15s ease-out',
+          }}
+          className="h-11 w-11 rounded-full border-2 border-violet-300/80 bg-violet-500/60
+            shadow-[0_0_16px_rgba(167,139,250,0.6)] pointer-events-none"
+        />
+        <span className="absolute bottom-1.5 text-[9px] font-bold uppercase tracking-widest text-violet-300/50 select-none pointer-events-none">MOVE</span>
+      </div>
+
+      {/* ── Right: Boost + Fire ── */}
+      <div className="pointer-events-auto flex items-end gap-4">
+        {/* Jet boost */}
+        <div className="flex flex-col items-center gap-1">
+          <button
+            type="button"
+            aria-label="Jet boost"
+            style={{ width: 68, height: 68 }}
+            className={`touch-none flex items-center justify-center rounded-full border-2 shadow-lg transition-all duration-75
+              ${ jumping
+                ? 'border-amber-300 bg-amber-500/50 shadow-[0_0_20px_rgba(251,191,36,0.6)]'
+                : 'border-amber-400/40 bg-[#1e1438]/75 shadow-amber-950/30'
+              } text-amber-100`}
+            onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setJumping(true); inputRef.current?.setTouchJump(true); }}
+            onPointerUp={() => { setJumping(false); inputRef.current?.setTouchJump(false); }}
+            onPointerCancel={() => { setJumping(false); inputRef.current?.setTouchJump(false); }}
+          >
+            <Zap className="h-7 w-7 drop-shadow" />
+          </button>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-amber-300/50 select-none">JET</span>
+        </div>
+
+        {/* Fire pad */}
+        <div className="flex flex-col items-center gap-1">
+          <div
+            ref={fireRef}
+            style={{ width: JOY_RADIUS * 2, height: JOY_RADIUS * 2, touchAction: 'none' }}
+            className={`relative pointer-events-auto touch-none flex items-center justify-center rounded-full border-2 transition-all duration-75 shadow-lg select-none
+              ${ firing
+                ? 'border-rose-400 bg-rose-500/40 shadow-[0_0_24px_rgba(251,113,133,0.7)]'
+                : 'border-rose-400/35 bg-[#1e1438]/75 shadow-rose-950/30'
+              } text-rose-100`}
+            onPointerDown={handleFireDown}
+            onPointerMove={handleFireMove}
+            onPointerUp={handleFireUp}
+            onPointerCancel={handleFireUp}
+          >
+            <div className="absolute inset-0 rounded-full border border-rose-500/20 pointer-events-none" />
+            <Crosshair className={`h-10 w-10 drop-shadow transition-all pointer-events-none ${ firing ? 'scale-110 text-rose-200' : 'text-rose-300/80' }`} />
+          </div>
+          <span className="text-[9px] font-bold uppercase tracking-widest text-rose-300/50 select-none">FIRE</span>
         </div>
       </div>
     </div>
@@ -444,51 +556,221 @@ export function BeastBuckBattleGame({ match, participants, currentUser, onActiva
     };
   }, [currentUser.uid, map, match.durationSec, match.mapId, runtime.meta?.startedAt]);
 
+  // ── Escape to toggle pause — use capture so modal can't steal it
   useEffect(() => {
-    const onKeyDown = (event) => { if (event.code === 'Escape') setPaused((value) => !value); };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    const onKeyDown = (event) => {
+      if (event.code === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        setPaused((value) => !value);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown, { capture: true });
+    return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
   }, []);
 
   const countdown = runtimeStatus === 'countdown' ? Math.max(0, Math.ceil(((runtime.meta?.countdownAt || Date.now()) - Date.now()) / 1000)) : null;
+
+  // ── Fullscreen ────────────────────────────────────────────────────────────────
+  const containerRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const onChange = () => {
+      const full = !!document.fullscreenElement;
+      setIsFullscreen(full);
+      // Re-focus canvas after fullscreen transition
+      setTimeout(() => canvasRef.current?.focus(), 80);
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+  // Auto-focus canvas on mount so keyboard shortcuts work immediately
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    // Small delay lets the modal finish its animation before stealing focus
+    const t = setTimeout(() => canvas.focus(), 120);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Prevent parent modal from swallowing game keys (Escape, arrows, space, etc.)
+  const handleContainerKey = useCallback((event) => {
+    const gameCodes = [
+      'Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+      'KeyW','KeyA','KeyS','KeyD',
+      'Digit1','Digit2','Digit3','Escape',
+    ];
+    if (gameCodes.includes(event.code)) {
+      event.stopPropagation();
+    }
+  }, []);
+
+  const [showKeyHints, setShowKeyHints] = useState(false);
+
   return (
-    <div className="relative h-[min(78dvh,720px)] min-h-[430px] w-full overflow-hidden rounded-lg border border-cyan-300/30 bg-[#061321] shadow-2xl shadow-cyan-950/50">
-      <canvas 
-        ref={canvasRef} 
-        className="h-full w-full touch-none cursor-crosshair" 
+    // onKeyDown on the container stops parent dialogs swallowing game keys
+    <div
+      ref={containerRef}
+      className={`relative w-full overflow-hidden bg-[#100820] ${
+        isFullscreen
+          ? 'fixed inset-0 z-[99999] rounded-none border-0'
+          : 'h-[min(82dvh,760px)] min-h-[450px] rounded-xl border border-violet-700/40 shadow-2xl shadow-violet-900/50'
+      }`}
+      onKeyDown={handleContainerKey}
+      onMouseEnter={() => setShowKeyHints(true)}
+      onMouseLeave={() => setShowKeyHints(false)}
+    >
+      <canvas
+        ref={canvasRef}
+        className="h-full w-full touch-none cursor-crosshair"
         aria-label="BeastBuck Battle Arena"
         tabIndex={0}
         style={{ outline: 'none' }}
       />
+      {/* ── Top HUD bar ── */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 p-3 sm:p-4">
-        <div className="rounded-md border border-cyan-200/20 bg-[#071d35]/90 px-3 py-2 text-cyan-50 shadow-lg shadow-cyan-950/30 backdrop-blur">
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-200/65">Free For All</div>
-          <div className="mt-0.5 font-mono text-xl font-black tabular-nums text-cyan-50">{formatTime(hud.time)}</div>
+        {/* Timer */}
+        <div className="rounded-xl border border-violet-700/50 bg-[#1e1438]/90 px-3 py-2 text-violet-50 shadow-lg shadow-violet-900/30 backdrop-blur">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-300/70">Free For All</div>
+          <div className="mt-0.5 font-mono text-xl font-black tabular-nums text-violet-50">{formatTime(hud.time)}</div>
         </div>
+        {/* Right actions */}
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setMuted((value) => !value)} aria-label={muted ? 'Enable sound' : 'Mute sound'} className="pointer-events-auto grid h-9 w-9 place-items-center rounded-md border border-cyan-200/20 bg-[#071d35]/90 text-cyan-50 backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setMuted((v) => !v)}
+            aria-label={muted ? 'Enable sound' : 'Mute sound'}
+            className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-violet-700/50 bg-[#1e1438]/90 text-violet-200 backdrop-blur hover:bg-violet-800/60 transition"
+          >
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
-          <button type="button" onClick={() => setPaused(true)} aria-label="Pause match" className="pointer-events-auto grid h-9 w-9 place-items-center rounded-md border border-cyan-200/20 bg-[#071d35]/90 text-cyan-50 backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setPaused(true)}
+            aria-label="Pause match"
+            className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-violet-700/50 bg-[#1e1438]/90 text-violet-200 backdrop-blur hover:bg-violet-800/60 transition"
+          >
             <Pause className="h-4 w-4" />
+          </button>
+          {/* Fullscreen toggle */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Go fullscreen'}
+            className="pointer-events-auto grid h-9 w-9 place-items-center rounded-xl border border-violet-500/50 bg-violet-600/80 text-white backdrop-blur hover:bg-violet-500 transition shadow-lg shadow-violet-700/30"
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
         </div>
       </div>
-      <div className="pointer-events-none absolute left-3 top-20 z-10 w-40 rounded-md border border-cyan-200/20 bg-[#071d35]/85 p-2.5 text-cyan-50 backdrop-blur sm:left-4 sm:top-24">
-        <div className="mb-1 flex items-center justify-between text-[10px] font-bold text-cyan-50/75"><span>HP</span><span>{Math.ceil(hud.me?.hp || 0)}</span></div>
-        <div className="h-2 overflow-hidden rounded bg-[#03101e]"><div className="h-full bg-rose-400" style={{ width: `${hud.me?.hp || 0}%` }} /></div>
-        <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-cyan-50/75"><span>Shield</span><span>{Math.ceil(hud.me?.shield || 0)}</span></div>
-        <div className="h-1.5 overflow-hidden rounded bg-[#03101e]"><div className="h-full bg-cyan-300" style={{ width: `${((hud.me?.shield || 0) / 55) * 100}%` }} /></div>
-        <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-cyan-50/75"><span>Jet</span><span>{Math.ceil(hud.me?.fuel || 0)}</span></div>
-        <div className="h-1.5 overflow-hidden rounded bg-[#03101e]"><div className="h-full bg-amber-300" style={{ width: `${hud.me?.fuel || 0}%` }} /></div>
-        <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-cyan-100"><Crosshair className="h-3 w-3" />{selectedWeapon}</div>
+      {/* ── Stats panel (bottom-left on fullscreen, top-left otherwise) ── */}
+      <div className={`pointer-events-none absolute left-3 z-10 w-44 rounded-xl border border-violet-700/50 bg-[#1e1438]/85 p-3 text-violet-50 backdrop-blur ${
+        isFullscreen ? 'bottom-24 sm:bottom-6' : 'top-20 sm:top-24'
+      }`}>
+        <div className="mb-1 flex items-center justify-between text-[10px] font-bold text-violet-300/75"><span>HP</span><span>{Math.ceil(hud.me?.hp || 0)}</span></div>
+        <div className="h-2 overflow-hidden rounded-full bg-violet-950/60"><div className="h-full bg-rose-400 transition-all" style={{ width: `${hud.me?.hp || 0}%` }} /></div>
+        <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-violet-300/75"><span>Shield</span><span>{Math.ceil(hud.me?.shield || 0)}</span></div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-violet-950/60"><div className="h-full bg-cyan-300 transition-all" style={{ width: `${((hud.me?.shield || 0) / 55) * 100}%` }} /></div>
+        <div className="mt-2 flex items-center justify-between text-[10px] font-bold text-violet-300/75"><span>Jet</span><span>{Math.ceil(hud.me?.fuel || 0)}</span></div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-violet-950/60"><div className="h-full bg-amber-300 transition-all" style={{ width: `${hud.me?.fuel || 0}%` }} /></div>
+        <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-violet-200"><Crosshair className="h-3 w-3" />{selectedWeapon}</div>
       </div>
-      <div className="pointer-events-none absolute right-3 top-16 z-10 hidden w-44 rounded-md border border-cyan-200/20 bg-[#071d35]/85 p-2 backdrop-blur sm:block sm:right-4 sm:top-20">
-        {hud.ranking.slice(0, 7).map((player, index) => <div key={player.id} className="flex items-center justify-between py-1 text-xs"><span className="min-w-0 truncate text-cyan-50/80"><b className="mr-1 text-cyan-200">{index + 1}</b>{player.name}</span><span className="font-mono font-bold text-cyan-50">{player.score}</span></div>)}
+      {/* ── Leaderboard ── */}
+      <div className="pointer-events-none absolute right-3 top-16 z-10 hidden w-44 rounded-xl border border-violet-700/50 bg-[#1e1438]/85 p-2 backdrop-blur sm:block sm:right-4 sm:top-20">
+        {hud.ranking.slice(0, 7).map((player, index) => (
+          <div key={player.id} className="flex items-center justify-between py-1 text-xs">
+            <span className="min-w-0 truncate text-violet-200/80"><b className="mr-1 text-violet-300">{index + 1}</b>{player.name}</span>
+            <span className="font-mono font-bold text-violet-50">{player.score}</span>
+          </div>
+        ))}
       </div>
-      {runtime.error && <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center"><span className="rounded-full border border-amber-200 bg-amber-50/95 px-3 py-1.5 text-xs font-bold text-amber-800 shadow-lg">Reconnecting to the battle...</span></div>}
-      {countdown !== null && <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-sky-950/25"><span className="text-7xl font-black text-white drop-shadow-[0_0_24px_rgba(14,116,144,0.8)]">{countdown || 'GO!'}</span></div>}
-      {paused && <div className="absolute inset-0 z-40 grid place-items-center bg-sky-950/30 p-5 backdrop-blur-sm"><div className="w-full max-w-xs rounded-lg border border-sky-200 bg-white p-5 text-center shadow-2xl shadow-sky-900/20"><Shield className="mx-auto h-7 w-7 text-cyan-600" /><h3 className="mt-3 text-lg font-bold text-[#164661]">Local pause</h3><div className="mt-4 space-y-3 text-left">{[['Master', 'master'], ['SFX', 'sfx'], ['Music', 'music']].map(([label, key]) => <label key={key} className="block text-xs font-bold text-[#39728d]"><span className="flex justify-between"><span>{label}</span><span>{Math.round(volumes[key] * 100)}%</span></span><input aria-label={`${label} volume`} type="range" min="0" max="1" step="0.05" value={volumes[key]} onChange={(event) => setVolumes((current) => ({ ...current, [key]: Number(event.target.value) }))} className="mt-1 w-full accent-cyan-600" /></label>)}</div><div className="mt-4 flex gap-2"><button type="button" onClick={() => setPaused(false)} className="flex-1 rounded-md bg-cyan-500 px-3 py-2 text-sm font-bold text-white hover:bg-cyan-600">Resume</button><button type="button" onClick={handleExit} className="flex-1 rounded-md border border-sky-200 px-3 py-2 text-sm font-bold text-[#164661] hover:bg-sky-50">Exit</button></div></div></div>}
+      {/* Reconnecting banner */}
+      {runtime.error && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center">
+          <span className="rounded-full border border-amber-400/60 bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-200 shadow-lg backdrop-blur">
+            Reconnecting to the battle...
+          </span>
+        </div>
+      )}
+
+      {/* Countdown overlay */}
+      {countdown !== null && (
+        <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-violet-950/30">
+          <span className="text-8xl font-black text-white drop-shadow-[0_0_32px_rgba(167,139,250,0.9)] [text-shadow:0_0_60px_rgba(139,92,246,0.8)]">
+            {countdown || 'GO!'}
+          </span>
+        </div>
+      )}
+
+      {/* Keyboard shortcut hints (desktop hover) */}
+      {showKeyHints && !paused && (
+        <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 hidden -translate-x-1/2 md:flex items-center gap-3 rounded-xl border border-violet-700/40 bg-[#1e1438]/85 px-4 py-2 backdrop-blur text-[10px] text-violet-300/70 font-mono">
+          <span className="flex items-center gap-1"><Keyboard className="h-3 w-3" /> <b className="text-violet-200">WASD / ←→</b> Move</span>
+          <span className="text-violet-600">|</span>
+          <span><b className="text-violet-200">W / Space / ↑</b> Jet</span>
+          <span className="text-violet-600">|</span>
+          <span><b className="text-violet-200">Mouse</b> Aim &amp; Fire</span>
+          <span className="text-violet-600">|</span>
+          <span><b className="text-violet-200">1 2 3</b> Weapons</span>
+          <span className="text-violet-600">|</span>
+          <span><b className="text-violet-200">Esc</b> Pause</span>
+        </div>
+      )}
+
+      {/* Pause menu */}
+      {paused && (
+        <div className="absolute inset-0 z-40 grid place-items-center bg-violet-950/50 p-5 backdrop-blur-sm">
+          <div className="w-full max-w-xs rounded-2xl border border-violet-700/50 bg-[#1e1438] p-6 text-center shadow-2xl shadow-violet-900/50">
+            <Shield className="mx-auto h-8 w-8 text-violet-400" />
+            <h3 className="mt-3 text-lg font-bold text-violet-100">Game Paused</h3>
+            <p className="mt-1 text-[11px] text-violet-400">Press Esc to resume</p>
+            <div className="mt-5 space-y-3 text-left">
+              {[['Master', 'master'], ['SFX', 'sfx'], ['Music', 'music']].map(([label, key]) => (
+                <label key={key} className="block text-xs font-bold text-violet-300">
+                  <span className="flex justify-between mb-1">
+                    <span>{label}</span>
+                    <span className="text-violet-400">{Math.round(volumes[key] * 100)}%</span>
+                  </span>
+                  <input
+                    aria-label={`${label} volume`}
+                    type="range" min="0" max="1" step="0.05"
+                    value={volumes[key]}
+                    onChange={(event) => setVolumes((current) => ({ ...current, [key]: Number(event.target.value) }))}
+                    className="w-full accent-violet-500"
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={() => { setPaused(false); setTimeout(() => canvasRef.current?.focus(), 50); }}
+                className="flex-1 rounded-xl bg-violet-600 px-3 py-2.5 text-sm font-bold text-white hover:bg-violet-500 transition"
+              >
+                Resume
+              </button>
+              <button
+                type="button"
+                onClick={handleExit}
+                className="flex-1 rounded-xl border border-violet-700/50 px-3 py-2.5 text-sm font-bold text-violet-300 hover:bg-violet-900/40 transition"
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <TouchControls inputRef={inputRef} />
     </div>
   );

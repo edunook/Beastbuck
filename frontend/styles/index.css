@@ -57,6 +57,7 @@
 
 .bb-sticky-action-footer {
   padding: 0.75rem;
+  /* Account for device safe-area (home indicator on iPhones etc.) */
   padding-bottom: calc(0.75rem + max(0.5rem, var(--bb-safe-area-bottom)));
 }
 
@@ -65,8 +66,10 @@
 }
 
 @media (min-width: 640px) {
+  /* On tablets/desktop the modal is centred — no safe area offset needed */
   .bb-sticky-action-footer {
     padding: 1.25rem;
+    padding-bottom: 1.25rem;
   }
 }
 
