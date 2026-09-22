@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { 
   Trophy, 
@@ -611,9 +612,9 @@ function CreateChallengeModal({ isOpen, onClose, onSubmit }) {
     }));
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-black/90 backdrop-blur-md animate-fade-in p-0 sm:p-4 md:p-6">
-      <div className="relative w-full max-w-4xl max-h-[90dvh] sm:max-h-[88vh] rounded-t-3xl sm:rounded-3xl glass-card border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center bg-black/85 backdrop-blur-md animate-fade-in p-0 sm:p-4 md:p-6">
+      <div className="relative w-full max-w-4xl h-[88vh] sm:h-auto max-h-[88vh] sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl glass-card border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
         {/* Sticky Header */}
         <div className="flex-shrink-0 p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-start justify-between gap-3 z-20">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -1022,8 +1023,84 @@ function CreateChallengeModal({ isOpen, onClose, onSubmit }) {
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
+}
+
+// Lightweight Formatted Markdown Helper for Challenge Descriptions
+function FormattedMarkdown({ text }) {
+  if (!text) return null;
+
+  const renderInline = (str) => {
+    const parts = [];
+    const regex = /(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g;
+    let last = 0;
+    let m;
+    while ((m = regex.exec(str)) !== null) {
+      if (m.index > last) parts.push(<span key={last}>{str.slice(last, m.index)}</span>);
+      const raw = m[0];
+      if (raw.startsWith('`')) {
+        parts.push(
+          <code key={m.index} className="bg-white/10 text-accent font-mono text-[0.85em] px-1.5 py-0.5 rounded break-all">
+            {raw.slice(1, -1)}
+          </code>
+        );
+      } else if (raw.startsWith('**') || raw.startsWith('__')) {
+        parts.push(<strong key={m.index} className="font-bold text-white">{raw.slice(2, -2)}</strong>);
+      } else {
+        parts.push(<em key={m.index} className="italic text-white/90">{raw.slice(1, -1)}</em>);
+      }
+      last = m.index + raw.length;
+    }
+    if (last < str.length) parts.push(<span key={last}>{str.slice(last)}</span>);
+    return parts;
+  };
+
+  const lines = text.split('\n');
+  const elements = [];
+
+  lines.forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    if (trimmed.startsWith('### ')) {
+      elements.push(
+        <h3 key={idx} className="text-sm sm:text-base font-bold text-accent mt-2 mb-1">
+          {renderInline(trimmed.replace(/^###\s+/, ''))}
+        </h3>
+      );
+    } else if (trimmed.startsWith('## ')) {
+      elements.push(
+        <h2 key={idx} className="text-base sm:text-lg font-bold text-white mt-2.5 mb-1.5">
+          {renderInline(trimmed.replace(/^##\s+/, ''))}
+        </h2>
+      );
+    } else if (trimmed.startsWith('# ')) {
+      elements.push(
+        <h1 key={idx} className="text-lg sm:text-xl font-extrabold text-white mt-3 mb-2">
+          {renderInline(trimmed.replace(/^#\s+/, ''))}
+        </h1>
+      );
+    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      elements.push(
+        <div key={idx} className="flex items-start gap-2 my-1 pl-1">
+          <span className="text-accent font-bold text-xs mt-0.5">•</span>
+          <span className="text-xs sm:text-sm text-gray-200 leading-relaxed">
+            {renderInline(trimmed.replace(/^[-*]\s+/, ''))}
+          </span>
+        </div>
+      );
+    } else {
+      elements.push(
+        <p key={idx} className="text-xs sm:text-sm md:text-base text-gray-200 leading-relaxed my-1 font-normal break-words">
+          {renderInline(line)}
+        </p>
+      );
+    }
+  });
+
+  return <div className="space-y-1">{elements}</div>;
 }
 
 function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipated }) {
@@ -1081,9 +1158,9 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center bg-black/90 backdrop-blur-md animate-fade-in p-0 sm:p-4 md:p-6">
-      <div className="relative w-full max-w-4xl max-h-[90dvh] sm:max-h-[90vh] rounded-t-3xl sm:rounded-3xl glass-card border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center bg-black/85 backdrop-blur-md animate-fade-in p-0 sm:p-4 md:p-6">
+      <div className="relative w-full max-w-4xl h-[88vh] sm:h-auto max-h-[88vh] sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl glass-card border-t sm:border border-white/10 shadow-2xl flex flex-col overflow-hidden animate-scale-in">
         {/* Sticky Header */}
         <div className="flex-shrink-0 p-4 sm:p-6 pb-3 sm:pb-4 border-b border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-start justify-between gap-3 z-20">
           <div className="flex items-start gap-3 min-w-0">
@@ -1230,7 +1307,7 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
             </div>
 
             {/* Sticky Action Footer */}
-            <div className="bb-sticky-action-footer flex-shrink-0 border-t border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-center z-20">
+            <div className="bb-sticky-action-footer flex-shrink-0 sticky bottom-0 z-30 border-t border-white/15 bg-[#0d1117] backdrop-blur-2xl flex items-center z-20 shadow-[0_-12px_30px_rgba(0,0,0,0.95)]">
               <Button onClick={onClose} className="w-full py-2.5 sm:py-3 text-xs sm:text-sm font-bold">
                 Close
               </Button>
@@ -1508,7 +1585,7 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
             </div>
 
             {/* Sticky Bottom Action Footer */}
-            <div className="bb-sticky-action-footer flex-shrink-0 border-t border-white/10 bg-[#0d1117]/95 backdrop-blur-xl flex items-center gap-3 z-20">
+            <div className="bb-sticky-action-footer flex-shrink-0 sticky bottom-0 z-30 border-t border-white/15 bg-[#0d1117] backdrop-blur-2xl flex items-center gap-3 shadow-[0_-12px_30px_rgba(0,0,0,0.95)]">
               <Button
                 type="button"
                 variant="secondary"
@@ -1543,7 +1620,8 @@ function ParticipationModal({ isOpen, onClose, challenge, onSubmit, hasParticipa
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

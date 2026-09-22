@@ -992,7 +992,7 @@ export default function ChallengeResponses() {
         )}
 
         {selectedResponse && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-fade-in">
             <div className="relative w-full max-w-3xl rounded-3xl glass-card p-6 md:p-8 animate-scale-in max-h-[90vh] overflow-y-auto">
               <button
                 onClick={() => setSelectedResponse(null)}
