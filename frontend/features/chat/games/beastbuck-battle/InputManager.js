@@ -124,7 +124,9 @@ export class InputManager {
   snapshot() {
     const left = this.keys.has('KeyA') || this.keys.has('ArrowLeft');
     const right = this.keys.has('KeyD') || this.keys.has('ArrowRight');
-    const moveX = this.touchMoveX || (right ? 1 : 0) - (left ? 1 : 0);
+    // Use !== 0 not || so a legitimate touchMoveX of 0 (finger at center) doesn't
+    // fall through to keyboard movement and reset movement mid-drag
+    const moveX = this.touchMoveX !== 0 ? this.touchMoveX : (right ? 1 : 0) - (left ? 1 : 0);
     const keyboardJump = this.keys.has('KeyW') || this.keys.has('Space') || this.keys.has('ArrowUp');
     const aim = this.touchFire ? this.touchAim : this.pointer;
     return {

@@ -171,117 +171,177 @@ function drawWorld(context, canvas, state, map, camera, localId) {
 }
 
 // ─── Joystick radius constants ────────────────────────────────────────────────
-const JOY_RADIUS = 56;   // half of the 112px joystick ring
+const JOY_RADIUS = 56;   // half of the 112 px joystick ring
 const THUMB_MAX  = 44;   // max pixel displacement of the thumb inside the ring
+
+// ─── Helper: joystick vector from a pointer event ─────────────────────────────
+function getJoyVector(event, el) {
+  const box = el.getBoundingClientRect();
+  const cx = box.left + box.width  / 2;
+  const cy = box.top  + box.height / 2;
+  const rawX = event.clientX - cx;
+  const rawY = event.clientY - cy;
+  const dist  = Math.hypot(rawX, rawY);
+  const nx    = dist < 6 ? 0 : clamp(rawX / JOY_RADIUS, -1, 1);
+  const scale = Math.min(1, dist / JOY_RADIUS);
+  const angle = Math.atan2(rawY, rawX);
+  return {
+    nx,
+    thumbX: Math.cos(angle) * scale * THUMB_MAX,
+    thumbY: Math.sin(angle) * scale * THUMB_MAX,
+  };
+}
 
 function TouchControls({ inputRef }) {
   const joyRef  = useRef(null);
   const fireRef = useRef(null);
-
-  // Simple active-booleans instead of pointer ID tracking.
-  // setPointerCapture already routes all subsequent pointer events for that
-  // touch to this element, so we only need to know "is a finger down?"
+  const jetRef  = useRef(null);
   const joyActive  = useRef(false);
   const fireActive = useRef(false);
 
   const [thumbPos, setThumbPos] = useState({ x: 0, y: 0 });
-  const [thumbDown, setThumbDown] = useState(false); // true while finger is held
-  const [firing, setFiring]   = useState(false);
-  const [jumping, setJumping] = useState(false);
+  const [thumbDown, setThumbDown] = useState(false);
+  const [firing,   setFiring]   = useState(false);
+  const [jumping,  setJumping]  = useState(false);
 
-  // ── Move joystick ──────────────────────────────────────────────────────────
-  const computeJoy = useCallback((event) => {
-    const box = joyRef.current?.getBoundingClientRect();
-    if (!box) return;
-    const cx = box.left + box.width  / 2;
-    const cy = box.top  + box.height / 2;
-    const rawX = event.clientX - cx;
-    const rawY = event.clientY - cy;
-    const dist  = Math.hypot(rawX, rawY);
-    // Normalised horizontal value [-1, 1]; 6 px dead-zone
-    const nx = dist < 6 ? 0 : clamp(rawX / JOY_RADIUS, -1, 1);
-    // Visual thumb: clamp to THUMB_MAX radius
-    const scale = Math.min(1, dist / JOY_RADIUS);
-    const angle = Math.atan2(rawY, rawX);
-    setThumbPos({
-      x: Math.cos(angle) * scale * THUMB_MAX,
-      y: Math.sin(angle) * scale * THUMB_MAX,
-    });
-    inputRef.current?.setTouchMove(nx);
+  // ─────────────────────────────────────────────────────────────────────────────
+  // WHY NATIVE EVENTS: React's synthetic event system attaches ONE listener at the
+  // React root, then dispatches to component handlers via bubbling. But after
+  // el.setPointerCapture(pointerId) the browser routes subsequent pointermove /
+  // pointerup directly to the capturing element — they no longer bubble through
+  // the normal DOM tree. React's root listener never sees them, so onPointerMove
+  // and onPointerUp silently stop firing on mobile. Native addEventListener on the
+  // actual element is immune to this, because it sits at the capture target itself.
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // ── Move joystick ── native listeners ────────────────────────────────────────
+  useEffect(() => {
+    const el = joyRef.current;
+    if (!el) return;
+
+    function onDown(e) {
+      e.preventDefault();
+      joyActive.current = true;
+      el.setPointerCapture(e.pointerId);
+      const { nx, thumbX, thumbY } = getJoyVector(e, el);
+      setThumbDown(true);
+      setThumbPos({ x: thumbX, y: thumbY });
+      inputRef.current?.setTouchMove(nx);
+    }
+    function onMove(e) {
+      if (!joyActive.current) return;
+      e.preventDefault();
+      const { nx, thumbX, thumbY } = getJoyVector(e, el);
+      setThumbPos({ x: thumbX, y: thumbY });
+      inputRef.current?.setTouchMove(nx);
+    }
+    function onUp() {
+      joyActive.current = false;
+      setThumbDown(false);
+      setThumbPos({ x: 0, y: 0 });
+      inputRef.current?.setTouchMove(0);
+    }
+
+    el.addEventListener('pointerdown',   onDown, { passive: false });
+    el.addEventListener('pointermove',   onMove, { passive: false });
+    el.addEventListener('pointerup',     onUp);
+    el.addEventListener('pointercancel', onUp);
+    return () => {
+      el.removeEventListener('pointerdown',   onDown);
+      el.removeEventListener('pointermove',   onMove);
+      el.removeEventListener('pointerup',     onUp);
+      el.removeEventListener('pointercancel', onUp);
+    };
   }, [inputRef]);
 
-  const handleJoyDown = useCallback((e) => {
-    joyActive.current = true;
-    setThumbDown(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
-    computeJoy(e);
-  }, [computeJoy]);
+  // ── Fire pad ── native listeners ─────────────────────────────────────────────
+  useEffect(() => {
+    const el = fireRef.current;
+    if (!el) return;
 
-  const handleJoyMove = useCallback((e) => {
-    if (!joyActive.current) return;
-    computeJoy(e);
-  }, [computeJoy]);
+    function getAim(e) {
+      const box = el.getBoundingClientRect();
+      return {
+        x: e.clientX - (box.left + box.width  / 2),
+        y: e.clientY - (box.top  + box.height / 2),
+      };
+    }
+    function onDown(e) {
+      e.preventDefault();
+      fireActive.current = true;
+      el.setPointerCapture(e.pointerId);
+      setFiring(true);
+      inputRef.current?.setTouchFire(true, getAim(e));
+    }
+    function onMove(e) {
+      if (!fireActive.current) return;
+      e.preventDefault();
+      inputRef.current?.setTouchFire(true, getAim(e));
+    }
+    function onUp() {
+      fireActive.current = false;
+      setFiring(false);
+      inputRef.current?.setTouchFire(false);
+    }
 
-  const handleJoyUp = useCallback(() => {
-    joyActive.current = false;
-    setThumbDown(false);
-    setThumbPos({ x: 0, y: 0 });
-    inputRef.current?.setTouchMove(0);
+    el.addEventListener('pointerdown',   onDown, { passive: false });
+    el.addEventListener('pointermove',   onMove, { passive: false });
+    el.addEventListener('pointerup',     onUp);
+    el.addEventListener('pointercancel', onUp);
+    return () => {
+      el.removeEventListener('pointerdown',   onDown);
+      el.removeEventListener('pointermove',   onMove);
+      el.removeEventListener('pointerup',     onUp);
+      el.removeEventListener('pointercancel', onUp);
+    };
   }, [inputRef]);
 
-  // ── Fire pad ───────────────────────────────────────────────────────────────
-  const computeFire = useCallback((event) => {
-    const box = fireRef.current?.getBoundingClientRect();
-    if (!box) return;
-    const x = event.clientX - (box.left + box.width  / 2);
-    const y = event.clientY - (box.top  + box.height / 2);
-    inputRef.current?.setTouchFire(true, { x, y });
+  // ── Jet boost ── native listeners ────────────────────────────────────────────
+  useEffect(() => {
+    const el = jetRef.current;
+    if (!el) return;
+
+    function onDown(e) {
+      el.setPointerCapture(e.pointerId);
+      setJumping(true);
+      inputRef.current?.setTouchJump(true);
+    }
+    function onUp() {
+      setJumping(false);
+      inputRef.current?.setTouchJump(false);
+    }
+
+    el.addEventListener('pointerdown',   onDown);
+    el.addEventListener('pointerup',     onUp);
+    el.addEventListener('pointercancel', onUp);
+    return () => {
+      el.removeEventListener('pointerdown',   onDown);
+      el.removeEventListener('pointerup',     onUp);
+      el.removeEventListener('pointercancel', onUp);
+    };
   }, [inputRef]);
 
-  const handleFireDown = useCallback((e) => {
-    fireActive.current = true;
-    setFiring(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
-    computeFire(e);
-  }, [computeFire]);
-
-  const handleFireMove = useCallback((e) => {
-    if (!fireActive.current) return;
-    computeFire(e);
-  }, [computeFire]);
-
-  const handleFireUp = useCallback(() => {
-    fireActive.current = false;
-    setFiring(false);
-    inputRef.current?.setTouchFire(false);
-  }, [inputRef]);
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-between
       px-[max(1.25rem,env(safe-area-inset-left))] pb-[max(1.25rem,env(safe-area-inset-bottom))] md:hidden">
 
-      {/* ── Left: Move joystick ── */}
+      {/* ── Left: Move joystick — events handled by native listener in useEffect ── */}
       <div
         ref={joyRef}
-        style={{ width: JOY_RADIUS * 2, height: JOY_RADIUS * 2 }}
-        className="pointer-events-auto relative flex items-center justify-center touch-none
+        style={{ width: JOY_RADIUS * 2, height: JOY_RADIUS * 2, touchAction: 'none', userSelect: 'none' }}
+        className="pointer-events-auto relative flex items-center justify-center
           rounded-full border-2 border-violet-400/30 bg-[#1e1438]/75
-          shadow-[0_0_24px_rgba(139,92,246,0.25)] backdrop-blur-sm select-none"
-        onPointerDown={handleJoyDown}
-        onPointerMove={handleJoyMove}
-        onPointerUp={handleJoyUp}
-        onPointerCancel={handleJoyUp}
+          shadow-[0_0_24px_rgba(139,92,246,0.25)] backdrop-blur-sm"
       >
-        {/* Outer ring */}
-        <div className="absolute inset-0 rounded-full border border-violet-500/20" />
-        {/* Guide cross */}
+        <div className="absolute inset-0 rounded-full border border-violet-500/20 pointer-events-none" />
         <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
           <div className="h-full w-px bg-violet-300" />
         </div>
         <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
           <div className="h-px w-full bg-violet-300" />
         </div>
-        {/* Tracking thumb knob — translates smoothly to follow the finger */}
+        {/* Tracking thumb — follows finger via state updated by native listener */}
         <div
           style={{
             transform: `translate(${thumbPos.x}px, ${thumbPos.y}px)`,
@@ -295,50 +355,47 @@ function TouchControls({ inputRef }) {
 
       {/* ── Right: Boost + Fire ── */}
       <div className="pointer-events-auto flex items-end gap-4">
-        {/* Jet boost */}
+
+        {/* Jet boost — ref={jetRef} is all we need; native listener does the rest */}
         <div className="flex flex-col items-center gap-1">
           <button
+            ref={jetRef}
             type="button"
             aria-label="Jet boost"
-            style={{ width: 68, height: 68 }}
-            className={`touch-none flex items-center justify-center rounded-full border-2 shadow-lg transition-all duration-75
+            style={{ width: 68, height: 68, touchAction: 'none' }}
+            className={`flex items-center justify-center rounded-full border-2 shadow-lg transition-all duration-75 text-amber-100
               ${ jumping
                 ? 'border-amber-300 bg-amber-500/50 shadow-[0_0_20px_rgba(251,191,36,0.6)]'
                 : 'border-amber-400/40 bg-[#1e1438]/75 shadow-amber-950/30'
-              } text-amber-100`}
-            onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setJumping(true); inputRef.current?.setTouchJump(true); }}
-            onPointerUp={() => { setJumping(false); inputRef.current?.setTouchJump(false); }}
-            onPointerCancel={() => { setJumping(false); inputRef.current?.setTouchJump(false); }}
+              }`}
           >
-            <Zap className="h-7 w-7 drop-shadow" />
+            <Zap className="h-7 w-7 drop-shadow pointer-events-none" />
           </button>
           <span className="text-[9px] font-bold uppercase tracking-widest text-amber-300/50 select-none">JET</span>
         </div>
 
-        {/* Fire pad */}
+        {/* Fire pad — ref={fireRef}, native listener handles all pointer events */}
         <div className="flex flex-col items-center gap-1">
           <div
             ref={fireRef}
-            style={{ width: JOY_RADIUS * 2, height: JOY_RADIUS * 2, touchAction: 'none' }}
-            className={`relative pointer-events-auto touch-none flex items-center justify-center rounded-full border-2 transition-all duration-75 shadow-lg select-none
+            style={{ width: JOY_RADIUS * 2, height: JOY_RADIUS * 2, touchAction: 'none', userSelect: 'none' }}
+            className={`relative pointer-events-auto flex items-center justify-center rounded-full border-2 transition-all duration-75 shadow-lg text-rose-100
               ${ firing
                 ? 'border-rose-400 bg-rose-500/40 shadow-[0_0_24px_rgba(251,113,133,0.7)]'
                 : 'border-rose-400/35 bg-[#1e1438]/75 shadow-rose-950/30'
-              } text-rose-100`}
-            onPointerDown={handleFireDown}
-            onPointerMove={handleFireMove}
-            onPointerUp={handleFireUp}
-            onPointerCancel={handleFireUp}
+              }`}
           >
             <div className="absolute inset-0 rounded-full border border-rose-500/20 pointer-events-none" />
             <Crosshair className={`h-10 w-10 drop-shadow transition-all pointer-events-none ${ firing ? 'scale-110 text-rose-200' : 'text-rose-300/80' }`} />
           </div>
           <span className="text-[9px] font-bold uppercase tracking-widest text-rose-300/50 select-none">FIRE</span>
         </div>
+
       </div>
     </div>
   );
 }
+
 
 export function BeastBuckBattleGame({ match, participants, currentUser, onActivate, onFinish, onExit }) {
   const canvasRef = useRef(null);
@@ -404,7 +461,10 @@ export function BeastBuckBattleGame({ match, participants, currentUser, onActiva
       audio.destroy();
       inputRef.current = null;
     };
-  }, [muted]);
+  // InputManager must NOT depend on `muted` — audio muting is handled by a
+  // separate effect. Adding muted here caused InputManager to be destroyed and
+  // recreated on every mute toggle, silently dropping inputs mid-game.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     audioRef.current?.setMuted(muted);
@@ -431,8 +491,10 @@ export function BeastBuckBattleGame({ match, participants, currentUser, onActiva
       if (event.code === 'Digit2') setSelectedWeapon('bolt');
       if (event.code === 'Digit3') setSelectedWeapon('nova');
     };
-    window.addEventListener('keydown', handleWeaponSelect);
-    return () => window.removeEventListener('keydown', handleWeaponSelect);
+    // Must use capture:true — InputManager's capture handler calls stopPropagation,
+    // so bubble-phase listeners never fire for Digit1/2/3.
+    window.addEventListener('keydown', handleWeaponSelect, { capture: true });
+    return () => window.removeEventListener('keydown', handleWeaponSelect, { capture: true });
   }, []);
 
   const handleExit = useCallback(async () => {
